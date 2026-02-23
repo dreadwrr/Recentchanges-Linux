@@ -13,9 +13,9 @@ Full commandline support with recentchanges in path<br>
 
 ## Installation
 cd /usr/local/recentchanges <br>
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pi
+python -m venv .venv <br>
+source .venv/bin/activate <br>
+python -m pip install --upgrade pi <br>
 pip install -r requirements.txt <br>
 python main.py <br>
 
