@@ -1,0 +1,287 @@
+# home/{{user}}/ for substitutions if user is root it becomes root/
+#
+#
+
+[backend]
+# database   binary database faster queries 1 gpg and python (easier ha)
+											# leave set
+backend = "database"
+
+# default for asymmetrical gpg auth for STATPST
+                                                        # asks for paraphrase and caches for 15 minutes
+                                                        # leave default
+email = "john.doe@email.com"
+name = "John e"
+
+[logs]
+# size to disable compression on pydbpst size
+				# default 200
+compLVL = 200
+
+					# default ERROR
+					# DEBUG
+logLEVEL = "DEBUG"
+userLOG = "errs.log"
+rootLOG = "errs2.log"
+
+[search]
+
+# Focus drive for the app search and or sys profile. 
+						# / 
+						# /mnt/sdx
+drive = "/"
+
+# used for determining areas of multicore. SSD is multicore and HDD is serial the script will try to auto detect. If its set to SSD it will run multicore if over a certain file threshold 
+					# ""  default
+					# SSD
+					# HDD
+driveTYPE = ""
+
+# Directories to exclude from the searches. ie 
+# default directories that are left "/bin", "/etc", "/home", "/lib", "/lib64", "/opt", "/root", "/sbin", "/tmp", "/usr",  "/var"
+# prevent permission errors.  # eg var/cache, home/{{user}}/.cache or home/guest/somefolder
+EXCLDIRS = ["dev", "mnt", "proc", "run", "srv", "sys"]	
+
+# find file default extensions. added here as well as in qt which are stored in database 
+extension = [
+".txt", ".md", ".rtf", ".log", ".csv", ".tsv", ".json", ".xml", ".yaml", ".yml", ".ini",
+".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp", ".svg", ".heif", ".ico", ".raw",
+".mp3", ".wav", ".aac", ".flac", ".ogg", ".m4a", ".wma", ".alac", ".opus",
+".mp4", ".avi", ".mov", ".mkv", ".flv", ".webm", ".wmv", ".mpg", ".mpeg", ".3gp",
+".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".odp", ".epub", ".mobi",
+".zip", ".rar", ".7z", ".tar", ".gz", ".tar.gz", ".tgz", ".xz", ".bz2", ".iso",
+".exe", ".bat", ".sh", ".app", ".jar", ".msi", ".apk", ".bin", ".run", ".vbs", ".wsf",
+".html", ".htm", ".css", ".js", ".json", ".php", ".asp", ".jsp", ".xml", ".xhtml",
+".sql", ".db", ".sqlite", ".db3", ".mdb", ".accdb", ".bak", ".frm", ".dbf",
+".py", ".js", ".html", ".css", ".cpp", ".h", ".java", ".rb", ".go", ".rs", ".swift", ".php", ".pl",
+".ttf", ".otf", ".woff", ".woff2", ".eot",
+".vmdk", ".vdi", ".vhd", ".ova", ".barly",
+".dll", ".sys", ".drv", ".ini", ".cfg", ".bak",
+".bak", ".backup", ".swp", ".tmp", ".~",
+ ".iso", ".md5", ".sha1", ".torrent", ".dat"
+]
+
+# run inotifywait for one hour to look for new files where ctime > mtime in /changes. this is for downloads or copies with preserved metadata pacman slackpkg ect.
+# It just dynamically bypasses a section of the script if tout result is already made. It is also inserted into the cache ctimecache.gpg.
+xRC = false              # false - default. if false the files will still show up
+							    # true - With this setting can bypass 1 of 2 search loops and reduce process overhead as the search is already there effectively increasing the overall speed
+
+
+						# How many old searches to save. These can be grabbed by `recentchanges search` and `recentchanges`
+						# for comparisons in diff file
+archivesrh = 5
+
+
+[compress]
+
+# Find file feature compress. what program to use when making archive. 
+						# zip
+						# tar
+zipPROGRAM = "tar"
+
+
+# fallback incase cant find it in Path
+						#"" default
+zipPATH = ""
+
+
+# compression algorithm for zip.
+							# 1-2 ZIP_STORED no compression
+							# 3-4 ZIP_DEFLATED standard default
+							# 5-7 ZIP_BZIP 
+							# 8-9 ZIP_LZMA
+zipcmode = 3
+
+# compress level 9 max
+							# default 9
+							# 0
+ziplevel= 9
+
+
+
+						# tar
+						# gz
+						# bz2
+						# xz
+						# zstd
+tarclvl = "gz"
+
+
+
+# remove paths or absolute. if there is a duplicate filename the duplicate will retain path                    
+									# false - absolute default
+									# true - no paths
+strip = true
+
+
+# path for archives from compress button search. Combobox output can be used to direct to /tmp or /home/user/Downloads.
+ 												# "" default
+												# ie "/home/guest/Documents", "/mnt/sda3"
+downloads = ""
+
+
+[analytics]
+							# display more verbose output
+ANALYTICS = true
+							# provides more feedback
+							# total search time ect
+							# we dont want too much output on the terminal just a slight bit more
+							# others stats
+ANALYTICSECT = true
+
+
+# include search output in terminal as well ie scrolling terminal look
+FEEDBACK = true
+
+
+[display]
+
+# gui start page 1 default 2 database
+pageIDX = 1
+
+# location to open explorer or terminal from settings button
+						# default ""
+popPATH = ""
+
+#launch text editor?
+# if using somethingelse specifying dspPATH is required
+						# xed  default 
+							# "false" or false
+							# ""
+							# featherpad
+dspEDITOR = "xed"
+
+
+# specify absolute directory as a fallback incase cant find it in Path. xed is fine but needed for other editors. recommended
+# if the value "" is used the app will check registry for dspEDITOR to see if its installed. featherpad and xed
+# else needs dspPATH specifcally for other editor or if xed featherpad are installed somewhere not in path
+													# ""
+													# "/usr/bin/xed"
+													# "/usr/bin/somebinary"
+dspPATH = ""
+
+
+# color for main term display 
+									# unix   default
+										# wb  white on black
+										# solar   solarize cyan
+										# monochrome   for grey
+hudCOLOR = "solar"
+
+								# default 12
+hudSZE = 12
+
+# to install more fonts install with package manger and run print(QFontDatabase().families()) to see if it lists it and then set here.
+						# defaself.is_compressult Monospace
+						# DejaVu Sans
+						# DejaVu Sans Mono
+						# DejaVu Serif
+						# Monospace
+						# Sans Serif
+						# Serif
+hudFNT = "VL Gothic"
+
+
+
+[diagnostics]
+
+# compare file checksums for slight changes
+						# slower useful if you want to check deeper level of stats
+checkSUM = true
+
+ # Include more info a file was changed but has the same checksum and filesize subtle edit  ie cache items or string was changed
+						# also check for hash collisions
+cdiag = true
+
+
+# supress cache warnings on terminal from known browsers? Mozilla... ect list top of pyfunctions.py
+supbrw = true
+
+# ..      all cdiag output to terminal except critical events
+suppress = false
+
+
+# commandline use
+# Diagnostics. Create file doctrine. Runs post search operation that can only be done at this time as search is relevant
+                                    # more overhead so recommend off unless one off. output /Downloads
+                                    #
+                                    # if it is run again and a file is still there it will not run the POSTOP and the script will set POSTOP to false to itself
+POSTOP = false
+
+# commandline use
+# Scan  the sys profile. The profile is created automatically if proteusSHIELD is enabled. 
+									# Once run once the script will set scanIDX to false.
+scanIDX = false
+
+# commandline use
+# Show symmetric differences in diff file for sys profile scan. For 
+showDIFF = true
+
+
+[shield]
+# commandline use
+# take initial hash of key system files to put in database for system protection
+									# builds a sys table in database of system files and is compared in hybrid analysis in addition to the logs table.									
+proteusSHIELD = true
+
+
+# for porteus use the premade template instead and proteusEXTN and proteusPATH. Note: see XzmProfile class in xzmprofile.py
+								# false - default 
+xzm = false
+
+
+# if false include all files found. otherwise only target executables. with this on there would be less results or a narrower profile.
+# for .so files the header is checked
+exec = false				# false - default
+
+
+# include symlinks in xzm, proteusEXTN and proteusPATH. symlinks are still mapped in dir cache for early exit in recursion and avoid tranversing in find downloads.
+sym = true		# true - default
+
+
+# files to include in the index. "" would means to include files with no extensions
+proteusEXTN = [
+    "", ".sh", ".bash", ".zsh", ".py", ".pl", ".rb", ".lua", ".php", ".js", ".db", ".so", ".sqlite",
+    ".sqlite3", ".mdb", ".desktop", ".service", ".socket", ".timer", ".mount", ".target",
+    ".path", ".slice", ".gpg"
+]
+# hash all in the following 
+proteusPATH = [
+	"etc/cron.d",
+    "var/spool/cron"
+]
+
+# appends to EXCLDIRS for profile builds. irrelevant folders
+# 	
+nogo = [
+	"tmp", 
+	"home/{{user}}/.cache",
+	"home/guest/.mozilla/firefox/94bktgy4.default-release"
+]  
+
+# no match file patterns removes noise.
+filterout = [
+	"home/{{user}}/.gnupg/random_seed",
+	"root/.gnupg/random_"
+]
+
+
+[paths]
+
+# file label prefix for searches output txt file			# default rntfiles
+MODULENAME="rntfiles"
+
+[src]
+
+# recentchanges SRC
+# if not porteus the SRC tag is bypassed
+autooutput = false
+
+# if an xzmname isnt provided a default one Application$$.xzm is used.
+xzmname = ""
+
+                   # default gzip. uses gzip compression level balanced. This is for recentchanges .xzm and SRC tag
+                                           # xz        best compression
+                                           # zstd     faster bootup
+                                            # lzo      faster bootup
+cmode = "gzip"
