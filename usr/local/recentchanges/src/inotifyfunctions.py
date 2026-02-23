@@ -43,7 +43,7 @@ def _fk_process(pattern):
     return False
 
 
-def strup(script_dir, inotify_creation_file, CACHE_F, checksum, MODULENAME, log_file):
+def strup(script_dir, home_dir, xdg_runtime, inotify_creation_file, CACHE_F, checksum, MODULENAME, log_file):
 
     script_path = os.path.join(script_dir, 'start_inotify')
     cmd = [
@@ -52,6 +52,8 @@ def strup(script_dir, inotify_creation_file, CACHE_F, checksum, MODULENAME, log_
         MODULENAME,
         str(CACHE_F),
         str(checksum).lower(),
+        str(home_dir),
+        str(xdg_runtime),
         "ctime",
         "3600"
     ]
@@ -68,6 +70,19 @@ def strup(script_dir, inotify_creation_file, CACHE_F, checksum, MODULENAME, log_
     except Exception as e:
         print("xRC logged an exception to", log_file)
         logging.error(f"strup General exception unable to start inotify wait: {e} {type(e).__name__}", exc_info=True)
+
+
+def _to_int_or_none(value, field, table, line):
+    if value in ("", "None", None):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        logging.debug(
+            "parselog invalid integer %s for table %s: %r line: %s",
+            field, table, value, line
+        )
+        return None
 
 
 def parse_line(line):
@@ -136,10 +151,10 @@ def parselog(file, table, checksum):
             filename = unescf_py(inputln[1])
             escf_path = inputln[1]
             changetime = inputln[2]
-            inode = None if inputln[3] in ("", "None") else inputln[3]
+            ino = None if inputln[3] in ("", "None") else inputln[3]
             accesstime = inputln[4]
             checks = None if n > 5 and inputln[5] in ("", "None") else (inputln[5] if n > 5 else None)
-            filesize = None if n > 6 and inputln[6] in ("", "None") else (inputln[6] if n > 6 else None)
+            sze = None if n > 6 and inputln[6] in ("", "None") else (inputln[6] if n > 6 else None)
             sym = None if n <= 7 or inputln[7] in ("", "None") else inputln[7]
             onr = None if n <= 8 or inputln[8] in ("", "None") else inputln[8]
             gpp = None if n <= 9 or inputln[9] in ("", "None") else inputln[9]
@@ -148,8 +163,8 @@ def parselog(file, table, checksum):
             timestamp1 = None if n <= 12 or inputln[12] in ("", "None") else inputln[12]
             timestamp2 = None if n <= 13 or inputln[13] in ("", "None") else inputln[13]
             lastmodified = None if not timestamp1 or not timestamp2 else f"{timestamp1} {timestamp2}"
-            usec = None if n <= 14 or inputln[14] in ("", "None") else inputln[14]
-            hardlink_count = None if n <= 15 or inputln[15] in ("", "None") else inputln[15]
+            us = None if n <= 14 or inputln[14] in ("", "None") else inputln[14]
+            hardlink = None if n <= 15 or inputln[15] in ("", "None") else inputln[15]
             target = None
             if sym == 'y':
                 try:
@@ -157,6 +172,11 @@ def parselog(file, table, checksum):
                 except OSError:
                     logging.error("skipped error resolving symlink target, file: %s", filename)
                     continue
+
+            inode = _to_int_or_none(ino, "inode", table, line)
+            filesize = _to_int_or_none(sze, "filesize", table, line) if checksum else sze
+            usec = _to_int_or_none(us, "usec", table, line) if checksum else us
+            hardlink_count = _to_int_or_none(hardlink, "hardlink_count", table, line) if checksum else hardlink
 
             if table == 'sys':
                 count = 0
@@ -172,7 +192,7 @@ def parselog(file, table, checksum):
                     hardlink_count = gpp
                     checks = filesize = sym = onr = gpp = None
 
-                results.append((timestamp, filename, changetime, inode, accesstime, checks, filesize, sym, onr, gpp, pmr, cam, target, lastmodified, hardlink_count, escf_path, usec))
+                results.append((timestamp, filename, changetime, inode, accesstime, checks, filesize, sym, onr, gpp, pmr, cam, target, lastmodified, hardlink_count, usec, escf_path))
             else:
                 raise ValueError("Supplied table not in accepted boundaries: sys or sortcomplete. value supplied", table)
         except Exception as e:
@@ -246,7 +266,7 @@ def parse_tout(log_file, checksum):
     return all_files
 
 
-def init_recentchanges(script_dir, inotify_creation_file, cfr, xRC, checksum, MODULENAME, log_path):
+def init_recentchanges(script_dir, home_dir, xdg_runtime, inotify_creation_file, cfr, xRC, checksum, MODULENAME, log_path):
     try:
         all_files = []
         search_pattern = os.path.join(script_dir.name, "inotify")
@@ -271,12 +291,12 @@ def init_recentchanges(script_dir, inotify_creation_file, cfr, xRC, checksum, MO
 
                 open(inotify_creation_file, 'w').close()
                 if not process_status(search_pattern):
-                    strup(script_dir, inotify_creation_file, CACHE_F, checksum, MODULENAME, log_path)
+                    strup(script_dir, home_dir, xdg_runtime, inotify_creation_file, CACHE_F, checksum, MODULENAME, log_path)
                 else:
                     removefile(inotify_creation_file)
             else:
                 removefile(inotify_creation_file)
-                strup(script_dir, inotify_creation_file,  CACHE_F, checksum, MODULENAME, log_path)
+                strup(script_dir, home_dir, xdg_runtime, inotify_creation_file, CACHE_F, checksum, MODULENAME, log_path)
         else:
             if process_status(search_pattern):
                 _fk_process('inotifywait -m -r -e create -e moved_to --format %e|%w%f%0')

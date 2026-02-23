@@ -143,10 +143,8 @@ def comp_archive(target_files, archive, temp_dir, downloads, arch_exclude, USR, 
     res = 1
 
     out_file = os.path.join(downloads, archflnm)
-    archflnm_two = archive + "_duplicate" + suffix
-    out_two = os.path.join(downloads, archflnm_two)
     removefile(out_file)
-
+    out_two = ""
     try:
 
         # if there is a newline in filename or too many args use zipfile
@@ -198,6 +196,8 @@ def comp_archive(target_files, archive, temp_dir, downloads, arch_exclude, USR, 
             elif zipPROGRAM == "tar":
 
                 # write only duplicates to qt temp dir this way to avoid exceeding memory size if the data  is too great
+                archflnm_two = archive + "_duplicate" + suffix
+                out_two = os.path.join(downloads, archflnm_two)
 
                 if strip and duplicates:
                     removefile(out_two)
@@ -251,8 +251,8 @@ def comp_archive(target_files, archive, temp_dir, downloads, arch_exclude, USR, 
 
         if res == 0:
             if (
-                (zipPROGRAM == "zip" and os.path.isfile(out_file) and os.path.getsize(out_file) > 0)
-                or (zipPROGRAM == "tar" and ((os.path.isfile(out_file) and os.path.getsize(out_file) > 0) or (os.path.isfile(out_two) and os.path.getsize(out_two) > 0)))
+                (os.path.isfile(out_file) and os.path.getsize(out_file) > 0)
+                or (zipPROGRAM == "tar" and (os.path.isfile(out_two) and os.path.getsize(out_two) > 0))
             ):
                 cprint.cyan(f"Archive created in: {out_file}")
 

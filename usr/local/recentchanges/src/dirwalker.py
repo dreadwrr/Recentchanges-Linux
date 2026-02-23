@@ -11,7 +11,6 @@
 import logging
 import gc
 import multiprocessing
-import numpy as np
 import os
 import random
 import sys
@@ -416,15 +415,16 @@ def find_created(dbopt, dbtarget, basedir, user, mdltype, tempdir, CACHE_S, dspE
     else:
         random.shuffle(base_folders)
         len_basefolders = len(base_folders)
-        num_chunks = max(1, min(len_basefolders, multiprocessing.cpu_count(), 8))
-        chunks = [list(map(str, c)) for c in np.array_split(base_folders, num_chunks)]
-        total_chunks = len(chunks)
+        # num_chunks = max(1, min(len_basefolders, multiprocessing.cpu_count(), 8))
+        # chunks = [list(map(str, c)) for c in np.array_split(base_folders, num_chunks)]
+
         # manual. numpy is already used by pandas and available
         # max_workers = min(8, os.cpu_count() or 4)
-        # min_chunk_size = 2
-        # max_workers = max(1, min(8, os.cpu_count() or 4, len(base_folders) // min_chunk_size))
-        # chunk_size = max(1, (len(base_folders) + max_workers - 1) // max_workers)
-        # chunks = [base_folders[i:i + chunk_size] for i in range(0, len(base_folders), chunk_size)]
+        min_chunk_size = 2
+        max_workers = max(1, min(8, os.cpu_count() or 4, len_basefolders // min_chunk_size))
+        chunk_size = max(1, (len_basefolders + max_workers - 1) // max_workers)
+        chunks = [base_folders[i:i + chunk_size] for i in range(0, len_basefolders, chunk_size)]
+        total_chunks = len(chunks)
 
         deltav = endp - strt
         done = 0

@@ -1,9 +1,9 @@
 import re
-import sys
 import csv
+import importlib.util
+import sys
 from collections import defaultdict
 from pathlib import Path
-import importlib.util
 main_file = Path(sys.argv[0]).resolve()
 main_dir = main_file.parent
 filter_patterns_path = main_dir / "filter.py"

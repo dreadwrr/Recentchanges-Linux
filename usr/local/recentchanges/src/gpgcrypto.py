@@ -358,7 +358,7 @@ def encrypt_to_text(notes: str, email: str) -> str | None:  # , user=None
 
 
 def decrypt_from_text(cipher_text: str) -> str | None:
-    cmd = ["gpg", "--batch", "--yes", "--decrypt"]
+    cmd = ["gpg", "--decrypt"]
     res = subprocess.run(
         cmd,
         input=cipher_text.encode("utf-8"),

@@ -166,7 +166,7 @@ def hanly(parsed_chunk, checksum, cdiag, dbopt, ps, usr, logging_values, sys_tab
                 cam_file = (recent_cam == "y" or previous_cam == "y")
 
                 mtime_usec_zero = record[15]
-                if mtime_usec_zero % 1_000_000 == 0:
+                if is_integer(mtime_usec_zero) and mtime_usec_zero % 1_000_000 == 0:
                     entry["scr"].append(f'Unusual modified time file has microsecond all zero: {label} timestamp: {mtime_usec_zero}')
 
                 if recent_timestamp == previous_timestamp:

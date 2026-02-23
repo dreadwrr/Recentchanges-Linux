@@ -287,8 +287,7 @@ def has_log_data(dbopt, logger, parent=None):
 def commit_note(logger, notes, email, query):
     try:
         encrypted_data = encrypt_to_text(notes, email)
-        if not encrypted_data:
-            print(encrypted_data.stderr)
+        if encrypted_data is None:
             print("Problem encrypting notes aborting")
             return False
         # gpg = gnupg.GPG()
@@ -774,14 +773,14 @@ def user_data_from_database(logger, textEdit, combffile, extensions, dbopt, pare
                     # gpg = gnupg.GPG()
                     encrypted_blob = query.value(0)
                     decrypted_data = decrypt_from_text(encrypted_blob)
-                    if decrypted_data:
+                    if decrypted_data or decrypted_data == "":
                         notes = str(decrypted_data)
                         textEdit.setPlainText(notes)
                     # decrypted_data = gpg.decrypt(encrypted_blob)
                     # if decrypted_data.ok:
                     #     notes = str(decrypted_data)
                     #     textEdit.setPlainText(notes)
-                    else:
+                    elif decrypted_data is None:
                         print("Could not decrypt notes")
                         # passphrase, ok = QInputDialog.getText(parent, "Decrypt Notes", "Enter GPG passphrase:", echo=QLineEdit.EchoMode.Password)
                         # if ok and passphrase:

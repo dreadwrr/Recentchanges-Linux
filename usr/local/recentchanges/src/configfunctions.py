@@ -11,8 +11,8 @@ from pathlib import Path
 
 # app location if files are moved to a src or separate directory its the one below it
 def find_install():
+    # install_root = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
     # wdir = Path(sys.argv[0]).resolve().parent
-    # wdir = Path(__file__).resolve().parent
     wdir = Path(__file__).resolve().parent.parent
     return wdir
 

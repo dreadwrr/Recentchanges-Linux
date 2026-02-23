@@ -346,7 +346,7 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
 
         # load ctime or files created or copied with preserved metadata.
         # if xRC
-        tout = init_recentchanges(script_dir, inotify_creation_file, cfr, xRC, checksum, MODULENAME, log_file)
+        tout = init_recentchanges(script_dir, home_dir, xdg_runtime, inotify_creation_file, cfr, xRC, checksum, MODULENAME, log_file)
 
         if argone != "search":
             THETIME = argone
