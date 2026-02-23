@@ -29,7 +29,7 @@ PySide6-Essentials<br>
 tomlkit <br>
 python-magic <br>
 psutil <br>
-equests <br>
+requests <br>
 packaging <br>
 pillow <br>
 pyudev <br>
