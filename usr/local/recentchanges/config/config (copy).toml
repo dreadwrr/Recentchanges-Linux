@@ -50,7 +50,7 @@ extension = [
 ".mp4", ".avi", ".mov", ".mkv", ".flv", ".webm", ".wmv", ".mpg", ".mpeg", ".3gp",
 ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".odp", ".epub", ".mobi",
 ".zip", ".rar", ".7z", ".tar", ".gz", ".tar.gz", ".tgz", ".xz", ".bz2", ".iso",
-".exe", ".bat", ".sh", ".app", ".jar", ".msi", ".apk", ".bin", ".run", ".vbs", ".wsf",
+".exe", ".bat", ".sh", ".app", ".jar", ".msi", ".apk", ".bin", ".run", ".vbs",
 ".html", ".htm", ".css", ".js", ".json", ".php", ".asp", ".jsp", ".xml", ".xhtml",
 ".sql", ".db", ".sqlite", ".db3", ".mdb", ".accdb", ".bak", ".frm", ".dbf",
 ".py", ".js", ".html", ".css", ".cpp", ".h", ".java", ".rb", ".go", ".rs", ".swift", ".php", ".pl",
@@ -166,20 +166,20 @@ dspPATH = ""
 										# wb  white on black
 										# solar   solarize cyan
 										# monochrome   for grey
-hudCOLOR = "solar"
+hudCOLOR = "unix"
 
 								# default 12
 hudSZE = 12
 
 # to install more fonts install with package manger and run print(QFontDatabase().families()) to see if it lists it and then set here.
-						# defaself.is_compressult Monospace
+						# default Monospace
 						# DejaVu Sans
 						# DejaVu Sans Mono
 						# DejaVu Serif
 						# Monospace
 						# Sans Serif
 						# Serif
-hudFNT = "VL Gothic"
+hudFNT = "Monospace"
 
 
 
@@ -222,7 +222,7 @@ showDIFF = true
 # commandline use
 # take initial hash of key system files to put in database for system protection
 									# builds a sys table in database of system files and is compared in hybrid analysis in addition to the logs table.									
-proteusSHIELD = true
+proteusSHIELD = false
 
 
 # for porteus use the premade template instead and proteusEXTN and proteusPATH. Note: see XzmProfile class in xzmprofile.py
@@ -252,9 +252,8 @@ proteusPATH = [
 ]
 
 # appends to EXCLDIRS for profile builds. irrelevant folders
-# 	
+# "tmp",
 nogo = [
-	"tmp", 
 	"home/{{user}}/.cache",
 	"home/guest/.mozilla/firefox/94bktgy4.default-release"
 ]  
