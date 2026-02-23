@@ -10,3 +10,16 @@ Full commandline support with recentchanges <br>
 
   
 </p><br>
+
+## Installation
+cd /usr/local/recentchanges <br>
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pi
+pip install -r requirements.txt <br>
+python main.py <br>
+
+adjust if missing any dependencies <br><br>
+pip install dependency
+
+optionally can install the required packages in system using package manager
