@@ -1,0 +1,20 @@
+To generate a key manually
+
+gpg --gen-key
+1
+4096
+0
+y
+John r
+john.r@email.com     <---------   has to match recentchanges  email at top of config file
+na
+O
+
+gpg --export-secret-keys --armor john.r@email.com > key.asc
+sudo su
+gpg --import key.asc
+gpg --edit-key john.r@email.com
+True, 5, y, quit to trust the key
+
+
+Put custom commands here to save for reference

@@ -1,0 +1,67 @@
+
+version 5.0
+
+recentchanges aka Developer buddy
+
+Makes an xzm of all changes 5 minutes or newer. A manifest will be included as well as a pull transfer
+log. These will be sent to /tmp as rntchanges.xzm ect
+
+Useful if you compiled a program you can ie specify recent changes 5 to pull all new files 5 seconds
+or newer
+
+Modes available Search or SRC or Query See bottom after usage how to use modes
+
+
+recentchanges s         where s is time in seconds	output /tmp
+
+usage:    recentchanges		system search 5 minutes or new these will include system search as well
+usage:    recentchanges 30		system search 30 seconds or newer
+
+
+Modes
+
+Search        for just a system search	output user/Downloads
+
+recentchanges search	search for files 5 minutes or newer
+recentchanges search 30	search for files 30 seconds or newer
+
+Search for files newer than a file or directory
+
+recentchanges search /home/guest/myfile.txt    search for files newer than myfile
+recentchanges search myfile.txt
+recentchanges search /home/guest/My\ Directory\ two/with\ spaces/   ... newer than directory
+
+SRC
+
+recentchanges SRC	Target a root directory. Useful if you compiled an application.
+
+examples:
+recentchanges SRC, recentchanges 60 SRC or recentchanges SRC 180
+
+Query
+
+Find out information about files from searches.
+
+Inverse the search with Symlink
+
+rnt	shortcut for recentchanges doesnt inverse output /tmp
+rnt n
+rnt search		search for filtered rather than unfiltered files	output /Downloads
+rnt search 30		search for filtered files 30 seconds or newer
+rnt search myfile.txt	search for unfiltered rather than filtered files newer than myfile
+
+
+If having problems with keys.
+1. Try to delete the all .gpg to make new ones. 2. Failing that do the same as 1 but change email in config.toml to make a new keypair
+
+or option 3.
+delete the keys for user and root
+gpg --list-keys . grab the key fingerprint for the email in config.toml.
+as user gpg --delete-sercet-keys <fingerprint>
+gpg --delete-keys <fingerprint>
+then as root. sudo su
+gpg --delete-sercret-keys <fingerprint>
+gpg --delete-keys <fingerprint>
+
+failing that use `recentchanges reset` for instructions and or to delete the key pair and reset
+
