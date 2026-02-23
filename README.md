@@ -1,4 +1,3 @@
-# Recentchanges
 
 Linux file search application with hybrid analysis
 <p>
