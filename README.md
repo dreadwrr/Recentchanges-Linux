@@ -23,3 +23,13 @@ adjust if missing any dependencies <br><br>
 pip install dependency
 
 optionally can install the required packages in system using package manager
+
+main dependencies
+PySide6
+tomlkit
+python-magic
+psutil
+equests
+packaging
+pillow
+pyudev
