@@ -18,7 +18,7 @@ python -m pip install --upgrade pi <br>
 pip install -r requirements.txt <br>
 python main.py <br>
 
-adjust if missing any dependencies <br><br>
+adjust if missing any <br><br>
 pip install dependency
 
 optionally can install the required packages in system using package manager
