@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#inotify db5 					01/13/2026
+#inotify db5 					02/21/2026
 SCRIPT_PATH="$( dirname "$0")"
 . "$SCRIPT_PATH"/rntchangesfunctions
 
@@ -16,7 +16,8 @@ sbwr() {
 webb=(
     'mozilla'
 	'\.mozilla'
-	'chromium-ungoogled'
+	'chromium-ungoogled',
+	'\.config/recentchanges/config\.bak'
 # other
 )
 }
@@ -28,11 +29,11 @@ inclusion=(
 	".*/Downloads/${LCLMODULENAME}x"
 	"/tmp/${LCLMODULENAME}x"
 	"/tmp/${LCLMODULENAME}_MDY_[^/]*/${LCLMODULENAME}x.+$"
-	"$SCRIPT_PATH/flth.csv"
-	"$SCRIPT_PATH/recent.gpg"
-	"$SCRIPT_PATH/ctimecache.gpg"
-	"$SCRIPT_PATH/systimeche(_.*)?\.gpg$"
-	"$SCRIPT_PATH/file_output"
+	"$HOME_DIR/.local/share/recentchanges/flth.csv"
+	"$HOME_DIR/.local/share/recentchanges/recent.gpg"
+	"$HOME_DIR/.local/share/recentchanges/ctimecache.gpg"
+	"$HOME_DIR/.local/share/recentchanges/systimeche(_.*)?\.gpg$"
+	"$XDG_RUNTIME_DIR/file_output"
 	"$log_file"
 )
 }
@@ -47,8 +48,10 @@ log_file=$1
 LCLMODULENAME="$2"
 CACHE_F="$3"
 checkSUM="$4"
-xMODE="$5"
-time="$6"
+HOME_DIR="$5"
+XDG_RUNTIME_DIR="$6"
+xMODE="$7"
+time="$8"
 match_found=0
 dpaths=()
 
