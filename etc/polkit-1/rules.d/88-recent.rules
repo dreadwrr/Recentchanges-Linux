@@ -1,0 +1,8 @@
+/* -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*- */
+
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.set_recent_helper" &&
+        (subject.isInGroup("wheel") || subject.isInGroup("sudo"))) {
+        return polkit.Result.AUTH_ADMIN_KEEP;
+    }
+});
