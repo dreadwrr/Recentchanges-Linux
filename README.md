@@ -33,4 +33,4 @@ pillow <br>
 pyudev <br>
 
 <br><br>
-![Alt text](https://i.imgur.com/T1DpcDM.png) <br><br>
+![Alt text](https://i.imgur.com/4jOp3Ry.png) ![Alt text](https://i.imgur.com/T1DpcDM.png) <br><br>
