@@ -33,4 +33,4 @@ packaging <br>
 pillow <br>
 pyudev <br>
 
-![Alt text](https://i.imgur.com/Bkl2KFG.png) <br><br>
+# ![Alt text](https://i.imgur.com/Bkl2KFG.png) <br><br>
