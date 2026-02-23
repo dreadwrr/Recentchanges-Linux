@@ -6,7 +6,8 @@ Quick commands displays saved commands for easy reference <br>
 Create a custom crest with a .png image file max size 255 x 333 <br>
 Full commandline support with recentchanges being in path<br>
 
-  
+Build a system profile to compare during hybrid analysis as well as a system index scan
+Features system profile by .xzm for porteus linux
 </p><br>
 
 ## Installation
