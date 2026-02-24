@@ -35,7 +35,7 @@ pyudev <br><br>
 
 
 ## PyInstaller<br>
-to build a binary <br>
+to build a binary from the venv above <br>
 pip install pyinstaller <br>
 python3 -m PyInstaller --clean --noconfirm main.spec <br>
 optionally remove src/ and main.py
