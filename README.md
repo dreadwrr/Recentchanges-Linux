@@ -38,7 +38,7 @@ pyudev <br><br>
 to build a binary from the venv above <br>
 pip install pyinstaller <br>
 python3 -m PyInstaller --clean --noconfirm main.spec <br>
-copy main and _internal to /usr/local/recentchanges
+copy main and _internal from dist/main folder to /usr/local/recentchanges
 ./main
 optionally remove src/ and main.py
 <br><br>
