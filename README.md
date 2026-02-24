@@ -10,7 +10,7 @@ Build a system profile to compare during hybrid analysis as well as a system ind
 Features system profile by .xzm for porteus linux <br>
 </p><br>
 requirements: find 4.8.0 gnupg 2> pinentry  <br>
-uses gnu find 4.8.0 > 
+
 ## Installation
 cd /usr/local/recentchanges <br>
 python -m venv .venv <br>
