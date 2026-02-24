@@ -69,6 +69,7 @@ from src.qtfunctions import has_sys_data
 from src.qtfunctions import help_about
 from src.qtfunctions import load_gpg
 from src.qtfunctions import open_html_resource
+from src.qtfunctions import polkit_authorized
 from src.qtfunctions import polkit_check
 from src.qtfunctions import profile_to_str
 from src.qtfunctions import ps_profile_type
@@ -94,9 +95,6 @@ from src.rntchangesfunctions import resolve_editor
 from src.rntchangesfunctions import time_convert
 from src.ui_mainwindow import Ui_MainWindow
 from src.xzmprofile import XzmProfile
-# /usr/local/recentchanges/.venv/bin/python -c "import sys; print(sys.executable); print(sys.prefix); print(sys.base_prefix)"
-# !/bin/sh
-# /usr/local/recentchanges/.venv/bin/python main.py
 
 
 class MainWindow(QMainWindow):
@@ -171,13 +169,13 @@ class MainWindow(QMainWindow):
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.remaining_startup)  # polkit, any other routines
-        self.timer.start(2000)
+        self.timer.start(1000)
 
         # load the database at some point if not already by pg change
         # QTimer.singleShot(5000, self.display_db)
 
         # Vars
-        self.app_version = "3.0.2"
+        self.app_version = "5.0.2"
         self.PWD = os.getcwd()
         self.home_dir = home_dir
         config_local = home_dir / ".config" / "recentchanges"
@@ -291,6 +289,8 @@ class MainWindow(QMainWindow):
                 update_dict(None, self.j_settings, "search_output")
                 dump_j_settings(self.j_settings, self.sj)
                 print(f"Couldnt find search output setting {so}")
+        else:
+            self.ui.combftimeout.setCurrentText("Downloads")
         self.initialize_ui(is_startup=True)  # load extensions from database. if no database create one. fill combos
         # end one time items
 
@@ -412,8 +412,8 @@ class MainWindow(QMainWindow):
         # from src.qtfunctions import load_konsole
         # menu.addAction("Open terminal", lambda: load_konsole(self.lclhome, popPATH=self.popPATH)) # original
         """ porteus / nemesis """
-        menu.addAction("Open file manager", lambda: run_set_helper(self.dispatch, ["run", "filemanager", self.lclhome, self.popPATH], self.is_polkit))
-        menu.addAction("Open terminal", lambda: run_set_helper(self.dispatch, ["run", "terminal", self.lclhome, self.popPATH], self.is_polkit))
+        menu.addAction("Open file manager", lambda: run_set_helper(self.dispatch, ["run", "filemanager", str(self.lclhome), self.popPATH], self.is_polkit))
+        menu.addAction("Open terminal", lambda: run_set_helper(self.dispatch, ["run", "terminal", str(self.lclhome), self.popPATH], self.is_polkit))
         menu.addSeparator()
         menu.addAction("Filter", lambda: display(self.dspEDITOR, self.filter_file, True, self.dspPATH))
         menu.addAction("Clear Hudt", lambda: self.ui.hudt.clear())
@@ -1654,7 +1654,7 @@ class MainWindow(QMainWindow):
         self.search(output, THETIME, argf)
 
     # Find file
-    def ffile(self, compress, time_range=None):
+    def ffile(self, compress, time_range=0):
         if not self.job_running():
             return
 
@@ -1694,6 +1694,7 @@ class MainWindow(QMainWindow):
                     time_range = range_float
                     # elif ok:
                     #     self.ui.hudt.appendPlainText("specify 0 to compress all results. or enter a time range to compress")
+
         self.proc.set_range(str(time_range))
         self.proc.set_task(self.file_out, self.dspEDITOR, self.dspPATH, self.tempdir)
 
@@ -2305,7 +2306,6 @@ class MainWindow(QMainWindow):
                 sys_b = sys_a + "2"
                 if key:
                     sys_b = prefix + "2" + "_" + key  # sys_b + "_" + key
-                print(sys_a, sys_b)
                 sys_tables = (sys_a, sys_b)
                 table = sys_a + "_" + sys_b
             combo = self.ui.combdb
@@ -2691,10 +2691,8 @@ def start_main_window():
     # os.environ["XDG_RUNTIME_DIR"] = "/run/user/1000"
 
     appdata_local = Path(sys.argv[0]).resolve().parent  # software install aka workdir # find_install()
+    # bundle_dir = Path(getattr(sys, "_MEIPASS", appdata_local))
     toml_file, json_file, home_dir, xdg_config, xdg_runtime, usr, uid, gid = get_config(appdata_local)
-
-    if not xdg_runtime:
-        sys.exit(1)
 
     log_dir = home_dir / ".local" / "state" / "recentchanges" / "logs"
     iconPATH = appdata_local / "Resources" / "48.png"
