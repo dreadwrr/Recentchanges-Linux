@@ -39,7 +39,7 @@ pyudev <br><br>
 ## PyInstaller<br>
 to build a binary from the venv above <br>
 pip install pyinstaller <br>
-pyinstaller main.py --collect-all=libshiboken <br>
+pyinstaller --onedir main.py --collect-all=libshiboken <br>
 copy main and _internal from dist/main folder to /usr/local/recentchanges ./main <br> 
 optionally remove src/ and main.py <br><br>
 
