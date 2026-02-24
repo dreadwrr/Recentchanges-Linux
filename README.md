@@ -31,7 +31,13 @@ psutil <br>
 requests <br>
 packaging <br>
 pillow <br>
-pyudev <br>
+pyudev <br><br>
 
+
+## PyInstaller<br>
+to build a binary
+pip install pyinstaller
+python3 -m PyInstaller --clean --noconfirm main.spec
+optionally remove src/ and main.py
 <br><br>
 ![Alt text](https://i.imgur.com/4jOp3Ry.png) ![Alt text](https://i.imgur.com/T1DpcDM.png) <br><br>
