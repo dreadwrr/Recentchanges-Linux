@@ -37,7 +37,17 @@ pyudev <br><br>
 ## PyInstaller<br>
 to build a binary from the venv above <br>
 pip install pyinstaller <br>
-python3 -m PyInstaller --clean --noconfirm main.spec <br>
+python3 -m PyInstaller --clean --noconfirm main.spec <br><br>
+if there is an error about webengine add to main.spec <br>
+    excludes=[ <br>
+        'tkinter', <br>
+        'PySide6.QtWebEngine', <br>
+        'PySide6.QtWebEngineWidgets', <br>
+        'PySide6.QtWebEngineCore', <br>
+        'PySide6.QtMultimedia', <br>
+        'PySide6.QtCharts', <br>
+        'PySide6.QtPrintSupport', <br>
+	], <br>
 copy main and _internal from dist/main folder to /usr/local/recentchanges
 ./main
 optionally remove src/ and main.py
