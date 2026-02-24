@@ -43,3 +43,5 @@ copy main and _internal from dist/main folder to /usr/local/recentchanges
 optionally remove src/ and main.py
 <br><br>
 ![Alt text](https://i.imgur.com/4jOp3Ry.png) ![Alt text](https://i.imgur.com/T1DpcDM.png) <br><br>
+
+If cant find command recentchanges move /usr/local/bin/recentchanges somewhere in path ie for porteus needs to be in /opt/porteus-scripts/
