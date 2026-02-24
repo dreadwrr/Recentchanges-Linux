@@ -3,11 +3,11 @@ import os
 import re
 import subprocess
 from pathlib import Path
-from .fsearchfunctions import normalize_timestamp
 from .fsearchfunctions import upt_cache
+from .pyfunctions import ap_decode
 from .pyfunctions import epoch_to_date
+from .pyfunctions import escf_py
 from .pyfunctions import parse_datetime
-from .pyfunctions import unescf_py
 from .rntchangesfunctions import removefile
 
 
@@ -72,15 +72,15 @@ def strup(script_dir, home_dir, xdg_runtime, inotify_creation_file, CACHE_F, che
         logging.error(f"strup General exception unable to start inotify wait: {e} {type(e).__name__}", exc_info=True)
 
 
-def _to_int_or_none(value, field, table, line):
+def _to_int_or_none(value, field, line):
     if value in ("", "None", None):
         return None
     try:
         return int(value)
     except (TypeError, ValueError):
         logging.debug(
-            "parselog invalid integer %s for table %s: %r line: %s",
-            field, table, value, line
+            "parselog invalid integer %s: %r line: %s",
+            field, value, line
         )
         return None
 
@@ -123,7 +123,7 @@ def parse_line(line):
     return [timestamp1, filepath, timestamp2, inode, timestamp3] + rest
 
 
-def parselog(file, table, checksum):
+def parselog(file, checksum):
 
     results = []
 
@@ -131,25 +131,27 @@ def parselog(file, table, checksum):
         try:
             inputln = parse_line(line)
             if not inputln or not inputln[1].strip():
-                logging.debug("parselog missing line or filename from input , table: %s. skipping.. record: %s", table, line)
+                logging.debug("parselog missing line or filename from input. skipping.. record: %s", line)
                 continue
 
             n = len(inputln)
-            if table == 'sortcomplete' or table == 'tout':
-                if checksum:
-                    if n < 15:
-                        print("parselog checksum, input out of boundaries skipping")
-                        logging.debug("table: %s record length less than required 15. skipping.. record: %s", table, line)
-                        continue
-                else:
-                    if n < 10:
-                        print("parselog no checksum, input out of boundaries skipping")
-                        logging.debug("table %s record length less than required 10. skipping.. record: %s", table, line)
-                        continue
+
+            if checksum:
+                if n < 15:
+                    print("parselog checksum, input out of boundaries skipping")
+                    logging.debug("record length less than required 15. skipping.. record: %s", line)
+                    continue
+            else:
+                if n < 10:
+                    print("parselog no checksum, input out of boundaries skipping")
+                    logging.debug("record length less than required 10. skipping.. record: %s", line)
+                    continue
 
             timestamp = inputln[0]
-            filename = unescf_py(inputln[1])
-            escf_path = inputln[1]
+
+            filename = ap_decode(inputln[1])
+            escf_path = escf_py(filename)
+
             changetime = inputln[2]
             ino = None if inputln[3] in ("", "None") else inputln[3]
             accesstime = inputln[4]
@@ -163,8 +165,9 @@ def parselog(file, table, checksum):
             timestamp1 = None if n <= 12 or inputln[12] in ("", "None") else inputln[12]
             timestamp2 = None if n <= 13 or inputln[13] in ("", "None") else inputln[13]
             lastmodified = None if not timestamp1 or not timestamp2 else f"{timestamp1} {timestamp2}"
-            us = None if n <= 14 or inputln[14] in ("", "None") else inputln[14]
-            hardlink = None if n <= 15 or inputln[15] in ("", "None") else inputln[15]
+            hardlink = None if n <= 14 or inputln[14] in ("", "None") else inputln[15]
+            us = None if n <= 15 or inputln[15] in ("", "None") else inputln[14]
+
             target = None
             if sym == 'y':
                 try:
@@ -173,31 +176,25 @@ def parselog(file, table, checksum):
                     logging.error("skipped error resolving symlink target, file: %s", filename)
                     continue
 
-            inode = _to_int_or_none(ino, "inode", table, line)
-            filesize = _to_int_or_none(sze, "filesize", table, line) if checksum else sze
-            usec = _to_int_or_none(us, "usec", table, line) if checksum else us
-            hardlink_count = _to_int_or_none(hardlink, "hardlink_count", table, line) if checksum else hardlink
+            inode = _to_int_or_none(ino, "inode", line)
+            filesize = _to_int_or_none(sze, "filesize", line) if checksum else sze
+            usec = _to_int_or_none(us, "usec", line) if checksum else us
+            hardlink_count = _to_int_or_none(hardlink, "hardlink_count", line) if checksum else hardlink
 
-            if table == 'sys':
-                count = 0
-                results.append((timestamp, filename, changetime, inode, accesstime, checks, filesize, sym, onr, gpp, pmr, cam, target, lastmodified, count))
-            elif table == 'sortcomplete' or table == 'tout':
+            if not checksum:
+                cam = checks
+                timestamp1 = filesize
+                timestamp2 = sym
+                lastmodified = None if not timestamp1 or not timestamp2 else f"{timestamp1} {timestamp2}"
+                usec = onr
+                hardlink_count = gpp
+                checks = filesize = sym = onr = gpp = None
 
-                if not checksum:
-                    cam = checks
-                    timestamp1 = filesize
-                    timestamp2 = sym
-                    lastmodified = None if not timestamp1 or not timestamp2 else f"{timestamp1} {timestamp2}"
-                    usec = onr
-                    hardlink_count = gpp
-                    checks = filesize = sym = onr = gpp = None
+            results.append((timestamp, filename, changetime, inode, accesstime, checks, filesize, sym, onr, gpp, pmr, cam, target, lastmodified, hardlink_count, usec, escf_path))
 
-                results.append((timestamp, filename, changetime, inode, accesstime, checks, filesize, sym, onr, gpp, pmr, cam, target, lastmodified, hardlink_count, usec, escf_path))
-            else:
-                raise ValueError("Supplied table not in accepted boundaries: sys or sortcomplete. value supplied", table)
         except Exception as e:
             print(f'Problem detected in parser parselog for line {line} err: {type(e).__name__}: {e} \n skipping..')
-            logging.error("General error parselog , table %s  line: %s \n error: %s", table, line, type(e).__name__, exc_info=True)
+            logging.error("General error parselog , line: %s \n error: %s", line, type(e).__name__, exc_info=True)
 
     return results
 
@@ -228,14 +225,13 @@ def rotate_cache(cfr, CACHE_F):
                 try:
                     _, size, mtime_epoch = metadata.split("|")  # inode not used
                     size = int(size)
-                    mtime_epoch = normalize_timestamp(mtime_epoch)
-                    # mtime_epoch = int(mtime_epoch)
+                    mtime_epoch = int(mtime_epoch)
                 except ValueError:
                     print(f"Skipping malformed metadata in cache file: {metadata}")
                     logging.error("Failed to parse metadata in cache file line: %s", line)
                     continue
 
-                time_stamp_frm = epoch_to_date(mtime_epoch)  # is_valid_datetime
+                time_stamp_frm = epoch_to_date(mtime_epoch / 1_000_000)
                 if time_stamp_frm:
                     time_stamp = time_stamp_frm.replace(microsecond=0)
                     logging.debug("Inserting %s %s %s %s %s", checksum, size, time_stamp, mtime_epoch, filepath)
@@ -260,7 +256,7 @@ def parse_tout(log_file, checksum):
         tout_files = f.readlines()
 
     if tout_files:
-        all_files = parselog(tout_files, 'sortcomplete', checksum)
+        all_files = parselog(tout_files, checksum)
 
     removefile(rotated)
     return all_files
@@ -278,11 +274,9 @@ def init_recentchanges(script_dir, home_dir, xdg_runtime, inotify_creation_file,
             CACHE_F = cached / "ctimecache"
 
             os.makedirs(cached, mode=0o700, exist_ok=True)
-            # os.chmod(cached, 0o700)
 
             if process_status(search_pattern):
-                _fk_process('inotifywait -m -r -e create -e moved_to --format %e|%w%f%0')
-
+                fk_success = _fk_process('inotifywait -m -r -e create -e moved_to --format %e|%w%f%0')
                 rotate_cache(cfr, CACHE_F)
 
                 if os.path.isfile(inotify_creation_file):
@@ -290,7 +284,7 @@ def init_recentchanges(script_dir, home_dir, xdg_runtime, inotify_creation_file,
                     all_files = parse_tout(inotify_creation_file, checksum)
 
                 open(inotify_creation_file, 'w').close()
-                if not process_status(search_pattern):
+                if fk_success or not process_status(search_pattern):
                     strup(script_dir, home_dir, xdg_runtime, inotify_creation_file, CACHE_F, checksum, MODULENAME, log_path)
                 else:
                     removefile(inotify_creation_file)
@@ -299,7 +293,9 @@ def init_recentchanges(script_dir, home_dir, xdg_runtime, inotify_creation_file,
                 strup(script_dir, home_dir, xdg_runtime, inotify_creation_file, CACHE_F, checksum, MODULENAME, log_path)
         else:
             if process_status(search_pattern):
-                _fk_process('inotifywait -m -r -e create -e moved_to --format %e|%w%f%0')
+                fk_success = _fk_process('inotifywait -m -r -e create -e moved_to --format %e|%w%f%0')
+                if not fk_success:
+                    logging.debug("init_recentchanges _fk_process did not report success for inotifywait termination")
                 removefile(inotify_creation_file)
         return all_files
     except Exception as e:

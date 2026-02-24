@@ -37,6 +37,24 @@ def polkit_check(action_id="org.freedesktop.set_recent_helper"):
         return False
 
 
+def polkit_authorized(uid, action_id="org.freedesktop.set_recent_helper", prompt_user=False):
+    pid = os.getpid()
+    with open(f"/proc/{pid}/stat", "r", encoding="utf-8") as f:
+        start_time = f.read().split()[21]  # proc stat field 22
+    # uid = os.getuid()
+
+    cmd = [
+        "pkcheck",
+        "--action-id", action_id,
+        "--process", f"{pid},{start_time},{uid}",
+    ]
+    if prompt_user:
+        cmd.append("--allow-user-interaction")  # -u
+
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    return res.returncode, res.stderr.strip()
+
+
 def window_prompt(parent, title, message, affirm, reject):  # y/n
     msg_box = QMessageBox(parent)
     msg_box.setWindowTitle(title)
@@ -470,7 +488,7 @@ def get_latest_github_release(user, repo):
         resp = requests.get(url, timeout=5)
         resp.raise_for_status()
         data = resp.json()
-        latest_version = data["tag_name"].lstrip("v").rstrip("-py1")  # # .removesuffix("-py1")
+        latest_version = data["tag_name"].lstrip("v")  # # .removesuffix("-py1")
         download_url = data["html_url"]
         return latest_version, download_url
     except Exception as e:
@@ -596,8 +614,13 @@ def load_konsole(lclhome, popPATH=None):
             start_new_session=True,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+            stderr=subprocess.DEVNULL,
         )
+        # text=True,
+        # _, stderr_text = res.communicate()
+        # if res.returncode != 0:
+        #     print(stderr_text, end="")
+        #     return res.returncode
     return 0
 
 

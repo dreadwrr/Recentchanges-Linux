@@ -246,8 +246,8 @@ def process_lines(lines, file_type, search_start_dt, process_label, user_setting
                 file_size = res[6]
                 # user = res[8]
                 # group = res[9]
-                epath = res[15]
-                mtime_epoch = res[16]
+                mtime_epoch = res[15]
+                epath = res[16]
                 upt_cache(CACHE_F, checks, file_size, time_stamp, mtime_epoch, epath)
 
     except Exception as e:

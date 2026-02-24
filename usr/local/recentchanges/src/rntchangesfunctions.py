@@ -11,14 +11,14 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from .configfunctions import find_install
 from .configfunctions import update_toml_values
 from .fsearch import process_lines
 from .pyfunctions import cprint
 from .pyfunctions import suppress_list
 from .pyfunctions import user_path
-main_file = Path(sys.argv[0]).resolve()
-main_dir = main_file.parent
-filter_patterns_path = main_dir / "filter.py"
+install_root = find_install()
+filter_patterns_path = install_root / "filter.py"
 spec = importlib.util.spec_from_file_location("user_filter", filter_patterns_path)
 user_filter = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(user_filter)
@@ -483,18 +483,28 @@ def check_utility(zipPATH=None, downloads=None, popPATH=None):
     return res
 
 
-# p.replace("{{user}}", escaped_user)
 def filter_lines_from_list(lines, escaped_user, idx=1):
     if user_filter is None:
         print("Error unable to load filter filter.py")
         return None
 
-    regexes = [re.compile(user_path(p, escaped_user)) for p in user_filter.get_exclude_patterns()]
+    regexes = [re.compile(user_path(p, escaped_user)) for p in user_filter.get_exclude_patterns()]  # p.replace("{{user}}", escaped_user)
 
-    filtered = [
-        line for line in lines
-        if line and len(line) > idx and not any(r.search(line[idx]) for r in regexes)
-    ]
+    # filtered = [
+    #     line for line in lines
+    #     if line and len(line) > idx and line[idx] and not any(r.search(line[idx]) for r in regexes)
+    # ]
+    filtered = []
+    for line in lines:
+        if not line or len(line) <= idx:
+            continue
+        value = line[idx]
+        if not value:
+            logging.debug("filter_lines_from_list line had no filepath line:%s", line)
+            continue
+
+        if not any(r.search(value) for r in regexes):
+            filtered.append(line)
     return filtered
 
 

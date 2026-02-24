@@ -3,6 +3,7 @@ import json
 import os
 import pwd
 import shutil
+import sys
 import subprocess
 import tomlkit
 from pathlib import Path
@@ -11,10 +12,9 @@ from pathlib import Path
 
 # app location if files are moved to a src or separate directory its the one below it
 def find_install():
-    # install_root = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
-    # wdir = Path(sys.argv[0]).resolve().parent
-    wdir = Path(__file__).resolve().parent.parent
-    return wdir
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent.parent
 
 
 def not_absolute(user_path: str, quiet=False) -> bool:

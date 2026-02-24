@@ -1,12 +1,10 @@
 import re
 import csv
 import importlib.util
-import sys
 from collections import defaultdict
-from pathlib import Path
-main_file = Path(sys.argv[0]).resolve()
-main_dir = main_file.parent
-filter_patterns_path = main_dir / "filter.py"
+from .configfunctions import find_install
+install_root = find_install()
+filter_patterns_path = install_root / "filter.py"
 spec = importlib.util.spec_from_file_location("user_filter", filter_patterns_path)
 user_filter = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(user_filter)
