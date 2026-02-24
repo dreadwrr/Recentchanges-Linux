@@ -13,6 +13,7 @@ requirements: find 4.8.0 gnupg 2 and pinentry  <br>
 
 ## Installation
 cd /usr/local/recentchanges <br>
+chown guest:users /usr/local/recentchanges <br>
 python -m venv .venv <br>
 source .venv/bin/activate <br>
 python -m pip install --upgrade pi <br>
@@ -55,7 +56,7 @@ if there is an error about webengine add to main.spec <br>
         'PySide6.QtPrintSupport', <br>
 	], <br>
 <br>
-If cant find command recentchanges move /usr/local/bin/recentchanges somewhere in path ie for porteus needs to be in /opt/porteus-scripts/ <br><br>
+If cant find command recentchanges move /usr/local/bin/recentchanges somewhere in path ie for porteus needs to be in /opt/porteus-scripts/ <br>
 ![Alt text](https://i.imgur.com/4jOp3Ry.png) ![Alt text](https://i.imgur.com/T1DpcDM.png) <br><br>
 
 
