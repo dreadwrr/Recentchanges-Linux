@@ -24,7 +24,7 @@ pip install dependency
 optionally can install the required packages in system using package manager
 
 main dependencies <br>
-PySide6-Essentials<br>
+PySide6<br>
 tomlkit <br>
 python-magic <br>
 psutil <br>
@@ -37,6 +37,11 @@ pyudev <br><br>
 ## PyInstaller<br>
 to build a binary from the venv above <br>
 pip install pyinstaller <br>
+python pyinstaller main.py --collect-all=libshiboken <br>
+copy main and _internal from dist/main folder to /usr/local/recentchanges ./main <br> 
+optionally remove src/ and main.py <br><br>
+
+compatibility if the above fails again from the venv<br>
 python3 -m PyInstaller --clean --noconfirm main.spec <br><br>
 if there is an error about webengine add to main.spec <br>
     excludes=[ <br>
@@ -48,9 +53,7 @@ if there is an error about webengine add to main.spec <br>
         'PySide6.QtCharts', <br>
         'PySide6.QtPrintSupport', <br>
 	], <br>
-copy main and _internal from dist/main folder to /usr/local/recentchanges
-./main
-optionally remove src/ and main.py
+
 <br><br>
 If cant find command recentchanges move /usr/local/bin/recentchanges somewhere in path ie for porteus needs to be in /opt/porteus-scripts/ <br><br>
 ![Alt text](https://i.imgur.com/4jOp3Ry.png) ![Alt text](https://i.imgur.com/T1DpcDM.png) <br><br>
