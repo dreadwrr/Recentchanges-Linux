@@ -54,7 +54,7 @@ if there is an error about webengine add to main.spec <br>
         'PySide6.QtPrintSupport', <br>
 	], <br>
 
-<br><br>
+<br>
 If cant find command recentchanges move /usr/local/bin/recentchanges somewhere in path ie for porteus needs to be in /opt/porteus-scripts/ <br><br>
 ![Alt text](https://i.imgur.com/4jOp3Ry.png) ![Alt text](https://i.imgur.com/T1DpcDM.png) <br><br>
 
