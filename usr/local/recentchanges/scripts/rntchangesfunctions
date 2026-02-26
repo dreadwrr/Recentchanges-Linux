@@ -182,7 +182,7 @@ local mod_time change_time
 local c r
 local checks
 local prev_hash=""
-local max_retries=0
+local max_retries=$x
 
 if [ "$ino" -ge 0 ] 2>/dev/null && [ "$sze" -ge 0 ] 2>/dev/null; then
 	while (( x >= 0 )); do
