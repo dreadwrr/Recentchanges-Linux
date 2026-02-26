@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#   Developer buddy 5.0 core                                               01/22/2026
+#   Developer buddy 5.0 core                                               02/25/2026
 
 # ascii positional encoding
 # escape input newlines for parsing
@@ -175,10 +175,7 @@ local delay=$7
 local debug_log=$8
 local debug_file=$9
 local log_date=${10}
-
 # globals from sblk are csum mtime itime mt ct fs i sym n onr grp pmr
-
-local fmt="%Y-%m-%d %H:%M:%S"
 local ctime_epoch
 local f1 f2 f3 f4 a_ino a_sym a_nlnk a_sze a_onr a_grp a_prm
 local mod_time change_time
@@ -193,9 +190,9 @@ if [ "$ino" -ge 0 ] 2>/dev/null && [ "$sze" -ge 0 ] 2>/dev/null; then
 	    checks=$( md5sum "$file_path" 2>/dev/null)
 		if [[ -n "$checks" ]]; then
 			checks=${checks%% *}
-
 			# on second or later iteration and not ctime as ctime could no longer be > mtime now
-			if [[ -n "$prev_hash" &&"$checks" = "$prev_hash" ]]; then  # && "$xmode" = "main"
+			if [[ -n "$prev_hash" &&"$checks" = "$prev_hash" ]]; then
+
 				if [ "$a_ino" -ge 0 ] 2>/dev/null; then
 					# update only needed stats
 					check_sum=$checks
@@ -218,13 +215,14 @@ if [ "$ino" -ge 0 ] 2>/dev/null && [ "$sze" -ge 0 ] 2>/dev/null; then
 					fi
 					return 0
 				fi
+
 			fi
 			if (( x > 0 )); then
-				read f1 f2 _ f3 f4 _ a_ino a_sym a_nlnk a_sze a_onr a_grp a_prm < <( stat --format="%y %z %i %A %h %s %U %G %a" "$file_path" 2>/dev/null)  # %A
+				read -r f1 f2 _ f3 f4 _ a_ino a_sym a_nlnk a_sze a_onr a_grp a_prm < <( stat --format="%y %z %i %A %h %s %U %G %a" "$file_path" 2>/dev/null)  # %A
 				[[ -z "$a_prm" ]] && break
 				mod_time="$f1 $f2"
 				c=$( date -d "$mod_time" +%s.%N 2>/dev/null)  # %6N
-				[[ -z "$c" ]] && log_lineout $debug_log $debug_file "$log_date" "calculate checksum failed to convert timestamp retry $(( max_retries - x ))" && return 1
+				[[ -z "$c" ]] && log_lineout $debug_log $debug_file "$log_date" "calculate checksum failed to convert timestamp retry $(( max_retries - x ))" && return 1  # mtime required
                 c=$(normalize_ts "$c")
 
 				# if it matches the find command or if two stats match return the checksum
@@ -243,14 +241,12 @@ if [ "$ino" -ge 0 ] 2>/dev/null && [ "$sze" -ge 0 ] 2>/dev/null; then
 						return 0
 					fi
 				fi
+
 	    		# else retry
 				modified_epoch=$c
 				change_time="$f3 $f4"
-				if [[ -n "$change_time" ]]; then
-					r=$( date -d "$change_time" +%s.%N 2>/dev/null)
-					r=$(normalize_ts "$r")
-				fi
-				[[ -z "$r" ]] && log_lineout $debug_log $debug_file "$log_date" "calculate_csum Warning ct is null on retried. retry $(( max_retries - x ))" && return 1
+                r=$( date -d "$change_time" +%s.%N 2>/dev/null)
+				[[ -n "$r" ]] && r=$(normalize_ts "$r") || log_lineout $debug_log $debug_file "$log_date" "calculate_csum Warning ct is null on retried. retry $(( max_retries - x ))" && return 1
 				ctime_epoch=$r
 				prev_hash="$checks"
                 sleep $delay
@@ -274,31 +270,29 @@ log_lineout() { [[ "$1" = "true" ]] && echo "$3 $4" >> $2 ; }
 # If the threshold is high better to implement CREATED even filepath to array then on CLOSE_WRITE check this array and hash. This
 # can be implemented in python as bash its too complicated. do cache files over 1MB.
 pblk() {
+local debug_log="$7"
+local debug_file="$8"
 local fmt="%Y-%m-%d %H:%M:%S"
-local cdir="/tmp/dbctimecache/"
-local cache_flg="false"
 local r y z
 local mod_time mtime_us csum_rlt
 local cam sl lmt cFILE retries
 local log_date
-local debug_log="$7"
-local debug_file="$8"
+local cache_flg="false"
+local cdir="/tmp/dbctimecache/"
+
 r=""				;	sl=""
 lmt=""			;	nlinks=""
 cam="None"
 check_sum=""
 
-local retries=2
-local delay=0
-
 [[ "$7" = "true" ]] && log_date="$(date +"$fmt")"
 
 cur_line="$( ap_safeline "$1")"
 log_lineout $7 $8 "$log_date" "pblk line in $cur_line"  # debug
-IFS=' ' read -r mtime atime itime i sym n fs onr grp pmr cFILE <<< "$cur_line"
+read -r mtime atime itime i sym n fs onr grp pmr cFILE <<< "$cur_line"
 log_lineout $7 $8 "$log_date" "itime: $itime and mtime: $mtime , pblk after parsing line in $cur_line"
+
 cFILE="$( ap_safeline_dec "$cFILE")"
-#
 y="$( ap_enc "$cFILE")"
 
 mtime_sec=${mtime%%.*}
@@ -313,13 +307,13 @@ if [ -e "$cFILE" ] && [ -f "$cFILE" ]; then
 		mtime_frac=${mtime#*.}
 
 	    if [ "$4" == "true" ]; then
-			[[ "$sym" == l* ]] && sl="y" && check_sum="None" # [[ -L "$cFILE" ]] && sl="y" ; sl=${sl:-None}
+			[[ "$sym" == l* ]] && sl="y" && check_sum="None"
 			if [[ -z "$sl" ]]; then
-				[[ -e "$CACHE_F" ]] && mtime_us=$(($mtime_sec * 1000000 + 10#$mtime_frac)) && r=$(get_cached $i $fs $mtime_us)
+				[[ -e "$CACHE_F" ]] && mtime_us=$(( $mtime_sec * 1000000 + (10#$mtime_frac) )) && r=$(get_cached $i $fs $mtime_us)
 		        if [[ -n "$r" ]]; then
 		            check_sum="$r"
 		        else
-					calculate_csum "main" "$cFILE" $mtime $i $fs $retries $delay $debug_log $debug_file $log_date
+					calculate_csum "main" "$cFILE" $mtime $i $fs 2 0 $debug_log $debug_file $log_date
 					csum_rlt=$?
 					(( csum_rlt == 0 )) || return 1
 		            cache_flg="true"
