@@ -27,7 +27,7 @@ rootLOG = "errs2.log"
 [search]
 
 # Focus drive for the app search and or sys profile. 
-						# / 
+						# /
 						# /mnt/sdx
 drive = "/"
 
@@ -50,7 +50,7 @@ extension = [
 ".mp4", ".avi", ".mov", ".mkv", ".flv", ".webm", ".wmv", ".mpg", ".mpeg", ".3gp",
 ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".odp", ".epub", ".mobi",
 ".zip", ".rar", ".7z", ".tar", ".gz", ".tar.gz", ".tgz", ".xz", ".bz2", ".iso",
-".exe", ".bat", ".sh", ".app", ".jar", ".msi", ".apk", ".bin", ".run", ".vbs",
+".exe", ".bat", ".sh", ".app", ".jar", ".msi", ".apk", ".bin", ".run", ".vbs", ".wsf",
 ".html", ".htm", ".css", ".js", ".json", ".php", ".asp", ".jsp", ".xml", ".xhtml",
 ".sql", ".db", ".sqlite", ".db3", ".mdb", ".accdb", ".bak", ".frm", ".dbf",
 ".py", ".js", ".html", ".css", ".cpp", ".h", ".java", ".rb", ".go", ".rs", ".swift", ".php", ".pl",
@@ -166,13 +166,13 @@ dspPATH = ""
 										# wb  white on black
 										# solar   solarize cyan
 										# monochrome   for grey
-hudCOLOR = "unix"
+hudCOLOR = "solar"
 
 								# default 12
 hudSZE = 12
 
 # to install more fonts install with package manger and run print(QFontDatabase().families()) to see if it lists it and then set here.
-						# default Monospace
+						# default is Monospace
 						# DejaVu Sans
 						# DejaVu Sans Mono
 						# DejaVu Serif
@@ -197,7 +197,7 @@ cdiag = true
 # supress cache warnings on terminal from known browsers? Mozilla... ect list top of pyfunctions.py
 supbrw = true
 
-# ..      all cdiag output to terminal except critical events
+#        all cdiag output to terminal except critical events
 suppress = false
 
 
@@ -256,7 +256,7 @@ proteusPATH = [
 nogo = [
 	"home/{{user}}/.cache",
 	"home/guest/.mozilla/firefox/94bktgy4.default-release"
-]  
+]
 
 # no match file patterns removes noise.
 filterout = [
