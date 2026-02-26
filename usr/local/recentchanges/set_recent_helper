@@ -15,9 +15,9 @@ from src.qtfunctions import kill_process
 
 def main(argv):
     arglen = len(argv)
-    if not argv or arglen < 3:
-        print("Insufficient args")
-        return 1
+    # if not argv or arglen < 3:
+    #     print("Insufficient args")
+    #     return 1
     script = argv[1].lower()
     args = argv[2:]
     cmd = args[0]

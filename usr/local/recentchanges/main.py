@@ -1,4 +1,4 @@
-# 02/08/2026              Qt gui linux                 Developer buddy 5.0
+# 02/25/2026              Qt gui linux                 Developer buddy 5.0
 import glob
 import logging
 import os
@@ -8,7 +8,7 @@ import tempfile
 import traceback
 from pathlib import Path
 from PySide6.QtCore import Qt, Slot, Signal, QThread, QTimer, QSortFilterProxyModel, QSize
-from PySide6.QtGui import QStandardItemModel, QStandardItem, QIcon, QPixmap, QImage
+from PySide6.QtGui import QStandardItemModel, QStandardItem, QIcon, QPixmap, QImage, QPalette, QColor
 from PySide6.QtSql import QSqlQuery
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QMainWindow, QMenu, QHeaderView, QStyle
 from src.clearworker import ClearWorker
@@ -69,7 +69,6 @@ from src.qtfunctions import has_sys_data
 from src.qtfunctions import help_about
 from src.qtfunctions import load_gpg
 from src.qtfunctions import open_html_resource
-from src.qtfunctions import polkit_authorized
 from src.qtfunctions import polkit_check
 from src.qtfunctions import profile_to_str
 from src.qtfunctions import ps_profile_type
@@ -175,7 +174,7 @@ class MainWindow(QMainWindow):
         # QTimer.singleShot(5000, self.display_db)
 
         # Vars
-        self.app_version = "5.0.2"
+        self.app_version = "5.0.3"
         self.PWD = os.getcwd()
         self.home_dir = home_dir
         config_local = home_dir / ".config" / "recentchanges"
@@ -2744,9 +2743,25 @@ def start_main_window():
     with tempfile.TemporaryDirectory() as tempdir:
         # tempfile perms are 700
         try:
-
             app = QApplication(sys.argv)
-
+            # print("Available styles:", QtWidgets.QStyleFactory.keys())
+            app.setStyle("Fusion")
+            palette = QPalette()
+            # window background
+            palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
+            palette.setColor(QPalette.ColorRole.WindowText, QColor(255, 255, 255))
+            # text input
+            palette.setColor(QPalette.ColorRole.Base, QColor(42, 42, 42))
+            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(66, 66, 66))
+            palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+            palette.setColor(QPalette.ColorRole.ButtonText, QColor(255, 255, 255))
+            palette.setColor(QPalette.ColorRole.Highlight, QColor(185, 185, 185))
+            # palette.setColor(QPalette.ColorRole.HighlightedText, QColor(20, 20, 20))
+            palette.setColor(QPalette.ColorRole.Text, QColor(255, 255, 255))
+            palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 220))
+            palette.setColor(QPalette.ColorRole.ToolTipText, QColor(0, 0, 0))
+            app.setStyle("Fusion")
+            app.setPalette(palette)
             gnupg_home = os.getenv("GNUPGHOME")
             if not gnupg_home:
                 gnupg_home = home_dir / ".gnupg"
@@ -2786,8 +2801,8 @@ def start_main_window():
 
                         cfg = parse_gpg_agent_conf(gnupg_home)
                         pinentry = cfg.get("pinentry-program")
-
-                        if pinentry and "tty" in pinentry or "curses" in pinentry:
+                        is_curses = False
+                        if pinentry and ("tty" in pinentry or "curses" in pinentry):
                             is_curses = any(x in pinentry.lower() for x in ("tty", "curses"))
 
                         fstr = (
