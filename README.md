@@ -12,32 +12,28 @@ Features system profile by .xzm for porteus linux <br>
 requirements: find 4.8.0 gnupg 2 and pinentry  <br>
 
 ## Installation
+pip install PySide6 <br>
+pip install tomlkit <br>
+pip install python-magic <br>
+pip install psutil <br>
+pip install requests <br>
+pip install packaging <br>
+pip install pillow <br>
+pip install pyudev <br>
+python main.py <br><br>
+optionally can install the required packages in system using package manager
+
+
+## PyInstaller<br>
+Note: i will put a deperate repo as the configuration for pyinstaller requires different paths<br>
+use installation above until the repo is posted <br><br>
+to build a binary with all the packages and not needing any on the system <br>
 cd /usr/local/recentchanges <br>
 chown guest:users /usr/local/recentchanges <br>
 python -m venv .venv <br>
 source .venv/bin/activate <br>
 python -m pip install --upgrade pi <br>
 pip install -r requirements.txt <br>
-python main.py <br>
-
-adjust if missing any <br><br>
-pip install dependency
-
-optionally can install the required packages in system using package manager
-
-main dependencies <br>
-PySide6<br>
-tomlkit <br>
-python-magic <br>
-psutil <br>
-requests <br>
-packaging <br>
-pillow <br>
-pyudev <br><br>
-
-
-## PyInstaller<br>
-to build a binary from the venv above <br>
 pip install pyinstaller <br>
 pyinstaller --onedir main.py --collect-all=libshiboken <br>
 copy main and _internal from dist/main folder to /usr/local/recentchanges ./main <br> 
