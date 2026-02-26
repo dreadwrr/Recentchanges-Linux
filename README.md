@@ -22,6 +22,7 @@ pip install packaging <br>
 pip install pillow <br>
 pip install pyudev <br>
 python main.py <br><br>
+adjust if missing any<br>
 optionally can install the required packages in system using package manager
 
 
