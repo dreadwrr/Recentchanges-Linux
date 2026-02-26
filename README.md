@@ -12,6 +12,7 @@ Features system profile by .xzm for porteus linux <br>
 requirements: find 4.8.0 gnupg 2 and pinentry  <br>
 
 ## Installation
+install pip with package manager <br>
 pip install PySide6 <br>
 pip install tomlkit <br>
 pip install python-magic <br>
@@ -25,7 +26,7 @@ optionally can install the required packages in system using package manager
 
 
 ## PyInstaller<br>
-Note: i will put a deperate repo as the configuration for pyinstaller requires different paths<br>
+Note: i will put a seperate repo as the configuration for pyinstaller requires different paths<br>
 use installation above until the repo is posted <br><br>
 to build a binary with all the packages and not needing any on the system <br>
 cd /usr/local/recentchanges <br>
