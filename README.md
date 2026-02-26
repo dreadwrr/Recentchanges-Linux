@@ -13,6 +13,7 @@ requirements: find 4.8.0 gnupg 2 and pinentry  <br>
 
 ## Installation
 install pip with package manager <br>
+cd /usr/local/recentchanges <br>
 pip install PySide6 <br>
 pip install tomlkit <br>
 pip install python-magic <br>
