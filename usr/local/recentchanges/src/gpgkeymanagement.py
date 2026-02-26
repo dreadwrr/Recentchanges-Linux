@@ -178,7 +178,7 @@ Passphrase: {p}
                             check=True
                         )
 
-                    script_path = appdata_local / "set_recent_helper"
+                    script_path = appdata_local / "main"
                     script_dir = os.path.dirname(script_path)
 
                     cmd = "pkexec" if is_polkit else "sudo"

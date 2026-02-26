@@ -897,7 +897,7 @@ def index_system(dbopt, dbtarget, basedir, user, CACHE_S, email, ANALYTICSECT=Fa
                         extn = xzm_obj.create_xzm_baseline(suffix, json_file)
                     else:
                         extn = extension + configured_paths
-                    set_json_settings({"proteusEXTN": extn}, drive=suffix, filepath=json_file)
+                    set_json_settings({"proteusEXTN": extn}, drive=suffix, filepath=str(json_file))
 
                 print("System profile complete")
             elif rlt == 4:
@@ -1037,10 +1037,12 @@ def scan_system(dbopt, dbtarget, basedir, user, difffile, CACHE_S, email, ANALYT
             return 1
     end = time.time()
 
+    dir_diff = []
+    new_diff = []
+    hdr1 = 'System index scan'
     if rlt == 0:
 
-        dir_diff = []
-        new_diff = []
+ 
         if showDiff:
             systimeche = name_of(CACHE_S)
             dir_diff, new_diff = find_symmetrics(dbopt, cache_table, systimeche)
@@ -1051,8 +1053,6 @@ def scan_system(dbopt, dbtarget, basedir, user, difffile, CACHE_S, email, ANALYT
             p = (y / x) * 100
             if p > 30:
                 cmsg = f"\nThe sys index had over 30% miss rate recommend rebuild index: {p:.2f}%"
-
-        hdr1 = 'System index scan'
 
         # output terminal
         if all_sys:

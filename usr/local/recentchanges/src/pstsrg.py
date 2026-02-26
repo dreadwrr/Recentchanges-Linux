@@ -38,10 +38,10 @@ def collision_check(xdata, cerr, c, ps):
             with open(cerr, "a", encoding="utf-8") as f:
                 for record in xdata:
                     filename = record[1]
-                    csum = record[5]
+                    checks = record[5]
                     size_non_zero = record[6]
                     if size_non_zero:
-                        key = (filename, csum)
+                        key = (filename, checks)
                         if key in collision_map:
                             for other_file, file_hash, size1, size2 in collision_map[key]:
                                 pair = tuple(sorted([filename, other_file]))
@@ -52,7 +52,7 @@ def collision_check(xdata, cerr, c, ps):
 
         except IOError as e:
             print(f"Failed to write collisions: {e} {type(e).__name__}  \n{traceback.format_exc()}")
-        return csum
+    return csum
 
 
 def main(dbopt, dbtarget, basedir, xdata, COMPLETE, rout, scr, cerr, CACHE_S, user_setting, logging_values, dcr=False, iqt=False, strt=65, endp=90):

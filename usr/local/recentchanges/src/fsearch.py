@@ -74,36 +74,35 @@ def process_line(line, checksum, file_type, search_start_dt, CACHE_F):
         if size > CSZE:
             cached = get_cached(CACHE_F, size, mtime_us, escf_path)
             if cached is None:
-                checks, file_dt, mtime_us, st, status = calculate_checksum(file_path, mtime, mtime_us, inode, size, logs, retry=1, max_retry=1, cacheable=True)
+                checks, file_dt, file_us, st, status = calculate_checksum(file_path, mtime, mtime_us, inode, size, logs, retry=1, max_retry=1, cacheable=True)
                 if checks is not None:
                     if status == "Retried":
-                        if file_type != "ctime":
-                            mtime, ctime, inode, size, user, group, mode, sym, hardlink = set_stat(line, file_dt, st, inode, user, group, mode, sym, hardlink, logs)
+                        mtime, mtime_us, ctime, inode, size, user, group, mode, sym, hardlink = set_stat(line, file_dt, st, file_us, inode, user, group, mode, sym, hardlink, logs)
                     label = "Cwrite"
             else:
                 checks = cached.get("checksum")
         else:
-            checks, file_dt, mtime_us, st, status = calculate_checksum(file_path, mtime, mtime_us, inode, size, logs, retry=1, max_retry=1, cacheable=False)
+            checks, file_dt, file_us, st, status = calculate_checksum(file_path, mtime, mtime_us, inode, size, logs, retry=1, max_retry=1, cacheable=False)
             if checks is not None:
                 if status == "Retried":
-                    if file_type != "ctime":
-                        mtime, ctime, inode, size, user, group, mode, sym, hardlink = set_stat(line, file_dt, st, inode, user, group, mode, sym, hardlink, logs)
+                    mtime, mtime_us, ctime, inode, size, user, group, mode, sym, hardlink = set_stat(line, file_dt, st, file_us, inode, user, group, mode, sym, hardlink, logs)
 
     elif sym == "y":
         target = find_link_target(file_path, logs)
-
-    if file_type == "ctime":
-        lastmodified = mtime
-        mtime = ctime
-        cam = "y"
 
     atime = epoch_to_date(access_time)
 
     if mtime is None or (file_type == "main" and mtime < search_start_dt):
         logs.append(("DEBUG", f"Warning system cache conflict: {escf_path} mtime={mtime} < cutoff={search_start_dt}"))
         return None, logs
-    elif mtime < search_start_dt and label == "Cwrite":
+    if mtime < search_start_dt and label == "Cwrite":
         label = ""
+    if file_type == "ctime":
+        if ctime and ctime <= mtime:
+            return None, logs
+        lastmodified = mtime
+        mtime = ctime
+        cam = "y"
 
     return (
         label,

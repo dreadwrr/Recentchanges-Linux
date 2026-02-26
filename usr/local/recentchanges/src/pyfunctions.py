@@ -259,5 +259,6 @@ def sys_record_flds(record, sys_records, prev_count):
         record[12],  # target
         record[13],  # lastmodified
         record[14],  # hardlinks
-        prev_count + 1  # count
+        prev_count + 1,  # count
+        record[15]  # mtime_us
     ))

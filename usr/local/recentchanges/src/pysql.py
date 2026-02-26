@@ -85,12 +85,13 @@ def create_sys_table(c, sys_tables):
         'target TEXT',
         'lastmodified TEXT',
         'hardlinks INTEGER',
-        'count INTEGER'
+        'count INTEGER',
+        'mtime_us INTEGER'
     ]
 
     # columns.append('count INTEGER')
     create_sys_variant(c, sys_a, columns, ('filename',))
-    create_sys_variant(c, sys_b, columns, ('timestamp', 'filename', 'changetime'))  # , 'checksum'
+    create_sys_variant(c, sys_b, columns, ('timestamp', 'filename', 'changetime', 'checksum'))  # , 'checksum'
 
 
 def create_table_cache(c, table, unique_columns):
@@ -679,8 +680,8 @@ def increment_f(conn, c, sys_tables, records, logger=None):
         INSERT OR IGNORE INTO {sys_b} (
             timestamp, filename, changetime, inode, accesstime, checksum,
             filesize, symlink, owner, `group`, permissions, casmod, target, lastmodified,
-            hardlinks, count
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            hardlinks, count, mtime_us
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
     try:
 

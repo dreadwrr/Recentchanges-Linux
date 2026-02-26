@@ -98,9 +98,10 @@ def calculate_checksum(file_path, mtime, mod_time, inode, size_int, logs, prev_h
     return None, mtime, mod_time, st, "Error"
 
 
-def set_stat(line, file_dt, st, inode, user, group, mode, symlink, hardlink, logs):
+def set_stat(line, file_dt, st, file_us, inode, user, group, mode, symlink, hardlink, logs):
 
     mtime = file_dt
+    mtime_us = file_us
     change_time = st.st_ctime
     ctime = epoch_to_date(change_time)  # .replace(microsecond=0)  # dt obj. convert to str .strftime(fmt)
     size_int = st.st_size
@@ -122,7 +123,7 @@ def set_stat(line, file_dt, st, inode, user, group, mode, symlink, hardlink, log
         # symlink = stat.filemode(st.st_mode)  # return '-rw-r--r--' # to match find output %M
         hardlink = st.st_nlink
 
-    return mtime, ctime, inode, size_int, user, group, mode, symlink, hardlink
+    return mtime, mtime_us, ctime, inode, size_int, user, group, mode, symlink, hardlink
 
 
 def truncate_to_6_digits(timestamp):

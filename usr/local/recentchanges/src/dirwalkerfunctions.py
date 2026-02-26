@@ -33,7 +33,7 @@ class ConfigData:
     xdg_runtime: Path
     toml_file: Path
     json_file: Path
-    log_file: str
+    log_file: Path
     uid: int
     gid: int
     config: Dict
@@ -233,28 +233,28 @@ def scandir_meta(file_name, hash_path, st, symlink, link_target, found, sys_data
 
         sym, target, mode, inode, hardlink, owner, group, m_dt, m_epoch_ns, m_time, c_time, a_time, size = file_info
 
+        mtime_us = m_epoch_ns // 1_000
+
         if found and sym != "y":
 
-            mtime_us = m_epoch_ns // 1_000
-
-            checks, file_dt, mtime_us, st, status = calculate_checksum(hash_path, m_dt, mtime_us, inode, size, logs, retry=2, max_retry=2, cacheable=False)
+            checks, file_dt, file_us, st, status = calculate_checksum(hash_path, m_dt, mtime_us, inode, size, logs, retry=2, max_retry=2, cacheable=False)
 
             if checks is not None:  # if status in ("Returned", "Retried"):
                 if status == "Retried":
                     line = ', '.join(map(str, file_info))
 
-                    mtime, ctime, inode, size, owner, group, mode, sym, hardlink = set_stat(line, file_dt, st, inode, owner, group, mode, sym, hardlink, logs)
+                    mtime, mtime_us, ctime, inode, size, owner, group, mode, sym, hardlink = set_stat(line, file_dt, st, file_us, inode, owner, group, mode, sym, hardlink, logs)
                     if mtime is None:
                         logs.append(("ERROR", f"scandir_meta Retried mtime was None skipping file {file_name}"))
                         return None, status
                     m_time = mtime.strftime(fmt)
-                    c_time = ctime.strftime(fmt)
+                    c_time = ctime.strftime(fmt) if ctime else None
             else:
                 if status == "Nosuchfile":
                     return False, status
         # status in ("Returned", "Retried", "Changed"):
 
-        sys_data.append((m_time, file_name, c_time, inode, a_time, checks, size, sym, owner, group, mode, cam, target, lastmodified, hardlink, count))
+        sys_data.append((m_time, file_name, c_time, inode, a_time, checks, size, sym, owner, group, mode, cam, target, lastmodified, hardlink, count, mtime_us))
         return True, status
 
     except PermissionError as e:
@@ -273,7 +273,7 @@ def scandir_meta(file_name, hash_path, st, symlink, link_target, found, sys_data
 def meta_sys(file_path, file_name, previous_md5, previous_sym, previous_target, previous_count, is_sym, sys_data, link_data, logs):
 
     status = None
-    size = hardlink = None
+    checks = size = hardlink = None
     target = None
     cas = None  # record[9]
     lastmodified = None  # record[11]
@@ -285,28 +285,29 @@ def meta_sys(file_path, file_name, previous_md5, previous_sym, previous_target, 
         symlink = False
         if stat.S_ISLNK(st.st_mode):
             symlink = True
-            target = find_link_target(file_path)
+            target = find_link_target(file_path, logs)
 
         file_info = return_info(file_path, st, symlink, target, logs)
 
         sym, target, mode, inode, hardlink, owner, group, m_dt, m_epoch_ns, m_time, c_time, a_time, size = file_info
 
+        mtime_us = m_epoch_ns // 1_000
+
         if sym != "y":
 
-            mtime_us = m_epoch_ns // 1_000
-            checks, file_dt, mtime_us, st, status = calculate_checksum(file_path, m_dt, mtime_us, inode, size, logs, retry=2, max_retry=2, cacheable=False)
+            checks, file_dt, file_us, st, status = calculate_checksum(file_path, m_dt, mtime_us, inode, size, logs, retry=2, max_retry=2, cacheable=False)
             if checks is not None:  # if status in ("Returned", "Retried"):
                 if status == "Retried":
                     line = ', '.join(map(str, file_info))
-                    mtime, ctime, inode, size, owner, group, mode, sym, hardlink = set_stat(line, file_dt, st, inode, owner, group, mode, sym, hardlink, logs)
+                    mtime, mtime_us, ctime, inode, size, owner, group, mode, sym, hardlink = set_stat(line, file_dt, st, file_us, inode, owner, group, mode, sym, hardlink, logs)
                     if mtime is None:
                         logs.append(("ERROR", f"meta_sys Retried mtime was None skipping file {file_name}"))
                         return None, status
                     m_time = mtime.strftime(fmt)
-                    c_time = ctime.strftime(fmt)
+                    c_time = ctime.strftime(fmt) if ctime else None
                 # status in ("Returned", "Retried"):
                 if checks != previous_md5:
-                    sys_data.append((m_time, file_name, c_time, inode, a_time, checks, size, sym, owner, group, mode, cas, target, lastmodified, hardlink, count))
+                    sys_data.append((m_time, file_name, c_time, inode, a_time, checks, size, sym, owner, group, mode, cas, target, lastmodified, hardlink, count, mtime_us))
 
             else:  # status == "Nosuchfile" or status == "Changed"
                 if status == "Changed":
@@ -315,7 +316,7 @@ def meta_sys(file_path, file_name, previous_md5, previous_sym, previous_target, 
         else:
             if is_sym and previous_sym == "y":
                 if target != previous_target:
-                    link_data.append((m_time, file_name, c_time, inode, a_time, checks, size, sym, owner, group, mode, cas, target, lastmodified, hardlink, count))
+                    link_data.append((m_time, file_name, c_time, inode, a_time, checks, size, sym, owner, group, mode, cas, target, lastmodified, hardlink, count, mtime_us))
                     link_data.append((previous_target, target))
 
         return True, status

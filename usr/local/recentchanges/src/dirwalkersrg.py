@@ -152,8 +152,8 @@ def sync_db(dbopt, basedir, CACHE_S, parsedsys, parsedidx, sys_records, keys=Non
                     INSERT OR IGNORE INTO {drive_sys_table} (
                         timestamp, filename, changetime, inode, accesstime,
                         checksum, filesize, symlink, owner, `group`, permissions,
-                        casmod, target, lastmodified, hardlinks, count
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        casmod, target, lastmodified, hardlinks, count, mtime_us
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, parsedsys)
 
                 if parsedidx:

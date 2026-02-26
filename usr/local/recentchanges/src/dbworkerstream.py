@@ -77,8 +77,8 @@ class DbWorkerIncremental(QThread):
         query = None
         query_error = ""
         res = 1
+        conn_name = f"worker_{self.table}_{id(self)}"  # unique per thread
         try:
-            conn_name = f"worker_{self.table}_{id(self)}"  # unique per thread
             db = QSqlDatabase.addDatabase("QSQLITE", conn_name)
             db.setDatabaseName(self.db_path)
 
@@ -90,8 +90,8 @@ class DbWorkerIncremental(QThread):
                 else:
 
                     sql_join = self.set_superimpose_query()
-
-                    query.exec(sql_join)
+                    if sql_join:
+                        query.exec(sql_join)
 
                 if query.isActive():
 

@@ -234,6 +234,7 @@ def update_toml_setting(keyName, settingName, newValue, filePath):
         #     config[keyf][stng] = False
         #     with open(file_path, 'w') as file:
         #         toml.dump(config, file)
+
         with open(filePath, "r", encoding="utf-8") as f:
             doc = tomlkit.parse(f.read())
 
@@ -274,7 +275,7 @@ def update_dict(updates, data, drive=None):
                     target[k] = v
 
 
-def update_j_settings(updates: dict, data: dict, drive=None, filepath="usrprofile.json"):
+def update_j_settings(updates, data: dict, drive=None, filepath="usrprofile.json"):
     ''' sync memory and json file '''
     update_dict(updates, data, drive)
     dump_j_settings(data, filepath)
@@ -290,7 +291,7 @@ def dump_j_settings(data, filepath="usrprofile.json"):
         print(f"Error writing to {filepath}: {e}")
 
 
-def set_json_settings(updates: dict = None, drive=None, filepath="usrprofile.json"):
+def set_json_settings(updates=None, drive=None, filepath="usrprofile.json"):
     ''' change a setting in json file '''
     path = Path(filepath)
     if path.is_file():

@@ -20,7 +20,7 @@ def parse_drive(basedir):
     return os.path.basename(basedir)  # get sdx from /mnt/sdx
 
 
-def parse_suffix(input_text: str) -> str:
+def parse_suffix(input_text: str):
     if input_text == "cache_s":
         return input_text, None
     parts = input_text.split('_', 1)
@@ -158,16 +158,14 @@ def is_model_ssd(model: str) -> bool:
 # udevadm info --name=/dev/nvme0n1p6 --attribute-walk
 def current_drive_type_model_check(base_dir="/"):
 
+    device_name = parent_device = None
+    rotational = -1
+    usb_drive = 0
+    drive_id_model = "Unknown"
+    model_type = "Unknown"
+    drive_type = "HDD"
+    file_sys = None
     try:
-
-        device_name = parent_device = None
-        rotational = -1
-        usb_drive = 0
-        drive_id_model = "Unknown"
-        model_type = "Unknown"
-        drive_type = "HDD"
-        file_sys = None
-
         try:
             # tmpfs, aufs - squashfs - ext4, xfs
             file_sys = subprocess.check_output(

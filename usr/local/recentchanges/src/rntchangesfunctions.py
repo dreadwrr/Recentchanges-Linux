@@ -236,7 +236,7 @@ def resolve_editor(dspEDITOR, dspPATH, toml_file):
         if not editor_path:
             if dspPATH:
                 print(f"Invalid path {dspPATH} for setting dspPATH")
-                None, None
+                return None, None
             print(f"{dspEDITOR} not found please specify a dspPATH or path to an editor in settings")
 
         if not validate_editor(editor_path, editor_key, dspPATH):
@@ -752,7 +752,7 @@ def build_tsv(RECENT, rout, outpath):
 
             if not fpath:
                 continue
-
+            is_statable = False
             try:
                 st = Path(fpath).stat()
                 mtyp = magic.from_file(fpath, mime=True)  # mimetypes.guess_type(fpath)[0] or "" less detailed
