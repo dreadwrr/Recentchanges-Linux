@@ -30,8 +30,6 @@ If cant find command recentchanges move /usr/local/bin/recentchanges somewhere i
 
 ## PyInstaller<br>
 https://github.com/dreadwrr/Linux-Pyinstaller <br>
-Note: i will put a seperate repo as the configuration for pyinstaller requires different paths<br>
-use installation above until the repo is posted <br><br>
 to build a binary with all the packages and not needing any on the system <br>
 
 <br>
