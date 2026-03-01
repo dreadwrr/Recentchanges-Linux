@@ -26,6 +26,17 @@ python main.py <br><br>
 adjust if missing any<br>
 optionally can install the required packages in system using package manager<br><br>
 If cant find command recentchanges move /usr/local/bin/recentchanges somewhere in path ie for porteus needs to be in /opt/porteus-scripts/ <br>
+or make a symlink to /usr/local/bin . ln -s /usr/local/bin/recentchanges /usr/bin/recentchanges <br><br><br>
+
+gpg setup <br>
+as user <br>
+echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br>
+gpgconf --kill gpg-agent
+then as root <br>
+sudo su <br>
+cd /root <br>
+mkdir .gnupg <br>
+echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br><br>
 
 
 ## PyInstaller<br>
