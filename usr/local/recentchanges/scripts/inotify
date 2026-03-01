@@ -16,7 +16,7 @@ sbwr() {
 webb=(
     'mozilla'
 	'\.mozilla'
-	'chromium-ungoogled',
+	'chromium-ungoogled'
 	'\.config/recentchanges/config\.bak'
 # other
 )
@@ -64,11 +64,11 @@ j=${sleep_times[sleep_index]}
 prev_size=-1
 incr=0
 
-debug_log="true"
+debug_log="false"
 debug_file=/tmp/inotify.log
 pblk_log_file=/tmp/output
 
-:> $CACHE_F ; :> $pblk_log_file
+:> "$CACHE_F" ; :> "$pblk_log_file"
 
 echo "$BRAND inoftiy started" >> $debug_file
 
@@ -150,7 +150,12 @@ timeout "$time" inotifywait -m -r -e create -e moved_to --format '%e|%w%f%0' "${
 		fi
 
         if (( match_found == 0 )); then
-			SECONDS=0
+            SECONDS=0
+            prev_size=-1
+            incr=0
+            retried=0
+            sleep_index=0
+
             log_lineout $debug_log $debug_file "$log_date" "notify matched input to pblk waiting for stable size $o"
 			while (( SECONDS < time_out )); do
 				(( incr++ ))
@@ -188,7 +193,7 @@ timeout "$time" inotifywait -m -r -e create -e moved_to --format '%e|%w%f%0' "${
         log_lineout $debug_log $debug_file "$log_date" "inotify file not found or parsing error. for $o"
     fi
 done
-test -e $log_file && rm $log_file
+test -e "$log_file" && rm "$log_file"
 # original drafting
 #RS=$'\x1E'  # | sed "s/$/$RS/"  seperator   , then decode # file="${o//$RS/$'\n'}" 
 # { stat --format="%Y %X %Z %i %h %s %U %G %a %n" "$o" 2>/dev/null; printf '\0'; } | sblk /dev/stdin "$log_file" "/dev/null" $checkSUM $xMODE $CACHE_F  original appends \n before \0

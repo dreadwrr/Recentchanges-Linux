@@ -88,7 +88,8 @@ EOF
 			shred -u $xopt/key.asc
 			printf "trust\n5\ny\nquit\n" | sudo "${cmd[@]}"  --command-fd 0 --edit-key $email
 		fi
-		test -d "$xopt" && rm -rf "$xopt"
+		test -d "$xopt" && rm -rf -- "$xopt"
+		[[ -n "$home_dir" && "$home_dir" != "/" ]] && test -d "$home_dir" && find "$home_dir" -maxdepth 1 -type f -name '*.gpg' -exec sudo rm -f -- {} +
 		echo "GPG key generated for ${email}."
 	else
 		if ! gpg --with-keygrip --list-secret-keys >/dev/null 2>&1; then
@@ -135,7 +136,7 @@ fi
 # load text editor if user want to display as non root
 output_results() {
 	local file_out="$XDG_RUNTIME_DIR"/file_output
-	if [[ $res -eq 0 ]]; then test -f $file_out && var=$( cat $file_out) && display "$var" ; test -f $file_out && rm $file_out ; fi
+	if [[ $res -eq 0 ]]; then test -f $file_out && var=$( cat $file_out) && display "$var" ; fi  # test -f $file_out && rm $file_out
 	exit $res
 }
 
