@@ -10,9 +10,9 @@ from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
 from typing import Dict
+from .config import load_toml
 from .configfunctions import find_install
 from .configfunctions import get_config
-from .configfunctions import load_toml
 from .fileops import calculate_checksum
 from .fileops import find_link_target
 from .fileops import set_stat

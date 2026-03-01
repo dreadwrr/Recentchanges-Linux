@@ -4,7 +4,6 @@ import glob
 import logging
 import os
 import subprocess
-import sys
 import tempfile
 import traceback
 from typing import Any
@@ -40,31 +39,39 @@ def import_key(argv):
     passphrase = None
     if "--passphrase-fd" in argv:
         idx = argv.index("--passphrase-fd")
-        fd = int(argv[idx + 1])
+        if idx + 1 >= len(argv):
+            print("import_key Missing value for --passphrase-fd")
+            return 1
+        try:
+            fd = int(argv[idx + 1])
+        except ValueError:
+            print("import_key Invalid --passphrase-fd value:", argv[idx + 1])
+            return 1
+
         print("reading from file descriptor: ", fd)
-        passphrase = sys.stdin.read().strip()
+        try:
+            with os.fdopen(fd, "rb", closefd=False) as fd_reader:
+                passphrase = fd_reader.read().rstrip(b"\r\n")
+        except OSError as e:
+            print(f"import_key Failed to read fd {fd}: {e}")
+            return 1
 
     if not passphrase:
         print("import_key No passphrase")
         return 1
 
     try:
-        r, w = os.pipe()
-        os.write(w, passphrase.encode())
-        os.close(w)
-
         subprocess.run(
             [
                 "gpg",
                 "--batch",
                 "--yes",
                 "--pinentry-mode", "loopback",
-                "--passphrase-fd", "3",
+                "--passphrase-fd", "0",
                 "--import",
                 str(keyfile),
             ],
-            pass_fds=(r,),
-            stdin=subprocess.DEVNULL,
+            input=passphrase,
             check=True
         )  # works not as secure as passing passphrase in commandline. conversly putting the passphrase to a file although safer is not ideal
         # with open(ftarget, "rb") as keyfile:
@@ -96,15 +103,10 @@ def import_key(argv):
         if combined:
             print("[GPG OUTPUT]\n" + combined)
         return 1
-    finally:
-        try:
-            os.close(r)
-        except Exception:
-            pass
 
 
 # same as bash rntchangesfunctions. setup keypair for user and root
-def genkey(appdata_local, USR, email, name, TEMPD, is_polkit, passphrase=None):
+def genkey(appdata_local, USR, email, name, dbtarget, CACHE_F, CACHE_S, TEMPD, is_polkit, passphrase=None):
 
     if not passphrase:
         passphrase = getpass.getpass("Enter passphrase for new GPG key: ")
@@ -178,7 +180,7 @@ Passphrase: {p}
                             check=True
                         )
 
-                    script_path = appdata_local / "main"
+                    script_path = appdata_local / "set_recent_helper"
                     script_dir = os.path.dirname(script_path)
 
                     cmd = "pkexec" if is_polkit else "sudo"
@@ -198,11 +200,12 @@ Passphrase: {p}
                     )
                     stdout = result.stdout.decode(errors="replace")
                     stderr = result.stderr.decode(errors="replace")
-                    if result.returncode != 0:
-                        stdout = "STDOUT:\n" + stdout  # print any debug
-                        stderr = "STDERR:\n" + stderr  # gpg prints to stderr
+                    stdout = "STDOUT:\n" + stdout  # print any debug
+                    stderr = "STDERR:\n" + stderr  # gpg prints to stderr
                     print(stdout)
                     print(stderr)
+                    if result.returncode != 0:
+                        return False
 
                 except subprocess.CalledProcessError as e:
                     print(f"genkey failed to export keyfile: {keyfile} err: {e}")
@@ -212,11 +215,15 @@ Passphrase: {p}
                     ]))
                     if combined:
                         print("[OUTPUT]\n" + combined)
+                    return False
             except Exception as e:
                 msg = f"failed to import keyfile {keyfile} error: {e}, {type(e).__name__}"
                 print(msg)
                 logging.error(msg, exc_info=True)
-            removefile(keyfile)
+                return False
+            finally:
+                removefile(keyfile)
+        clear_gpg(dbtarget, CACHE_F, CACHE_S)
         print(f"GPG key generated for {email}.")
         return True
 
@@ -235,6 +242,19 @@ def get_key_fingerprint(email, no_key=False):
         if line.startswith('fpr:'):
             return line.split(':')[9]
     return None
+
+
+def clear_gpg(dbtarget, CACHE_F, CACHE_S):
+
+    systimeche = name_of(CACHE_S)
+    file_path = os.path.dirname(CACHE_S)
+    pattern = os.path.join(file_path, f"{systimeche}*")
+    # delete ctimecache & db .gpg
+    for r in (CACHE_F, dbtarget):
+        removefile(r)
+    # delete profile .gpgs
+    for filepath in glob.glob(pattern):
+        removefile(filepath)
 
 
 def delete_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S):
@@ -293,15 +313,7 @@ def delete_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S):
                     result = True
                     exec_delete_keys(usr, current_usr, email, fingerprint)
 
-                systimeche = name_of(CACHE_S)
-                file_path = os.path.dirname(CACHE_S)
-                pattern = os.path.join(file_path, f"{systimeche}*")
-                # delete ctimecache & db .gpg
-                for r in (CACHE_F, dbtarget):
-                    removefile(r)
-                # delete profile .gpgs
-                for filepath in glob.glob(pattern):
-                    removefile(filepath)
+                clear_gpg(dbtarget, CACHE_F, CACHE_S)
                 if result:
                     # print(f"\nDelete {dbtarget} if it exists as it uses the old key pair.")
                     return 1

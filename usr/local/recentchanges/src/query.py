@@ -10,11 +10,10 @@ from pathlib import Path
 from .gpgcrypto import decr
 from .gpgcrypto import gpg_can_decrypt
 from .gpgkeymanagement import delete_gpg_keys
-from .gpgkeymanagement import reset_gpg_keys
 from .pyfunctions import is_integer
 from .rntchangesfunctions import name_of
 # from .rntchangesfunctions import cprint
-# 02/04/2026
+# 02/28/2026
 
 
 # see pyfunctions.py cache clear patterns for db
@@ -83,8 +82,8 @@ def main(app_install, home_dir, user, email, reset=None, database=None, log_fn=p
     flth = str(flth)
     dbtarget = str(dbtarget)
 
-    agnostic_check = False
-    no_key = False
+    # agnostic_check = False
+    # no_key = False
     result = False
 
     if reset:
@@ -103,7 +102,7 @@ def main(app_install, home_dir, user, email, reset=None, database=None, log_fn=p
 
                 #  the search runs as root check that there are no problems there
                 if not gpg_can_decrypt(user, dbtarget):
-                    agnostic_check = True
+                    return 1
 
                 dbopt = os.path.join(tempdir, output)
 
@@ -112,10 +111,6 @@ def main(app_install, home_dir, user, email, reset=None, database=None, log_fn=p
                 # can easily break if trying to automate fixing keys. let the user do it if wanted.
 
             if result:
-
-                # User has key root doesnt. give instructions to fix it or just delete the pair to reset
-                if agnostic_check:
-                    reset_gpg_keys(user, email, dbtarget, CACHE_F, CACHE_S, agnostic_check, no_key=no_key)
 
                 if os.path.isfile(dbopt):
                     with sqlite3.connect(dbopt) as conn:
@@ -146,9 +141,11 @@ def main(app_install, home_dir, user, email, reset=None, database=None, log_fn=p
                         total_filesize = 0
                         valid_entries = 0
                         for filesize in filesizes:
-                            if is_integer(filesize):
-                                total_filesize += int(filesize[0])
-                                valid_entries += 1
+                            if is_integer(filesize[0]):
+                                sze = int(filesize[0])
+                                if sze > 0:
+                                    total_filesize += sze
+                                    valid_entries += 1
                         if valid_entries > 0:
                             avg_filesize = total_filesize / valid_entries
                             avg_filesize_kb = int(avg_filesize / 1024)
@@ -248,16 +245,9 @@ def main(app_install, home_dir, user, email, reset=None, database=None, log_fn=p
 
             # User has no key
             elif not database and result is None:
-                no_key = True
 
-                if user != 'root' and not agnostic_check:
-
-                    # Root has key user doesnt. try to resolve key problem
-                    reset_gpg_keys(user, email, dbtarget, CACHE_F, CACHE_S, agnostic_check, no_key=no_key)
-
-                else:
-                    ctime_path = CACHE_F.name
-                    log_fn(f"No key for {dbtarget} or {ctime_path}. if unable to fix delete to reset")
+                ctime_path = CACHE_F.name
+                log_fn(f"No key for {dbtarget} or {ctime_path}. if unable to fix delete to reset")
 
             else:
 

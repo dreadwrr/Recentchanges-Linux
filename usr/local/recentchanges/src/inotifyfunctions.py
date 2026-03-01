@@ -165,8 +165,8 @@ def parselog(file, checksum):
             timestamp1 = None if n <= 12 or inputln[12] in ("", "None") else inputln[12]
             timestamp2 = None if n <= 13 or inputln[13] in ("", "None") else inputln[13]
             lastmodified = None if not timestamp1 or not timestamp2 else f"{timestamp1} {timestamp2}"
-            hardlink = None if n <= 14 or inputln[14] in ("", "None") else inputln[15]
-            us = None if n <= 15 or inputln[15] in ("", "None") else inputln[14]
+            hardlink = None if n <= 14 or inputln[14] in ("", "None") else inputln[14]
+            us = None if n <= 15 or inputln[15] in ("", "None") else inputln[15]
 
             target = None
             if sym == 'y':

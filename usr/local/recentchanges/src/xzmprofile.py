@@ -26,7 +26,9 @@ class XzmProfile:
         "bin",
         "usr/bin",
         "usr/sbin",
-        "etc",
+        "usr/libexec",
+        "usr/local/bin",
+        "usr/local/sbin",
         "sbin",
         "opt/porteus-scripts"
     ]

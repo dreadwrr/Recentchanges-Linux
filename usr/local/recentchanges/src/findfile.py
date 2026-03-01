@@ -7,9 +7,9 @@ import threading
 import traceback
 import zipfile
 from collections import Counter
+from .config import load_toml
 from .configfunctions import find_install
 from .configfunctions import get_config
-from .configfunctions import load_toml
 from .findfileparser import build_parser
 from .pyfunctions import cprint
 from .pyfunctions import escf_py

@@ -79,6 +79,10 @@ def process_line(line, checksum, file_type, search_start_dt, CACHE_F):
                     if status == "Retried":
                         mtime, mtime_us, ctime, inode, size, user, group, mode, sym, hardlink = set_stat(line, file_dt, st, file_us, inode, user, group, mode, sym, hardlink, logs)
                     label = "Cwrite"
+                else:
+                    if status == "Nosuchfile":
+                        mt = mtime.replace(microsecond=0)
+                        return ("Deleted", mt, mt, escf_path), logs
             else:
                 checks = cached.get("checksum")
         else:
@@ -86,6 +90,10 @@ def process_line(line, checksum, file_type, search_start_dt, CACHE_F):
             if checks is not None:
                 if status == "Retried":
                     mtime, mtime_us, ctime, inode, size, user, group, mode, sym, hardlink = set_stat(line, file_dt, st, file_us, inode, user, group, mode, sym, hardlink, logs)
+            else:
+                if status == "Nosuchfile":
+                    mt = mtime.replace(microsecond=0)
+                    return ("Deleted", mt, mt, escf_path), logs
 
     elif sym == "y":
         target = find_link_target(file_path, logs)
@@ -227,7 +235,7 @@ def process_lines(lines, file_type, search_start_dt, process_label, user_setting
         if res is None or not res:
             continue
         if isinstance(res, tuple) and len(res) > 3:
-            if res[0] == "Nosuchfile":
+            if res[0] == "Nosuchfile" or res[0] == "Deleted":
                 complete.append((res[0], res[1], res[2], res[3]))
             elif res[0] == "Cwrite":
                 cwrite.append(res[1:])

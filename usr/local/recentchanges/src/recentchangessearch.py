@@ -37,11 +37,11 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from . import processha
+from .config import load_toml
+from .config import update_toml_values
 from .configfunctions import check_config
 from .configfunctions import find_install
 from .configfunctions import get_config
-from .configfunctions import load_toml
-from .configfunctions import update_toml_values
 from .dirwalker import scan_system
 from .dirwalkerfunctions import get_base_folders
 from .filterhits import update_filter_csv
@@ -414,7 +414,8 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
 
             RECENT, COMPLETE_1, RECENTNUL, end, cstart = find_files(
                 find_command_mmin, search_paths, "main", RECENT, COMPLETE_1, RECENTNUL, init, cfr,
-                search_start_dt, user_setting, logging_values, end, cstart, iqt=iqt, strt=proval, endp=endval, logger=logger
+                search_start_dt, user_setting, logging_values, end, cstart, iqt=iqt, strt=proval,
+                endp=endval, logger=logger
             )
 
         else:
@@ -428,7 +429,8 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
 
             tout, COMPLETE_2, RECENTNUL, end, cstart = find_files(
                 find_command_cmin, search_paths, "ctime", tout, COMPLETE_2, RECENTNUL, init, cfr,
-                search_start_dt, user_setting, logging_values, end, cstart, iqt=iqt, strt=proval, endp=endval, logger=logger
+                search_start_dt, user_setting, logging_values, end, cstart, iqt=iqt, strt=proval,
+                endp=endval, logger=logger
             )
 
             cmin_end = time.time()
@@ -445,7 +447,8 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
 
             RECENT, COMPLETE_1, RECENTNUL, end, cstart = find_files(
                 find_command_mmin, search_paths, "main", RECENT, COMPLETE_1, RECENTNUL, init, cfr,
-                search_start_dt, user_setting, logging_values, end, cstart, iqt=iqt, strt=proval, endp=endval, logger=logger
+                search_start_dt, user_setting, logging_values, end, cstart, iqt=iqt, strt=proval,
+                endp=endval, logger=logger
             )
 
         cend = time.time()
@@ -717,7 +720,7 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
             if POSTOP:
                 outpath = os.path.join(USRDIR, tsv_doc)
                 if not os.path.isfile(outpath):
-                    if build_tsv(SORTCOMPLETE, rout, outpath):
+                    if build_tsv(SORTCOMPLETE, TMPOPT, logf, rout, escaped_user, outpath, method, fmt):
                         change_perm(outpath, uid, gid)
                         cprint.green(f"File doctrine.tsv created {USRDIR}/{tsv_doc}")
                 elif not iqt:

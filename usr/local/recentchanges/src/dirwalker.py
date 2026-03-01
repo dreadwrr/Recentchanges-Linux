@@ -21,8 +21,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures.process import BrokenProcessPool
 from datetime import datetime
 from .buildindex import build_index
-from .configfunctions import set_json_settings
-from .configfunctions import update_toml_values
+from .config import set_json_settings
+from .config import update_toml_values
 from .dirwalkerfunctions import check_specified_paths
 from .dirwalkerfunctions import chunk_split
 from .dirwalkerfunctions import decr_cache
@@ -1042,7 +1042,6 @@ def scan_system(dbopt, dbtarget, basedir, user, difffile, CACHE_S, email, ANALYT
     hdr1 = 'System index scan'
     if rlt == 0:
 
- 
         if showDiff:
             systimeche = name_of(CACHE_S)
             dir_diff, new_diff = find_symmetrics(dbopt, cache_table, systimeche)

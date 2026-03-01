@@ -11,12 +11,11 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from .config import update_toml_values
 from .configfunctions import find_install
-from .configfunctions import update_toml_values
 from .fsearch import process_lines
 from .pyfunctions import cprint
 from .pyfunctions import suppress_list
-from .pyfunctions import user_path
 install_root = find_install()
 filter_patterns_path = install_root / "filter.py"
 spec = importlib.util.spec_from_file_location("user_filter", filter_patterns_path)
@@ -488,7 +487,7 @@ def filter_lines_from_list(lines, escaped_user, idx=1):
         print("Error unable to load filter filter.py")
         return None
 
-    regexes = [re.compile(user_path(p, escaped_user)) for p in user_filter.get_exclude_patterns()]  # p.replace("{{user}}", escaped_user)
+    regexes = [re.compile(p.replace("{{user}}", escaped_user)) for p in user_filter.get_exclude_patterns()]
 
     # filtered = [
     #     line for line in lines
@@ -718,8 +717,11 @@ def tsv_sort_by(row, is_link=False):
 # time from the download or copy which could be from 2021 for example. Also by checking the database a copy
 # can also be detected by having the same checksum and a diffrent filename or inode. Sorted by above.
 #
-def build_tsv(RECENT, rout, outpath):
-    fmt = "%Y-%m-%d %H:%M:%S"
+def build_tsv(SORTCOMPLETE, TMPOPT, logf, rout, escaped_user, outpath, method, fmt):
+
+    if method != "rnt":
+        if logf is TMPOPT:
+            SORTCOMPLETE = filter_lines_from_list(SORTCOMPLETE, escaped_user)
 
     tsv_files = []
     mtyp = is_copy = ""
@@ -741,10 +743,10 @@ def build_tsv(RECENT, rout, outpath):
                     full_path = ' '.join(parts[5:])
                     copy_paths.add(full_path)
 
-        is_link = any(len(row) > 7 and row[7] == 'y' for row in RECENT)
+        is_link = any(len(row) > 7 and row[7] == 'y' for row in SORTCOMPLETE)
         header = "Datetime\tFile\tSize(kb)\tType\tSymlink" + ("\tTarget" if is_link else "") + "\tCreation\tcam\tAccessed\tOwner\tStatable\tCopy"
 
-        for entry in RECENT:
+        for entry in SORTCOMPLETE:
             if len(entry) < 13:
                 continue
             dt = entry[0]

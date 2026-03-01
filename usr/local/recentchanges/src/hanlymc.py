@@ -157,8 +157,8 @@ def hanly(parsed_chunk, checksum, cdiag, dbopt, ps, usr, logging_values, sys_tab
             if not is_sys:
                 previous_timestamp = parse_datetime(previous[0], fmt)
 
-            if (is_integer(record[3]) and is_integer(previous[3])  # format check
-                    and previous_timestamp):
+            if (is_integer(record[3]) and is_integer(previous[3])
+                    and previous_timestamp):  # format check
                 recent_cam = record[11]
                 previous_cam = previous[11]
                 cam_file = (recent_cam == "y" or previous_cam == "y")

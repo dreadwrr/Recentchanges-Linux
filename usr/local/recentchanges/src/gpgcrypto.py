@@ -131,9 +131,9 @@ def decr_ctime(CACHE_F: str, user: str, iqt: bool) -> dict:
             sys.exit(1)
 
     csv_path = decrm(CACHE_F, user)
-
-    if csv_path is None:
-
+    if not csv_path:
+        if csv_path is None:
+            print("if having problems run recentchanges reset to clear .gpg files and keys")
         print(f"Unable to retrieve cache file {CACHE_F} quitting.")
         sys.exit(1)
 
@@ -176,7 +176,9 @@ def start_user_agent(gpg_file, user=None):
     if stderr:
         for line in stderr.splitlines():
             if "no secret key" in line.lower():
+                print(line)
                 print(f"No key for {gpg_file} delete the file to reset")
+                return False
     return result.returncode == 0
 
 
@@ -271,7 +273,7 @@ def get_subkey_id(gpg_file):
 def gpg_can_decrypt(usr, dbtarget):
     if not os.path.isfile(dbtarget):
         return True
-    cmd = []
+    # cmd = []
     if usr != 'root':
         st = os.stat(dbtarget)
         is_owned_by_root = (st.st_uid == 0)
@@ -283,22 +285,23 @@ def gpg_can_decrypt(usr, dbtarget):
                 res = subprocess.run(["sudo", "chown", f"{uid}:{gid}", dbtarget], capture_output=True, text=True)
                 if res.returncode != 0:
                     print("failed to set permissions.")
-                    print(res.stderr)
+                    return False
                 if res.stdout:
                     print(res.stdout)
             elif uinp == 'n':
-                sys.exit(1)
+                return False
             else:
                 print("Invalid input, please enter 'Y' or 'N'.")
-    else:
-        cmd += ["sudo"]
-    cmd += ["gpg", "--decrypt", "--dry-run", dbtarget]
-    result = subprocess.run(
-        cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL
-    )
-    return result.returncode == 0
+    return True
+    # else:
+    #     cmd += ["sudo"]
+    # cmd += ["gpg", "--decrypt", "--dry-run", dbtarget]
+    # result = subprocess.run(
+    #     cmd,
+    #     stdout=subprocess.DEVNULL,
+    #     stderr=subprocess.DEVNULL
+    # )
+    # return result.returncode == 0
 
 
 # prepare for file output

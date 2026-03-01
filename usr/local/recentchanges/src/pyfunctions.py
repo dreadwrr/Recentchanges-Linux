@@ -5,12 +5,13 @@ from datetime import datetime
 from .configfunctions import not_absolute
 
 
-# terminal and hardlink suppression
+# terminal and hardlink suppression. note regex
 suppress_terminal = [
     r'mozilla',
     r'\.mozilla',
     r'chromium-ungoogled',
-    r'/home/{{user}}/\.config/recentchanges/config\.bak'
+    r'/home/{{user}}/\.config/recentchanges/config\.bak',
+    r'\.local/share/Trash'
     # r'google-chrome',
 ]
 
@@ -34,11 +35,13 @@ cache_clear = [
 # filter hits to reset on db cache clear. copy literal items from /usr/local/recentchanges/filter.py to reset to 0
 flth_literal_patterns = [
     r'\.cache',
+    r'\.gnupg',
     r'/home/{{user}}/\.config',
     r'/home/{{user}}/\.Xauthority',
     r'/root/\.Xauthority',
     r'/home/{{user}}/\.local/state/wireplumber',
-    r'/root/\.local/state/wireplumber'
+    r'/root/\.local/state/wireplumber',
+    r'\.local/share'
 ]
 
 
