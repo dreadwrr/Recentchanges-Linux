@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# launcher script for recentchanges			recentchanges v5.0		02/23/2026
+# launcher script for recentchanges			recentchanges v5.0		02/29/2026
 # Note comments are for gpg 1.4 left incase trying to use an old version. Having gpg2 is default and recommended
 app_install="/usr/local/recentchanges"
 . "$app_install"/scripts/versionquery
@@ -8,7 +8,6 @@ app_install="/usr/local/recentchanges"
 res=1	;	USR=$(whoami)
 if [[ "$1" = "-v" ]]; then get_vrn $1 ; elif [[ "$1" = "--help" ]] || [[ "$1" = "-h" ]] || [[ "$1" = "help" ]] || [[ "$1" = "-help" ]]; then get_vrn $1; fi
 [[ "$1" = "query" ]] && { python3 "$app_install"/rntchanges.py $USR "$PWD" query ; exit ; }
-[[ "$1" = "reset" ]] && { python3 "$app_install"/rntchanges.py $USR "$PWD" reset ; exit ; }
 # if [[ $(id -u) -ne 0 ]] # if  ! id $USR >/dev/null 2>&1; then echo user: $USR not found; exit 1; fi
 if [ $USR != "root" ]; then  
 	setup_exports
@@ -20,7 +19,6 @@ if [ $USR != "root" ]; then
 	res=$?
 	output_results
 fi
-
 
 if [[ -z "$LAUNCHED_NON_ROOT" ]]; then
 	# if  ! id $1 >/dev/null 2>&1; then echo "$0" text editor cant be run as root. comment out this line to run as root && exit 0; fi
