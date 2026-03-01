@@ -45,6 +45,11 @@ to build a binary with all the packages and not needing any on the system <br>
 
 <br>
 
+Manual
+https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0  
+Porteus forums
+https://forum.porteus.org/  <br><br>
+
 ![Alt text](https://i.imgur.com/4jOp3Ry.png) ![Alt text](https://i.imgur.com/T1DpcDM.png) <br><br>
 
 
