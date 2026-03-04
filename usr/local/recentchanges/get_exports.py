@@ -52,8 +52,10 @@ def get_exports():
     #        val = str(v).lower() if isinstance(v, bool) else str(v)
     #        print(f'export {k}={shlex.quote(val)}')
 
+    home_dir = os.path.join(home_dir, ".local", "share", "recentchanges")
+
     export_a = {
-        "lclhome": str(appdata_local),
+        "home_dir": home_dir,
         "tomlf": str(toml_file),
         "LAUNCHED_NON_ROOT": user,
         "XDG_CONFIG_HOME": xdg_config,

@@ -2,7 +2,6 @@
 #
 #   Notes: Nemesis 25.04
 #
-# /home/{{user}} is replaced to /root iff user is root
 #  [^/]+ match up to only one directory level example somepath/[^/]+/thisdir
 # /.*?/ non greedily match up to and including first directory found. ie somepath/.*?/thisdir
 #
@@ -25,6 +24,7 @@ def get_exclude_patterns():
 
         # Additional exclusions
         r'/usr/share/mime',
+        r'/home/{{user}}/\.config',
         r'/home/{{user}}/\.Xauthority',
         r'/home/{{user}}/\.local/state/wireplumber',
         r'/root/\.Xauthority',
@@ -41,9 +41,9 @@ def get_exclude_patterns():
         r'\.xsession',
 
         # Inclusions from script
-        r'/home/{{user}}/\.config',
-        r'/home/{{user}}/.local/share/recentchanges/recent\.gpg',
-        r'/home/{{user}}/.local/share/recentchanges/flth\.csv',
+        # r'/home/{{user}}/\.local/share/recentchanges/recent\.gpg',
+        # r'/home/{{user}}/\.local/share/recentchanges/flth\.csv',
+
         r'/root/\.auth',
         r'/root/\.config',
         r'/root/\.lesshst',

@@ -8,18 +8,18 @@ import tempfile
 import traceback
 from pathlib import Path
 from PySide6.QtCore import Qt, Slot, Signal, QThread, QTimer, QSortFilterProxyModel, QSize
-from PySide6.QtGui import QStandardItemModel, QStandardItem, QIcon, QPixmap, QImage, QPalette, QColor
+from PySide6.QtGui import QStandardItemModel, QStandardItem, QIcon, QPixmap, QImage  # QPalette, QColor
 from PySide6.QtSql import QSqlQuery
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QMainWindow, QMenu, QHeaderView, QStyle
 from src.clearworker import ClearWorker
 from src.configfunctions import check_config
-from src.configfunctions import dump_j_settings
-from src.configfunctions import dump_toml
+from src.config import dump_j_settings
+from src.config import dump_toml
+from src.config import load_toml
+from src.config import update_dict
+from src.config import update_j_settings
+from src.config import update_toml_values
 from src.configfunctions import get_config
-from src.configfunctions import load_toml
-from src.configfunctions import update_dict
-from src.configfunctions import update_j_settings
-from src.configfunctions import update_toml_values
 from src.dbworkerstream import DbWorkerIncremental
 from src.gpgcrypto import decr
 from src.gpgcrypto import encr
@@ -146,7 +146,7 @@ class MainWindow(QMainWindow):
         self.basedir = config['search']['drive']  # search target
         self.oldbasedir = self.basedir
         proteusEXTN = config['shield']['proteusEXTN']
-        self. proteusEXTN = ["[no extension]" if p == "" else p for p in proteusEXTN]
+        self.proteusEXTN = ["[no extension]" if p == "" else p for p in proteusEXTN]
         self.proteusPATH = config['shield']['proteusPATH']
         self.checksum = config['diagnostics']['checkSUM']
         self.proteusSHIELD = config['shield']['proteusSHIELD']
@@ -174,7 +174,7 @@ class MainWindow(QMainWindow):
         # QTimer.singleShot(5000, self.display_db)
 
         # Vars
-        self.app_version = "5.0.3"
+        self.app_version = "5.0.5"
         self.PWD = os.getcwd()
         self.home_dir = home_dir
         config_local = home_dir / ".config" / "recentchanges"
@@ -1228,7 +1228,7 @@ class MainWindow(QMainWindow):
         self.ui.progressBAR.setValue(0)
         self.ui.dbprogressBAR.setValue(0)  # pg_2
 
-        self.ui.combftimeout.setCurrentIndex(0)  # output
+        self.ui.combftimeout.setCurrentIndex(1)  # output
         rng = self.j_settings.get("search_range", 0)
         if rng != 0:
             self.ui.stime.setValue(self.ui.stime.minimum())  # top search time
@@ -2698,8 +2698,10 @@ def start_main_window():
 
     pst_data = home_dir / ".local" / "share" / "recentchanges"
     dbtarget_frm = pst_data / "recent.gpg"
+    CACHE_F_frm = pst_data / "ctimecache.gpg"
     CACHE_S_frm = pst_data / "systimeche.gpg"
     dbtarget = str(dbtarget_frm)
+    CACHE_F = str(CACHE_F_frm)
     CACHE_S = str(CACHE_S_frm)
     CACHE_S_str = str(CACHE_S_frm)  # used for reference
 
@@ -2744,24 +2746,24 @@ def start_main_window():
         # tempfile perms are 700
         try:
             app = QApplication(sys.argv)
+            # set dark theme for consistent appearance
             # print("Available styles:", QtWidgets.QStyleFactory.keys())
-            app.setStyle("Fusion")
-            palette = QPalette()
-            # window background
-            palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
-            palette.setColor(QPalette.ColorRole.WindowText, QColor(255, 255, 255))
-            # text input
-            palette.setColor(QPalette.ColorRole.Base, QColor(42, 42, 42))
-            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(66, 66, 66))
-            palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
-            palette.setColor(QPalette.ColorRole.ButtonText, QColor(255, 255, 255))
-            palette.setColor(QPalette.ColorRole.Highlight, QColor(185, 185, 185))
-            # palette.setColor(QPalette.ColorRole.HighlightedText, QColor(20, 20, 20))
-            palette.setColor(QPalette.ColorRole.Text, QColor(255, 255, 255))
-            palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 220))
-            palette.setColor(QPalette.ColorRole.ToolTipText, QColor(0, 0, 0))
-            app.setStyle("Fusion")
-            app.setPalette(palette)
+            # app.setStyle("Fusion")
+            # palette = QPalette()
+            # # window background
+            # palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
+            # palette.setColor(QPalette.ColorRole.WindowText, QColor(255, 255, 255))
+            # # text input
+            # palette.setColor(QPalette.ColorRole.Base, QColor(42, 42, 42))
+            # palette.setColor(QPalette.ColorRole.AlternateBase, QColor(66, 66, 66))
+            # palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+            # palette.setColor(QPalette.ColorRole.ButtonText, QColor(255, 255, 255))
+            # palette.setColor(QPalette.ColorRole.Highlight, QColor(185, 185, 185))
+            # # palette.setColor(QPalette.ColorRole.HighlightedText, QColor(20, 20, 20))
+            # palette.setColor(QPalette.ColorRole.Text, QColor(255, 255, 255))
+            # palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 220))
+            # palette.setColor(QPalette.ColorRole.ToolTipText, QColor(0, 0, 0))
+            # app.setPalette(palette)
             gnupg_home = os.getenv("GNUPGHOME")
             if not gnupg_home:
                 gnupg_home = home_dir / ".gnupg"
@@ -2794,7 +2796,7 @@ def start_main_window():
 
                 pawd = dlg.get_password()
 
-                res = genkey(appdata_local, usr, email, email_name, tempdir, is_polkit, pawd)
+                res = genkey(appdata_local, usr, email, email_name, dbtarget, CACHE_F, CACHE_S, tempdir, is_polkit, pawd)
                 if res:
                     rlt = test_gpg_agent(email)
                     if rlt is None:

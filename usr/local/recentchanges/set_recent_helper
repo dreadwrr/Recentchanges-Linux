@@ -3,9 +3,9 @@
 import sys
 from src.dirwalker import main_entry as dirwalker_main
 from src.findfile import main_entry as findfile_main
+from src.gpgkeymanagement import import_key
 from src.recentchangessearch import main as recentchanges_main
 from src.recentchangessearchparser import build_subparser
-from src.gpgkeymanagement import import_key
 from src.qtfunctions import load_konsole
 from src.qtfunctions import load_file_manager
 from src.qtfunctions import kill_process
@@ -15,13 +15,13 @@ from src.qtfunctions import kill_process
 
 def main(argv):
     arglen = len(argv)
-    # if not argv or arglen < 3:
-    #     print("Insufficient args")
-    #     return 1
-    script = argv[1].lower()
-    args = argv[2:]
-    cmd = args[0]
-    if arglen > 5:
+    if arglen >= 3:
+        script = argv[1].lower()
+        args = argv[2:]
+        if not args:
+            print("Insufficient args")
+            return 1
+        cmd = args[0]
 
         DISPATCH_MAP = {
             "dirwalker.py": {
@@ -62,8 +62,8 @@ def main(argv):
                 return entry(args)
             elif script == "import":
                 return entry(args)
-    else:
-        if script == "run":
+
+        elif script == "run":
             if cmd == "filemanager":
                 return load_file_manager(*args[1:])  # lclhome, popPATH=
             if cmd == "terminal":

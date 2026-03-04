@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v5.0                                                       02/22/2026
+# v5.0                                                       03/03/2026
 # This script is the entry point for recentchanges. The inv flag is passed in from from /usr/local/recentchanges/filteredsearch script from /usr/local/bin/rnt symlink
 #
 # There are 2 positional arguments. a third is the inv flag and is filtered out before executing script.
@@ -20,11 +20,7 @@
 # argtwo - search time for `recentchanges search`
 # argf - inv flag from rnt symlink
 import sys
-from src.configfunctions import find_install
-from src.configfunctions import get_config
-from src.configfunctions import get_user
-from src.configfunctions import load_toml
-from src.query import main as query_main
+from src.query import run_query
 from src.recentchangessearch import main as recentchanges_main
 
 
@@ -40,34 +36,18 @@ def filter_invflag(argv, pad_length=5):
 
 
 def main(argv):
-
-    # original_user = os.environ.get('SUDO_USER')
-
-    inv_flag = "inv" in argv
-    max_len = 7 if inv_flag else 6
+    max_len = 6
     arglen = len(argv)
     if arglen > max_len:
-        if inv_flag:
-            print("Incorrect usage. max from rnt 7. provided: ", len(argv) - 1)
-        else:
-            print("Incorrect usage. max args 6. provided: ", len(argv) - 1)
-        print("Required <username> <PWD> <whoami>")
+        print("Incorrect usage. max args 6. provided: ", arglen)
+        print("Required <username> <PWD>")
         print("please call from /usr/local/bin/recentchanges")
         return 1
     elif arglen < 3:
-        print("Incorrect usage. <username> <PWD> please call from recentchanges")
+        print("Incorrect usage. <username> <PWD> please call from /usr/local/bin/recentchanges")
         return 1
 
     USR = argv[1]
-    user_name = get_user()
-    appdata_local = find_install()
-
-    toml_file, json_file, home_dir, xdg_config, xdg_runtime, USR, uid, gid = get_config(appdata_local, USR)
-    config = load_toml(toml_file)
-    if not config:
-        return 1
-    email = config['backend']['email']
-
     PWD = argv[2]
     args = argv[3:]
 
@@ -76,40 +56,30 @@ def main(argv):
     argone = arge[0] or "noarguser"
     THETIME = arge[1] or "noarguser"
 
-    if argone == "query":
+    if argone == "query" or argone == "reset":
 
-        return query_main(appdata_local, home_dir, USR, email)
+        return run_query(USR, argone)
 
-    elif argone == "reset":
+    elif argone == "search":  # recentchanges search
+        return recentchanges_main(argone, THETIME, USR, PWD, argf, "")
 
-        return query_main(appdata_local, home_dir, USR, email, reset="resetgpg")
+    else:  # recentchanges
+        argf = "bnk"
 
-    if user_name == 'root':
+        SRCDIR = "SRC" if "SRC" in arge[:2] else "noarguser"
 
-        if argone == "search":  # recentchanges search
-            return recentchanges_main(argone, THETIME, USR, PWD, argf, "")
+        THETIME = arge[0] or "noarguser"  # Shift for this script
+        if THETIME == "SRC":
+            THETIME = arge[1] or "noarguser"
 
-        else:  # recentchanges
-            argf = "bnk"
+        if THETIME == "search":
+            print("Exiting not a search.")
+            return 1
 
-            SRCDIR = "SRC" if "SRC" in arge[:2] else "noarguser"
+        if THETIME == "SRC":
+            THETIME = "noarguser"
 
-            THETIME = arge[0] or "noarguser"  # Shift for this script
-            if THETIME == "SRC":
-                THETIME = arge[1] or "noarguser"
-
-            if THETIME == "search":
-                print("Exiting not a search.")
-                return 1
-
-            # Final normalization
-            if THETIME == "SRC":
-                THETIME = "noarguser"
-
-            return recentchanges_main(THETIME, SRCDIR, USR, PWD, argf, "rnt")
-    else:
-        print("Please call as root from recentchanges")
-        return 1
+        return recentchanges_main(THETIME, SRCDIR, USR, PWD, argf, "rnt")
 
 
 if __name__ == "__main__":
