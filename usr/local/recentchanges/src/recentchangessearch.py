@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#   Porteus                                                                           02/08/2026
+#   Porteus                                                                           03/04/2026
 #   recentchanges. Developer buddy      recentchanges and recentchanges search
 #   Provide ease of pattern finding ie what files to block we can do this a number of ways
 #   1) if a file was there (many as in more than a few) and another search lists them as deleted its either a sys file or not but unwanted nontheless
@@ -120,12 +120,12 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
     if method != "rnt" and argone.lower() != "search":
         print("exiting not a search")
         sys.exit(1)
-    if not iqt:
-        caller_script = Path(sys.argv[0]).resolve()
-        launcher = os.path.basename(caller_script)
-        if str(launcher) != "rntchanges.py":
-            print("please call from recentchanges from /usr/local/bin")
-            sys.exit(1)
+    # if not iqt:
+    #     caller_script = Path(sys.argv[0]).resolve()
+    #     launcher = os.path.basename(caller_script)
+    #     if str(launcher) != "rntchanges.py":
+    #         print("please call from recentchanges from /usr/local/bin")
+    #         sys.exit(1)
 
     global is_mcore
 
@@ -230,7 +230,9 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
         if argone == "downloads":
             j_settings = {}
 
-        CACHE_S, _, suffix, driveTYPE = setup_drive_cache(basedir, appdata_local, dbopt, dbtarget, json_file, toml_file, CACHE_S_str, driveTYPE, USR, email, compLVL, j_settings=j_settings)
+        CACHE_S, _, suffix, driveTYPE = setup_drive_cache(
+            basedir, appdata_local, dbopt, dbtarget, json_file, toml_file, CACHE_S_str, driveTYPE, USR, email, compLVL, j_settings=j_settings
+        )
         if not CACHE_S or not suffix:
             return 1
 
@@ -456,11 +458,10 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
         # end Main search
 
         check_stop(stopf)
-        if RECENT:
-            if cfr:
+        if cfr and (RECENT or tout):
+            encr_cache(cfr, CACHE_F, USR, uid, gid, email, compLVL)
 
-                encr_cache(cfr, CACHE_F, USR, uid, gid, email, compLVL)
-        else:
+        if not RECENT:
             cprint.cyan("No new files found")
             if iqt:
                 print("Progress: 100.00%")
@@ -488,11 +489,11 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
         seen = {}
 
         for entry in merged:
-            if len(entry) < 11:
+            if len(entry) < 12:
                 continue
 
             filepath = entry[1]
-            cam_flag = entry[10]
+            cam_flag = entry[11]
 
             key = filepath
 
@@ -500,7 +501,7 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
                 seen[key] = entry
             else:
                 existing_entry = seen[key]
-                existing_cam = existing_entry[10]
+                existing_cam = existing_entry[11]
 
                 if existing_cam == "y" and cam_flag is None:
                     seen[key] = entry
@@ -549,7 +550,7 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
 
         filtered_lines = []
         for entry in SORTCOMPLETE:
-            if len(entry) >= 16:
+            if len(entry) >= 17:
                 ts_str = entry[0]
                 filepath = entry[16]
                 filtered_lines.append((ts_str, filepath))
@@ -685,7 +686,7 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
             if iqt:
                 print(f"Progress: {proval}", flush=True)
             # Backend
-            dbopt = pst_srg(
+            dbopt, csum = pst_srg(
                 dbopt, dbtarget, basedir, SORTCOMPLETE, COMPLETE, rout, scr, cerr, CACHE_S, user_setting, logging_values,
                 dcr=dcr, iqt=iqt, strt=proval, endp=endval
             )
@@ -697,6 +698,9 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
             if not dbopt:
                 print("There is a problem in pst_srg no return value. likely database wasnt created, path to database did not exist or permission issue")
                 return 1
+            if scanIDX and not os.path.isfile(dbopt):
+                print(f"dbopt missing from pstsrg. {dbopt} unable to scan profile")
+                scanIDX = False
             # if dbopt and dbopt != "encr_error":
             #     if os.path.isfile(dbtarget):
             #         change_perm(dbtarget, uid, gid, 0o644)
@@ -710,7 +714,7 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
                 print()
 
             # Diff output to user
-            csum = processha.processha(rout, ABSENT, diff_file, cerr, flsrh, argf, SRTTIME, escaped_user, suppress_browser, suppress)
+            processha.processha(rout, ABSENT, diff_file, cerr, flsrh, argf, SRTTIME, escaped_user, suppress_browser, suppress)
 
             # Filter hits
             update_filter_csv(RECENT, flth, escaped_user)
@@ -772,7 +776,7 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
         except Exception as e:
             print(f"Error in logic or display {type(e).__name__} : {e}")
 
-        if dbopt not in ("new_profile", "encr_error") and scanIDX:  # Scan system index. If it is from the command line and a new profile was just made dont scan it. Encryption failure dont scan as there is a problem.
+        if dbopt not in ("new_profile", "encr_error", "db_error") and scanIDX:  # Scan system index. If it is from the command line and a new profile was just made dont scan it. Encryption failure dont scan as there is a problem.
 
             cprint.green('Running POSTOP system index scan.')
 

@@ -12,10 +12,12 @@ import logging
 import gc
 import multiprocessing
 import os
+import queue
 import random
 import sys
 import sqlite3
 import time
+import threading
 import traceback
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures.process import BrokenProcessPool
@@ -47,6 +49,10 @@ from .gpgcrypto import encrm
 from .gpgcrypto import encr
 from .gpgcrypto import dict_string
 from .gpgcrypto import dict_to_list_sys
+from .logs import emit_log
+from .logs import init_process_worker
+from .logs import logging_worker
+from .logs import logs_to_queue
 from .logs import setup_logger
 from .logs import write_logs_to_logger
 from .pyfunctions import cprint
@@ -399,12 +405,14 @@ def find_created(dbopt, dbtarget, basedir, user, mdltype, tempdir, CACHE_S, dspE
     logroot = setup_logger(log_file, logging_values[1], "DOWNLOADS")
     change_perm(log_file, uid, gid)
     #
+
     if mdltype.lower() == "hdd":
 
+        show_progress = True
         start = time.time()
         try:
             i = total_chunks = 1
-            all_sys, systime_results, all_logs, _ = scan_created(base_folders, basedir, EXCLDIRS_FULLPATH, filter_tup, cfr_src, root_count, i, total_chunks, strt, endp)
+            all_sys, systime_results, all_logs, _ = scan_created(base_folders, basedir, EXCLDIRS_FULLPATH, filter_tup, cfr_src, root_count, i, total_chunks, show_progress, strt, endp)
             prog_v = endp
         except Exception as e:
             emsg = f"find_created error in scan_created_hdd while finding downloads serially: {e} {type(e).__name__} \n{traceback.format_exc()}"
@@ -434,19 +442,19 @@ def find_created(dbopt, dbtarget, basedir, user, mdltype, tempdir, CACHE_S, dspE
 
             futures = [
                 executor.submit(
-                    scan_created, chunk, basedir, EXCLDIRS_FULLPATH, filter_tup, cfr_src, root_count, i, total_chunks
+                    scan_created, chunk, basedir, EXCLDIRS_FULLPATH, filter_tup, cfr_src, root_count, i, total_chunks, False
                 )
                 for i, chunk in enumerate(chunks)
             ]
             for future in as_completed(futures):  # for future in futures:
                 try:
-                    sys_data, dirl, logs, r = future.result()
+                    sys_data, dirl, log_, r = future.result()
                     if sys_data:
                         all_sys.extend(sys_data)
                     if dirl:
                         systime_results.extend(dirl)
-                    if logs:
-                        all_logs.extend(logs)
+                    if log_:
+                        all_logs.extend(log_)
 
                     done += r
                     percent = done / len_basefolders
@@ -802,30 +810,41 @@ def index_system(dbopt, dbtarget, basedir, user, CACHE_S, email, ANALYTICSECT=Fa
 
     total = len(all_files)
     batch_size = 500
+
+    show_progress = False
+    if iqt:
+        show_progress = True
+
     if total < batch_size or driveTYPE.lower() == "hdd":
 
         start = time.time()
         # queue = LoggingQueue(logger)
+        log_q = queue.SimpleQueue()
+        init_process_worker(log_q)
         try:
-            show_progress = False
-            if iqt:
-                show_progress = True
+
+            tlog = threading.Thread(target=logging_worker, args=(log_q, total, prog_v, endval, show_progress, logger), daemon=True)
+            tlog.start()
+
             parsedsys, logs, _ = build_index(all_files, 0, show_progress, prog_v, endval)
             if logs:
-                write_logs_to_logger(logs, logger)
+                logs_to_queue(logs, log_q)
         except Exception as e:
             rlt = 1
             emsg = f"Error occurred index_system while building index serially: {type(e).__name__} : {e}"
             print(emsg)
-            logger.error(f"{emsg} \n{traceback.format_exc()}")
+            emit_log("ERROR", f"{emsg} \n{traceback.format_exc()}", log_q)
+
+        finally:
+            log_q.put(None)
+            tlog.join()
 
     else:
-        deltav = endval - prog_v
+
         chunks = chunk_split(all_files, total, batch_size=batch_size)
         num_chunks = len(chunks)
         max_workers = max(1, min(8, multiprocessing.cpu_count() or 1, num_chunks))
 
-        done = 0
         sys_data = []
 
         start = time.time()
@@ -834,29 +853,41 @@ def index_system(dbopt, dbtarget, basedir, user, CACHE_S, email, ANALYTICSECT=Fa
         # queue = manager.Queue()
         # logging_thread = threading.Thread(target=logging_worker, args=(queue, logger))
         # logging_thread.start()
+
+        ctx = multiprocessing.get_context()
+        log_q = ctx.Queue(maxsize=4096)
+        log_t = threading.Thread(target=logging_worker, args=(log_q, total, prog_v, endval, show_progress, logger), daemon=True)
+        log_t.start()
+
         try:
-            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            with ProcessPoolExecutor(
+                max_workers=max_workers,
+                mp_context=ctx,
+                initializer=init_process_worker,
+                initargs=(log_q,)
+            ) as executor:
                 futures = [
                     executor.submit(
-                        build_index, chunk, i
+                        build_index, chunk, i, show_progress
                     )
                     for i, chunk in enumerate(chunks)
                 ]
 
                 for future in as_completed(futures):
                     try:
-                        sys_data, logs, processed = future.result()
-                        done += processed
+                        sys_data, logs, _ = future.result()
+
                         if sys_data:
                             parsedsys.extend(sys_data)
                         if logs:
-                            write_logs_to_logger(logs, logger)
+                            logs_to_queue(logs, log_q)
 
-                        if iqt:
-                            percent = prog_v + round((deltav) * done / total)
-                            print(f"Progress: {percent}%", flush=True)
+                        # done += processed
+                        # if iqt:
+                        #     percent = prog_v + round((deltav) * done / total)
+                        #     print(f"Progress: {percent}%", flush=True)
                     except BrokenProcessPool as e:
-                        logger.error(f"unable to build IDX. {e} \n{traceback.format_exc()}")
+                        emit_log("ERROR", f"unable to build IDX. {e} \n{traceback.format_exc()}", log_q)
                         for f in futures:
                             f.cancel()
                         return 1
@@ -864,14 +895,20 @@ def index_system(dbopt, dbtarget, basedir, user, CACHE_S, email, ANALYTICSECT=Fa
                         rlt = 1
                         emsg = f"Worker error occurred index_system: {type(e).__name__} : {e}"
                         print(emsg)
-                        logger.error(f"{emsg} \n{traceback.format_exc()}")
+                        emit_log("ERROR", f"{emsg} \n{traceback.format_exc()}", log_q)
 
         except Exception as e:
-            logger.error(f"an error occured while building system profile. aborted {type(e).__name__} {e} \n{traceback.format_exc()}")
+            emit_log("ERROR", f"an error occured while building system profile. aborted {type(e).__name__} {e} \n{traceback.format_exc()}", log_q)
             return 1
+        finally:
+            log_q.put(None)
+            log_t.join()
+            log_q.close()
+            log_q.join_thread()
         # finally:
         #     queue.put(('STOP', None))
         #     logging_thread.join()
+
     end = time.time()
     proval = endval
     if rlt == 0:
@@ -962,7 +999,7 @@ def scan_system(dbopt, dbtarget, basedir, user, difffile, CACHE_S, email, ANALYT
     y = 0
 
     logging_values = (appdata_local, ll_level)
-    setup_logger(log_file, logging_values[1], "SCANIDX")
+    logger = setup_logger(log_file, logging_values[1], "SCANIDX")
     change_perm(log_file, uid, gid)
 
     total = len(recent_sys)
@@ -970,21 +1007,33 @@ def scan_system(dbopt, dbtarget, basedir, user, difffile, CACHE_S, email, ANALYT
 
     endval = endp * .9
 
+    show_progress = False
+    if iqt:
+        show_progress = True
+
     if total < batch_size or driveTYPE.lower() == "hdd":
+
+        log_q = queue.SimpleQueue()
+        init_process_worker(log_q)
 
         start = time.time()
         try:
-            show_progress = False
-            if iqt:
-                show_progress = True
-            all_sys, link_diff, nfs_records, logs, x, y, _ = scan_index(recent_sys, is_sym, 0, show_progress, strt, endval)
-            if logs:
-                write_logs_to_logger(logs)
+
+            tlog = threading.Thread(target=logging_worker, args=(log_q, total, strt, endval, show_progress, logger), daemon=True)
+            tlog.start()
+
+            all_sys, link_diff, nfs_records, log_entries, x, y, _ = scan_index(recent_sys, is_sym, 0, show_progress, strt, endval)
+            if log_entries:
+                logs_to_queue(log_entries, log_q)
+
         except Exception as e:
             rlt = 1
             emsg = f"scan_system exception in scan_index while scanning serially: {type(e).__name__} {e}"
             print(emsg)
-            logging.error(f"{emsg} \n{traceback.format_exc()}")
+            emit_log("ERROR", f"{emsg} \n{traceback.format_exc()}", log_q)
+        finally:
+            log_q.put(None)
+            tlog.join()
 
     else:
 
@@ -993,36 +1042,47 @@ def scan_system(dbopt, dbtarget, basedir, user, difffile, CACHE_S, email, ANALYT
         max_workers = max(1, min(8, multiprocessing.cpu_count() or 1, num_chunks))
 
         start = time.time()
-        deltav = endval - strt
+        # deltav = endval - strt
+
+        ctx = multiprocessing.get_context()
+        log_q = ctx.Queue(maxsize=4096)
+        log_t = threading.Thread(target=logging_worker, args=(log_q, total, strt, endval, show_progress, logger), daemon=True)
+        log_t.start()
+
         try:
-            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            with ProcessPoolExecutor(
+                max_workers=max_workers,
+                mp_context=ctx,
+                initializer=init_process_worker,
+                initargs=(log_q,)
+            ) as executor:
 
                 futures = [
-                    executor.submit(scan_index, chunk, is_sym, i)
+                    executor.submit(scan_index, chunk, is_sym, i, show_progress)
                     for i, chunk in enumerate(chunks)
                 ]
-                done = 0
+
                 for future in as_completed(futures):
 
                     try:
-                        sys_data, link_data, results, logs, x_c, y_c, c_c = future.result()
+                        sys_data, link_data, results, log_entries, x_c, y_c, _ = future.result()
                         if sys_data:
                             all_sys.extend(sys_data)
                         if link_data:
                             link_diff.extend(link_data)
                         if results:
                             nfs_records.extend(results)
-                        if logs:
-                            write_logs_to_logger(logs)
+                        if log_entries:
+                            logs_to_queue(log_entries, log_q)
                         x += x_c
                         y += y_c
-                        done += c_c
 
-                        if iqt:
-                            percent = strt + round((deltav) * done / total)
-                            print(f"Progress: {percent}%", flush=True)
+                        # if iqt:
+                        #     percent = strt + round((deltav) * done / total)
+                        #     print(f"Progress: {percent}%", flush=True)
+
                     except BrokenProcessPool as e:
-                        logging.error(f"fault while scanning idx. aborted {e} \n{traceback.format_exc()}")
+                        emit_log("ERROR", f"fault while scanning idx. aborted {e} \n{traceback.format_exc()}", log_q)
                         for f in futures:
                             f.cancel()
                         return 1
@@ -1030,11 +1090,17 @@ def scan_system(dbopt, dbtarget, basedir, user, difffile, CACHE_S, email, ANALYT
                         rlt = 1
                         emsg = f"scan_system Worker error: {type(e).__name__} {e}"
                         print(emsg)
-                        logging.error(f"{emsg} \n{traceback.format_exc()}")
+                        emit_log("ERROR", f"{emsg} \n{traceback.format_exc()}", log_q)
 
         except Exception as e:
-            logging.error(f"scan failed {type(e).__name__} {e} \n{traceback.format_exc()}")
+            emit_log("ERROR", f"scan failed {type(e).__name__} {e} \n{traceback.format_exc()}", log_q)
             return 1
+        finally:
+            log_q.put(None)
+            log_t.join()
+            log_q.close()
+            log_q.join_thread()
+
     end = time.time()
 
     dir_diff = []
@@ -1218,7 +1284,7 @@ def main_entry(argv):
         ]
         sys.exit(set_hardlinks(*calling_args))
 
-    if args.action == "scan":
+    elif args.action == "scan":
         calling_args = [
             args.dbopt, args.dbtarget, args.basedir, args.user, args.difffile, args.CACHE_S,
             args.email, args.ANALYTICSECT, args.showDiff, args.compLVL, args.dcr,

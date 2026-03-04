@@ -1,4 +1,4 @@
-# developer buddy v5.0 core                     02/02/2026
+# developer buddy v5.0 core                     03/03/2026
 import glob
 import importlib.util
 import logging
@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from .config import update_toml_values
 from .configfunctions import find_install
-from .fsearch import process_lines
+from .fsearchparallel import process_lines
 from .pyfunctions import cprint
 from .pyfunctions import suppress_list
 install_root = find_install()
@@ -253,8 +253,8 @@ def is_excluded(web_list, file_line):
     return any(re.search(pat, file_line) for pat in web_list)
 
 
-def is_supressed(web_list, file_line, flag, suppress_browser, supress):
-    if flag or supress:
+def is_supressed(web_list, file_line, flag, suppress_browser, suppress):
+    if flag or suppress:
         return True
     if suppress_browser and web_list:
         return is_excluded(web_list, file_line)
@@ -262,7 +262,7 @@ def is_supressed(web_list, file_line, flag, suppress_browser, supress):
 
 
 # scr / cerr logic
-def filter_output(filepath, escaped_user, filtername, critical, pricolor, seccolor, typ, suppress_browser=True, supress=False):
+def filter_output(filepath, escaped_user, filtername, critical, pricolor, seccolor, typ, suppress_browser=True, suppress=False):
     web_list = suppress_list(escaped_user)
     flag = False
     with open(filepath, 'r') as f:
@@ -271,7 +271,7 @@ def filter_output(filepath, escaped_user, filtername, critical, pricolor, seccol
             file_line = file_line.strip()
             if file_line.startswith(filtername):
 
-                if not is_supressed(web_list, file_line, flag, suppress_browser, supress):
+                if not is_supressed(web_list, file_line, flag, suppress_browser, suppress):
                     getattr(cprint, pricolor, lambda msg: print(msg))(f"{file_line} {typ}")
             else:
                 if critical != "no":
@@ -279,9 +279,8 @@ def filter_output(filepath, escaped_user, filtername, critical, pricolor, seccol
                         getattr(cprint, seccolor, lambda msg: print(msg))(f'{file_line} {typ} Critical')
                         flag = True
                 else:
-                    if not is_supressed(web_list, file_line, flag, suppress_browser, supress):
+                    if not is_supressed(web_list, file_line, flag, suppress_browser, suppress):
                         getattr(cprint, seccolor, lambda msg: print(msg))(f"{file_line} {typ}")
-    return flag
 
 
 def get_linux_distro():
@@ -777,7 +776,7 @@ def build_tsv(SORTCOMPLETE, TMPOPT, logf, rout, escaped_user, outpath, method, f
             ae = entry[4]
             creation_time = entry[2]
             cam = entry[11]
-            target = entry[12]
+            target = entry[12] if entry[12] else ""
 
             if fpath in copy_paths:
                 is_copy = "y"

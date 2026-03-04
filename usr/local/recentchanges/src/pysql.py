@@ -46,7 +46,8 @@ def create_logs_table(c, unique_columns, add_column=None):
 
     c.execute(f'{sql} idx_logs_checksum ON logs (checksum)')
     c.execute(f'{sql} idx_logs_filename ON logs (filename)')
-    c.execute(f'{sql} idx_logs_checksum_filename ON logs (checksum, filename)')  # Composite
+    # c.execute(f'{sql} idx_logs_checksum_filename ON logs (checksum, filename)')
+    c.execute(f'{sql} idx_logs_collision ON logs (checksum, filesize, filename)')
 
 
 def create_sys_variant(c, table_name, columns, unique_columns):
@@ -60,9 +61,8 @@ def create_sys_variant(c, table_name, columns, unique_columns):
     '''
     c.execute(sql)
 
-    c.execute(f'CREATE INDEX IF NOT EXISTS idx_{table_name}_filename ON {table_name} (filename)')
     if table_name.startswith('sys2'):
-        c.execute(f'CREATE INDEX IF NOT EXISTS idx_{table_name}_checksum ON {table_name} (checksum)')
+        c.execute(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_filename_ts ON {table_name} (filename, timestamp DESC)")
         c.execute(f'CREATE INDEX IF NOT EXISTS idx_{table_name}_checksum_filename ON {table_name} (checksum, filename)')  # Composite
 
 
@@ -239,8 +239,6 @@ def insert(log, conn, c, table, last_column, add_column=None):  # Log
                 blank_row
         )
 
-    conn.commit()
-
 
 def insert_if_not_exists(action, timestamp, filename, creationtime, conn, c):  # Stats
     timestamp = timestamp or None
@@ -248,7 +246,6 @@ def insert_if_not_exists(action, timestamp, filename, creationtime, conn, c):  #
     INSERT OR IGNORE INTO stats (action, timestamp, filename, creationtime)
     VALUES (?, ?, ?, ?)
     ''', (action, timestamp, filename, creationtime))
-    conn.commit()
 
 
 def insert_cache(log, table, conn):
@@ -543,8 +540,92 @@ def rmv_table(table, conn, cur, quiet=False):
     return False
 
 
-def collision(cursor, is_sys, sys_tables=None):
+def collision_check(xdata, cerr, sys_tables, c, ps):
+    reported = set()
+    csum = False
+    if not xdata:
+        return False
 
+    current_rows = set()
+    for record in xdata:
+        if not record or len(record) < 7:
+            continue
+        filename = record[1]
+        file_hash = record[5]
+        file_size = record[6]
+        if not (filename and file_hash and file_size):
+            continue
+
+        current_rows.add((filename, file_hash, file_size))
+
+    if not current_rows:
+        return False
+
+    try:
+        c.execute(
+            """
+            CREATE TEMP TABLE IF NOT EXISTS current_search_collisions (
+                filename TEXT NOT NULL,
+                checksum TEXT NOT NULL,
+                filesize INTEGER NOT NULL
+            )
+            """
+        )
+        c.execute("DELETE FROM current_search_collisions")
+        c.executemany(
+            "INSERT INTO current_search_collisions (filename, checksum, filesize) VALUES (?, ?, ?)",
+            list(current_rows),
+        )
+
+        if ps:
+            tables = ['logs'] + list(sys_tables or [])
+
+            db_rows_sql = " UNION ALL ".join([
+                f"SELECT filename, checksum, filesize FROM {t} WHERE checksum IS NOT NULL" for t in tables
+            ])
+
+        else:
+            db_rows_sql = "SELECT filename, checksum, filesize FROM logs WHERE checksum IS NOT NULL"
+
+        c.execute(
+            f"""
+            WITH db_rows AS (
+                {db_rows_sql}
+            )
+            SELECT DISTINCT
+                cur.filename,
+                db.filename,
+                cur.checksum,
+                cur.filesize,
+                db.filesize
+            FROM current_search_collisions cur
+            JOIN db_rows db
+                ON db.checksum = cur.checksum
+            WHERE db.filename != cur.filename
+              AND db.filesize != cur.filesize
+            """
+        )
+        colcheck = c.fetchall()
+    except sqlite3.DatabaseError as e:
+        print(f"Database error in collision detection: {type(e).__name__} : {e}")
+        return csum
+
+    if colcheck:
+        try:
+            with open(cerr, "a", encoding="utf-8") as f:
+                for filename, other_file, file_hash, size1, size2 in colcheck:
+                    pair = tuple(sorted([filename, other_file]))
+                    if pair not in reported:
+                        csum = True
+                        print(f"COLLISION: {filename} {size1} vs {other_file} {size2} | Hash: {file_hash}", file=f)
+                        reported.add(pair)
+        except IOError as e:
+            print(f"Failed to write collisions: {e} {type(e).__name__}  \n{traceback.format_exc()}")
+    return csum
+
+
+def collision(cursor, is_sys, sys_tables=None):
+    """ used for collision function in pyfunctions """
     if is_sys:
         tables = ['logs'] + list(sys_tables or [])
 
@@ -671,9 +752,6 @@ def get_recent_sys(filename, cursor, sys_tables, e_cols=None):
 
 def increment_f(conn, c, sys_tables, records, logger=None):
 
-    if not records:
-        return False
-
     sys_b = sys_tables[1]
 
     sql_insert = f"""
@@ -688,9 +766,7 @@ def increment_f(conn, c, sys_tables, records, logger=None):
         with conn:
             c.executemany(sql_insert, records)
         return True
-
     except sqlite3.OperationalError as e:
-        conn.rollback()
         err = f"increment_f failed to insert changes in sys_b {e}"
         print(err)
         if logger:
@@ -700,7 +776,7 @@ def increment_f(conn, c, sys_tables, records, logger=None):
         print(err)
         if logger:
             logger.error(err, exc_info=True)
-        return False
+    return False
 
 
 def find_symmetrics(dbopt, cache_table, systimeche):

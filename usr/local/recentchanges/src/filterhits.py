@@ -30,7 +30,7 @@ def update_filter_csv(RECENT, csv_file, escaped_user):
 
     for pattern_literal in patterns:
         # escaped_user = re.escape(user)
-        pattern = pattern_literal.replace("{user}", escaped_user)
+        pattern = pattern_literal.replace("{{user}}", escaped_user)
         regex = re.compile(pattern)
 
         count = sum(1 for line in RECENT if len(line) >= 2 and regex.search(line[1]))

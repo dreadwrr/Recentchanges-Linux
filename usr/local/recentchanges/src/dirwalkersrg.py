@@ -182,8 +182,10 @@ def sync_db(dbopt, basedir, CACHE_S, parsedsys, parsedidx, sys_records, keys=Non
                 clear_table(systimeche, conn, cur, True)
             create_table_cache(conn, systimeche, ('filename',))
 
-            res = insert_cache(parsedidx, systimeche, conn)
-            if not res:
+            if insert_cache(parsedidx, systimeche, conn):
+                res = True
+
+            else:
                 print(f"Failed to insert parsedidx for table {systimeche} drive {basedir} re sync_db")
 
         # Find download update index

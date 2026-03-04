@@ -5,6 +5,9 @@ import sys
 import tempfile
 import traceback
 from collections import Counter
+from src.config import load_toml
+from src.configfunctions import find_install
+from src.configfunctions import get_config
 from datetime import datetime
 from pathlib import Path
 from .gpgcrypto import decr
@@ -12,8 +15,9 @@ from .gpgcrypto import gpg_can_decrypt
 from .gpgkeymanagement import delete_gpg_keys
 from .pyfunctions import is_integer
 from .rntchangesfunctions import name_of
+
 # from .rntchangesfunctions import cprint
-# 02/28/2026
+# 03/02/2026
 
 
 # see pyfunctions.py cache clear patterns for db
@@ -69,9 +73,9 @@ def averagetm(conn, cur):
     return "N/A"
 
 
-def main(app_install, home_dir, user, email, reset=None, database=None, log_fn=print):
+def main(appdata_local, home_dir, user, email, reset=None, database=None, log_fn=print):
 
-    pst_data = home_dir / ".local" / "share" / "recentchanges"
+    pst_data = Path(home_dir) / ".local" / "share" / "recentchanges"
     flth = pst_data / "flth.csv"
     dbtarget = pst_data / "recent.gpg"
     CACHE_F = pst_data / "ctimecache.gpg"
@@ -82,8 +86,6 @@ def main(app_install, home_dir, user, email, reset=None, database=None, log_fn=p
     flth = str(flth)
     dbtarget = str(dbtarget)
 
-    # agnostic_check = False
-    # no_key = False
     result = False
 
     if reset:
@@ -159,9 +161,14 @@ def main(app_install, home_dir, user, email, reset=None, database=None, log_fn=p
                         WHERE TRIM(filename) != ''
                         ''')  # Ext
                         filenames = cur.fetchall()
+                        filenames = [row[0] for row in filenames]
                         extensions = []
-                        for entry in filenames:
-                            filepath = Path(entry[0])
+                        directories = []
+                        for filename in filenames:
+                            if not filename:
+                                continue
+                            directories.append(os.path.dirname(filename))  # get the top directories as well
+                            filepath = Path(filename)
                             filename = filepath.name
                             if filename.startswith('.') or '.' not in filename:
                                 ext = '[no extension]'
@@ -176,16 +183,15 @@ def main(app_install, home_dir, user, email, reset=None, database=None, log_fn=p
                             for ext, count in top_3:
                                 log_fn(f"{ext}")
                         log_fn("")
-                        directories = [os.path.dirname(filename[0]) for filename in filenames]  # top directories
-                        directory_counts = Counter(directories)
+                        directory_counts = Counter(directories)  # top directories ln170
                         top_3_directories = directory_counts.most_common(3)
                         ctext = "\033[36mTop 3 directories\033[0m"
                         log_fn(ctext)
                         for directory, count in top_3_directories:
                             log_fn(f'{count}: {directory}')
                         log_fn("")
-                        cur.execute("SELECT filename FROM logs WHERE TRIM(filename) != ''")  # common file 5
-                        filenames = [row[0] for row in cur.fetchall()]  # end='' prevents extra newlines
+                        # cur.execute("SELECT filename FROM logs WHERE TRIM(filename) != ''")  # common file 5 # original
+                        # filenames = [row[0] for row in cur.fetchall()]  # end='' prevents extra newlines # original
                         filename_counts = Counter(filenames)
                         top_5_filenames = filename_counts.most_common(5)
                         ctext = "\033[36mTop 5 created\033[0m"
@@ -260,6 +266,18 @@ def main(app_install, home_dir, user, email, reset=None, database=None, log_fn=p
     except Exception as e:
         log_fn(f"Exception while running query {type(e).__name__}: {e}  \n {traceback.format_exc()}")
     return 1
+
+
+def run_query(USR, argone):
+    appdata_local = find_install()
+    toml_file, json_file, home_dir, xdg_config, xdg_runtime, USR, uid, gid = get_config(appdata_local, USR)
+    config = load_toml(toml_file)
+    if not config:
+        return 1
+
+    email = config['backend']['email']
+    is_reset = argone == "reset"
+    return main(appdata_local, home_dir, USR, email, is_reset)
 
 
 if __name__ == "__main__":

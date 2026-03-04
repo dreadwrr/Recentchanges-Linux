@@ -11,7 +11,7 @@ import traceback
 from .dirwalkerfunctions import get_dir_mtime
 
 
-def scan_created(chunk, basedir, EXCLDIRS_FULLPATH, filter_tup, CACHE_S, root_count, i, total_chunks, strt=0, endp=0):
+def scan_created(chunk, basedir, EXCLDIRS_FULLPATH, filter_tup, CACHE_S, root_count, i, total_chunks, show_progress=False, strt=0, endp=0):
 
     sys_data = []
     results = []
@@ -131,13 +131,22 @@ def scan_created(chunk, basedir, EXCLDIRS_FULLPATH, filter_tup, CACHE_S, root_co
 
     f = 0
     scale = (endp - strt) / root_count
+    current_step = 0
+    steps = sorted(set(int((i / 10) * root_count) for i in range(1, 11)))
+    step_len = len(steps)
+
     for root in chunk:
 
         f += 1
         process_directory(root, results, sys_data, logs)
 
-        if endp:
-            prog_v = strt + (f * scale)
-            print(f"Progress: {prog_v:.2f}%", flush=True)
+        if show_progress:
+            if current_step < step_len and f >= steps[current_step]:
+                prog_v = strt + (f * scale)
+                print(f"Progress: {prog_v:.2f}%", flush=True)
+                current_step += 1
+            #
+    if show_progress and current_step <= len(steps) - 1:
+        print(f"Progress: {endp:.2f}%", flush=True)
 
     return sys_data, results, logs, f

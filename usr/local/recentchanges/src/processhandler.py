@@ -241,8 +241,8 @@ class ProcessHandler(QObject):
             self.prog_v = percent
             self.progress.emit(percent)
 
-            if percent >= 90.0 and self.database:
-                self.status.emit("Waiting remaining worker(s) to finish")
+            # if percent >= 90.0 and self.database:
+            #     self.status.emit("Waiting remaining worker(s) to finish")
 
         except ValueError:
             self.log.emit(f"Malformed progress line: {line}")

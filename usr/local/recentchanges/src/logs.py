@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 from .configfunctions import find_install
 
+WORKER_LOG_Q = None
+
 
 def filename_of_handler():
     for handler in logging.getLogger().handlers:
@@ -75,7 +77,23 @@ def change_logger(file_name, level, process_label):
     return root, log_file
 
 
-def logging_worker(queue, logger=None):
+def write_log(log, level, message):
+    method = getattr(log, str(level).lower(), None)
+    if method:
+        method(message)
+    else:
+        log.error(f"Unknown log level: {message}")
+
+
+def write_logs_to_logger(log_list, logger=None):
+    log = logger if logger else logging
+    for level, message in log_list:
+        write_log(log, level, message)
+
+
+def logging_worker(queue, record_count, strt, endp, show_progress, logger=None):
+    done = 0
+    delta_v = endp - strt
     log = logger if logger else logging
     while True:
         msg = queue.get()
@@ -87,42 +105,14 @@ def logging_worker(queue, logger=None):
         except Exception:
             log.error(f"Invalid log format detected: {msg}")
             continue
-        lvl = level.upper()
-        log_levels = {
-            'ERROR': log.error,
-            'DEBUG': log.debug,
-            'INFO': log.info,
-            'WARNING': log.warning,
-        }
-        log_func = log_levels.get(lvl)
-        if log_func:
-            log_func(message)
-        elif lvl == 'STOP':
+        if level == "prog" and show_progress:
+            n = message
+            done += n
+            print(f"Progress: {strt + round((delta_v) * done / record_count)}%", flush=True)
+        elif level == 'STOP':
             break
         else:
-            log.error(f"Unknown log level: {message}")
-
-
-def write_logs_to_logger(log_list, logger=None):
-    log = logger if logger else logging
-
-    for level, message in log_list:
-        method = getattr(log, level.lower(), log.error)
-        method(message)
-    # for level, message in log_list:
-    #     lvl = level.upper()
-    #     if lvl == "DEBUG":
-    #         log.debug(message)
-    #     # elif lvl == "INFO":
-    #     #     log.info(message)
-    #     # elif lvl == "WARNING":
-    #     #     log.warning(message)
-    #     elif lvl == "ERROR":
-    #         log.error(message)
-    #     # elif lvl == "CRITICAL":
-    #     #     log.critical(message)
-    #     else:
-    #         log.info(message)
+            write_log(log, level, message)
 
 
 def logs_to_queue(log_list, queue):
@@ -140,3 +130,15 @@ def check_log_perms(log_path):
                 os.utime(log_path, None)
     except PermissionError:
         pass
+
+
+def init_process_worker(log_q):
+    global WORKER_LOG_Q
+    WORKER_LOG_Q = log_q
+
+
+def emit_log(level, message, log_q=None, logs=None):
+    if log_q is not None:
+        log_q.put((level, message))
+    elif logs is not None:
+        logs.append((level, message))

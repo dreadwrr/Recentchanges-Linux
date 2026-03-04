@@ -6,8 +6,8 @@ import os
 import subprocess
 import tempfile
 import traceback
+from pathlib import Path
 from typing import Any
-from .configfunctions import get_user
 from .rntchangesfunctions import name_of
 
 
@@ -140,13 +140,19 @@ Passphrase: {p}
                 "gpg",
                 "--batch",
                 "--pinentry-mode", "loopback",
-                "--passphrase", p,
-                "--generate-key"
+                "--passphrase-fd", "0",
+                "--generate-key",
+                ftarget
             ]
-
+            subprocess.run(
+                cmd,
+                input=(p + "\n").encode(),
+                check=True
+            )
             # Open the params file and pass it as stdin
-            with open(ftarget, "rb") as param_file:
-                subprocess.run(cmd, check=True, stdin=param_file)
+            # with open(ftarget, "rb") as param_file:
+            #     subprocess.run(
+            #         cmd, check=True, stdin=param_file)
 
         except subprocess.CalledProcessError as e:
             print(f"Failed to generate GPG key: {e}")
@@ -223,15 +229,15 @@ Passphrase: {p}
                 return False
             finally:
                 removefile(keyfile)
-        clear_gpg(dbtarget, CACHE_F, CACHE_S)
+        clear_gpg(USR, dbtarget, CACHE_F, CACHE_S)
         print(f"GPG key generated for {email}.")
         return True
 
 
 # required for batch deleting keys
-def get_key_fingerprint(email, no_key=False):
+def get_key_fingerprint(email, root_target=None):
     cmd = ["gpg", "--list-keys", "--with-colons", email]
-    if no_key:
+    if root_target:
         cmd = ["sudo"] + cmd
     result = subprocess.run(
         cmd,
@@ -244,17 +250,21 @@ def get_key_fingerprint(email, no_key=False):
     return None
 
 
-def clear_gpg(dbtarget, CACHE_F, CACHE_S):
-
+def clear_gpg(usr, dbtarget, CACHE_F, CACHE_S):
+    """ delete ctimecache & db .gpg & profile .gpgs """
     systimeche = name_of(CACHE_S)
     file_path = os.path.dirname(CACHE_S)
     pattern = os.path.join(file_path, f"{systimeche}*")
-    # delete ctimecache & db .gpg
-    for r in (CACHE_F, dbtarget):
-        removefile(r)
-    # delete profile .gpgs
-    for filepath in glob.glob(pattern):
-        removefile(filepath)
+    for r in (CACHE_F, dbtarget, *glob.glob(pattern)):
+        p = Path(r)
+        try:
+            is_root_owned = p.exists() and p.stat().st_uid == 0
+            cmd = (["sudo"] if usr != "root" and is_root_owned else []) + ["/bin/rm", "-f", str(p)]
+            subprocess.run(cmd, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error clearing {p}: {e}")
+        except FileNotFoundError:
+            pass
 
 
 def delete_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S):
@@ -272,7 +282,7 @@ def delete_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S):
         print("y")
         print("quit")
 
-    def exec_delete_keys(usr, current_usr, email, fingerprint):
+    def exec_delete_keys(usr, email, fingerprint):
         silent: dict[str, Any] = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
 
         if usr == 'root':
@@ -281,12 +291,8 @@ def delete_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S):
         else:
             subprocess.run(["gpg", "--batch", "--yes", "--delete-secret-keys", fingerprint], **silent)
             subprocess.run(["gpg", "--batch", "--yes", "--delete-keys", fingerprint], **silent)
-            if current_usr == 'root':
-                subprocess.run(["sudo", "-u", usr, "gpg", "--batch", "--yes", "--delete-secret-keys", fingerprint], **silent)
-                subprocess.run(["sudo", "-u", usr, "gpg", "--batch", "--yes", "--delete-keys", fingerprint], **silent)
-            else:
-                subprocess.run(["sudo", "gpg", "--batch", "--yes", "--delete-secret-keys", fingerprint], **silent)
-                subprocess.run(["sudo", "gpg", "--batch", "--yes", "--delete-keys", fingerprint], **silent)
+            subprocess.run(["sudo", "gpg", "--batch", "--yes", "--delete-secret-keys", fingerprint], **silent)
+            subprocess.run(["sudo", "gpg", "--batch", "--yes", "--delete-keys", fingerprint], **silent)
         print("Keys cleared for", email, " fingerprint: ", fingerprint)
 
     while True:
@@ -298,36 +304,33 @@ def delete_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S):
 
                 result = False
 
-                current_usr = get_user()
-
-                # look in root for key
-                fingerprint = get_key_fingerprint(email, no_key=True)
+                # look for key in user and or root
+                fingerprint = get_key_fingerprint(email)
                 if fingerprint:
                     result = True
-                    # delete for user and root
-                    exec_delete_keys(usr, current_usr, email, fingerprint)
+                    exec_delete_keys(usr, email, fingerprint)
 
                 # look for key in user
-                fingerprint = get_key_fingerprint(email, no_key=False)
-                if fingerprint:
-                    result = True
-                    exec_delete_keys(usr, current_usr, email, fingerprint)
+                if usr != "root":
+                    fingerprint = get_key_fingerprint(email, root_target=True)
+                    if fingerprint:
+                        result = True
+                        exec_delete_keys(usr, email, fingerprint)
 
-                clear_gpg(dbtarget, CACHE_F, CACHE_S)
+                clear_gpg(usr, dbtarget, CACHE_F, CACHE_S)
                 if result:
                     # print(f"\nDelete {dbtarget} if it exists as it uses the old key pair.")
-                    return 1
+                    return 0
                 else:
                     print(f"No key found for {email}")
                     return 2
 
             else:
-                instruct_out()
-                return 0
+                uinp = 'n'
 
-        elif uinp == 'n':
+        if uinp == 'n':
             instruct_out()
-            return 0
+            return 1
         else:
             print("Invalid input, please enter 'Y' or 'N'.")
 

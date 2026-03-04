@@ -240,8 +240,7 @@ def current_drive_type_model_check(base_dir="/"):
                 if drive_type != "SSD":
                     if rotational == 0:
                         drive_type = "SSD"
-
-    except psutil.DeviceNotFoundByFileError:
+    except pyudev.DeviceNotFoundByFileError:
         # / with unknown fs backing default to HDD and unknown
         pass
     except Exception as e:

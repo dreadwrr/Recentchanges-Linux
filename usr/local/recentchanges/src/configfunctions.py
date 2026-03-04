@@ -158,9 +158,15 @@ def get_config(appdata_local=None, user=None):
 
     if toml_missing and default_conf.is_file():
         shutil.copy(default_conf, toml_file)
+        if user != "root":
+            if os.path.isfile(toml_file):
+                os.chown(toml_file, uid, gid)
 
     if json_missing and default_json.is_file():
         shutil.copy(default_json, json_file)
+        if user != "root":
+            if os.path.isfile(json_file):
+                os.chown(json_file, uid, gid)
 
     if first_time_setup:
         ensure_default_utils()
