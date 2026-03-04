@@ -53,6 +53,11 @@ k="${k//\\ap5c/\\}"
 printf '%s' "$k"
 }
 
+remove_gpg() {
+local files=("$home_dir/recent.gpg" "$home_dir/ctimecache.gpg" "$home_dir/systimeche*.gpg")
+if [[ $USR == "root" ]]; then rm -f "${files[@]}" 2> /dev/null; else sudo rm -f "${files[@]}" 2> /dev/null; fi
+# test -d "$home_dir" && find "$home_dir" -maxdepth 1 -type f -name '*.gpg' -exec sudo rm -f -- {} +
+}
 generatekey() {
 	# 5.1 porteus   GPG 2.x+ generate key but if 5.01 has GPG2 do it too
 
@@ -69,16 +74,15 @@ Subkey-Length: 4096
 Name-Real: $name
 Name-Email: $email
 Expire-Date: 0
-Passphrase: $p
 %commit
 %echo done
 EOF
 		if which gpg2 > /dev/null 2>&1; then
 			cmd=(gpg2)
-			"${cmd[@]}" --batch --pinentry-mode loopback --passphrase "$p" --generate-key $xopt/keyparams.conf
+			printf '%s' "$p" | "${cmd[@]}" --batch --pinentry-mode loopback --passphrase-fd 0 --generate-key $xopt/keyparams.conf
 		else
 			cmd=(gpg)
-			"${cmd[@]}" --batch --pinentry-mode loopback --passphrase "$p" --generate-key $xopt/keyparams.conf
+			printf '%s' "$p" | "${cmd[@]}" --batch --pinentry-mode loopback --passphrase-fd 0 --generate-key $xopt/keyparams.conf
 		fi
 		shred -u $xopt/keyparams.conf
 		if [[ "$USR" != "root" ]]; then
@@ -89,7 +93,9 @@ EOF
 			printf "trust\n5\ny\nquit\n" | sudo "${cmd[@]}"  --command-fd 0 --edit-key $email
 		fi
 		test -d "$xopt" && rm -rf -- "$xopt"
-		[[ -n "$home_dir" && "$home_dir" != "/" ]] && test -d "$home_dir" && find "$home_dir" -maxdepth 1 -type f -name '*.gpg' -exec sudo rm -f -- {} +
+		if [[ -n "$home_dir" && "$home_dir" != "/" ]]; then
+			remove_gpg
+		fi
 		echo "GPG key generated for ${email}."
 	else
 		if ! gpg --with-keygrip --list-secret-keys >/dev/null 2>&1; then
@@ -112,9 +118,11 @@ EOF
 }
 
 setup_exports() {
+	[[ "$1" = "query" ]] && { python3 "$app_install"/rntchanges.py "$USR" "$PWD" query ; exit ; }
+	[[ "$1" = "reset" ]] && { python3 "$app_install"/rntchanges.py "$USR" "$PWD" reset ; exit ; }
 	output=$( python3 "$app_install"/get_exports.py $USR) ; res=$?
 	if [[ $res -ne 0 ]]; then echo "Couldnt get config file config.toml" && exit 1 ; fi
-	eval "$output"
+	eval "$output"  # def main(home_dir, user, email, reset=None, database=None, log_fn=print):
 	if ! gpg --list-keys | grep -q $email; then generatekey ; fi  # setup key pair for both user and root
 }
 
