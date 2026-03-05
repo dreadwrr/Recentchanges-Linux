@@ -42,7 +42,7 @@ echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br><
 https://github.com/dreadwrr/Linux-Pyinstaller <br>
 to build a binary with all the packages and not needing any on the system <br><br>
 picture for graphic <br>
-![Alt text]([https://i.imgur.com/UoL7CHQ.jpeg](https://i.imgur.com/UoL7CHQ.jpeg)) <br><br>
+![Alt text]([https://i.imgur.com/UoL7CHQ.jpeg]Picture) <br><br>
 <br>
 Manual
 https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0  
