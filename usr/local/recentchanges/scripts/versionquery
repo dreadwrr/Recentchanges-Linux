@@ -22,8 +22,8 @@ elif [ "$1" = "--help" ] || [ "$1" = "-h" ] || [ "$1" = "help" ] ; then
    echo
    echo "recentchanges s         where s is time in seconds"
    echo
-   echo -e "usage:    recentchanges \t\t grab all files 5 minutes or new		these will include system search as well"
-   echo -e "usage:    recentchanges 30	\t grab all files 30 seconds or newer"
+   printf "usage:    recentchanges \t\t grab all files 5 minutes or new		these will include system search as well\n"
+   printf  "usage:    recentchanges 30	\t grab all files 30 seconds or newer\n"
    echo
    echo
    echo "Modes"

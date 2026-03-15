@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#   Developer buddy 5.0 core                                               02/25/2026
+#   Developer buddy 5.0 core                                               03/14/2026
 
 # ascii positional encoding
 # escape input newlines for parsing
@@ -54,7 +54,7 @@ printf '%s' "$k"
 }
 
 remove_gpg() {
-local files=("$home_dir/recent.gpg" "$home_dir/ctimecache.gpg" "$home_dir/systimeche*.gpg")
+local files=("$home_dir/recent.gpg" "$home_dir/ctimecache.gpg" "$home_dir/systimeche*.gpg" "$home_dir/flth.csv")
 if [[ $USR == "root" ]]; then rm -f "${files[@]}" 2> /dev/null; else sudo rm -f "${files[@]}" 2> /dev/null; fi
 # test -d "$home_dir" && find "$home_dir" -maxdepth 1 -type f -name '*.gpg' -exec sudo rm -f -- {} +
 }
@@ -118,9 +118,9 @@ EOF
 }
 
 setup_exports() {
-	[[ "$1" = "query" ]] && { python3 "$app_install"/rntchanges.py "$USR" "$PWD" query ; exit ; }
-	[[ "$1" = "reset" ]] && { python3 "$app_install"/rntchanges.py "$USR" "$PWD" reset ; exit ; }
-	output=$( python3 "$app_install"/get_exports.py $USR) ; res=$?
+	[[ "$1" = "query" ]] && { python3 "$app_install"/src/rntchanges.py "$USR" "$PWD" query ; exit ; }
+	[[ "$1" = "reset" ]] && { python3 "$app_install"/src/rntchanges.py "$USR" "$PWD" reset ; exit ; }
+	output=$( python3 "$app_install"/src/get_exports.py $USR) ; res=$?
 	if [[ $res -ne 0 ]]; then echo "Couldnt get config file config.toml" && exit 1 ; fi
 	eval "$output"  # def main(home_dir, user, email, reset=None, database=None, log_fn=print):
 	if ! gpg --list-keys | grep -q $email; then generatekey ; fi  # setup key pair for both user and root
@@ -215,12 +215,14 @@ if [ "$ino" -ge 0 ] 2>/dev/null && [ "$sze" -ge 0 ] 2>/dev/null; then
 					fs=$a_sze
 					# the inode changed update all remaining stats
 					if (( ino != a_ino )); then
-						i=$a_ino
-						sym=$a_sym
-						n=$a_nlnk
-						onr=$a_onr
-						grp=$a_grp
-						pmr=$a_prm
+						check_sum="None"
+						log_lineout $debug_log $debug_file "$log_date" "calculate_csum inode changed $a_ino vs $ino discarding checksum for: $file_path"
+						#i=$a_ino
+						#sym=$a_sym
+						#n=$a_nlnk
+						#onr=$a_onr
+						#grp=$a_grp
+						#pmr=$a_prm
 					fi
 					return 0
 				fi
