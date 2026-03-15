@@ -1,11 +1,22 @@
-# home/{{user}}/ for substitutions if user is root it becomes root/
-#
-#
-
 [backend]
 # database   binary database faster queries 1 gpg and python (easier ha)
 											# leave set
 backend = "database"
+
+# patterns to delete from db.
+cachermPATTERNS = [
+    "%caches%",
+    "%cache2%",
+    "%Cache2%",
+    "%.cache%",
+    "%share/Trash%",
+    "%home/{{user}}/.local/state/wireplumber%",
+    "%root/.local/state/wireplumber%",
+    "%usr/share/mime/application%",
+    "%usr/share/mime/text%",
+    "%usr/share/mime/image%",
+    "%release/cache%",
+]
 
 # default for asymmetrical gpg auth for STATPST
                                                         # asks for paraphrase and caches for 15 minutes
@@ -74,10 +85,11 @@ archivesrh = 5
 
 [compress]
 
-# Find file feature compress. what program to use when making archive. 
+# Find file feature compress. what program to use when making archive.
+						# zipfile
 						# zip
 						# tar
-zipPROGRAM = "tar"
+zipPROGRAM = "zipfile"
 
 
 # fallback incase cant find it in Path
@@ -92,23 +104,22 @@ zipPATH = ""
 							# 8-9 ZIP_LZMA
 zipcmode = 3
 
-# compress level 9 max
-							# default 9
-							# 0
+# file compress level 0-9 default 9
 ziplevel= 9
-
-
 
 						# tar
 						# gz
 						# bz2
 						# xz
 						# zstd
-tarclvl = "gz"
+tarcmode = "gz"
 
+# tar compression program. if not zstd maximum 9. if 0 use above defaults
+						# default 0
+						# 0-22
+tarclevel = 0
 
-
-# remove paths or absolute. if there is a duplicate filename the duplicate will retain path                    
+# remove paths or absolute. if there is a duplicate filename the duplicate will retain path
 									# false - absolute default
 									# true - no paths
 strip = true
@@ -197,6 +208,18 @@ cdiag = true
 # supress cache warnings on terminal from known browsers? Mozilla... ect list top of pyfunctions.py
 supbrw = true
 
+
+# terminal and hardlink suppression. note regex
+supbrwLIST = [
+    'mozilla',
+    '\.mozilla',
+    'chromium-ungoogled',
+    '/home/{{user}}/\.config/recentchanges/config\.bak',
+    '\.local/share/Trash'
+    # 'google-chrome',
+]
+
+
 #        all cdiag output to terminal except critical events
 suppress = false
 
@@ -212,6 +235,8 @@ POSTOP = false
 # Scan  the sys profile. The profile is created automatically if proteusSHIELD is enabled. 
 									# Once run once the script will set scanIDX to false.
 scanIDX = false
+# keep scanIDX on after scanning index
+autoIDX = false
 
 # commandline use
 # Show symmetric differences in diff file for sys profile scan. For 
@@ -221,7 +246,7 @@ showDIFF = true
 [shield]
 # commandline use
 # take initial hash of key system files to put in database for system protection
-									# builds a sys table in database of system files and is compared in hybrid analysis in addition to the logs table.									
+									# builds a sys table in database of system files and is compared in hybrid analysis in addition to the logs table.
 proteusSHIELD = false
 
 
@@ -260,8 +285,7 @@ nogo = [
 
 # no match file patterns removes noise.
 filterout = [
-	"home/{{user}}/.gnupg/random_seed",
-	"root/.gnupg/random_"
+	"home/{{user}}/.local/share/recently-used.xbel"
 ]
 
 
@@ -269,6 +293,7 @@ filterout = [
 
 # file label prefix for searches output txt file			# default rntfiles
 MODULENAME="rntfiles"
+
 
 [src]
 
@@ -284,3 +309,4 @@ xzmname = ""
                                            # zstd     faster bootup
                                             # lzo      faster bootup
 cmode = "gzip"
+
