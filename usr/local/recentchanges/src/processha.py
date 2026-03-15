@@ -76,7 +76,7 @@ def isdiff(RECENT, ABSENT, rout, diffnm, difff_file, flsrh, parsed_PRD, fmt):
 
 
 # post ha to diff file
-def processha(rout, ABSENT, diffnm, cerr, flsrh, argf, parsed_PRD, escaped_user, suppress_browser, suppress):
+def processha(rout, ABSENT, diffnm, cerr, flsrh, argf, parsed_PRD, escaped_user, supbrwLIST, suppress_browser, suppress):
 
     def get_last_part(line):
         parts = line.strip().split(None, 3)
@@ -136,4 +136,4 @@ def processha(rout, ABSENT, diffnm, cerr, flsrh, argf, parsed_PRD, escaped_user,
             f.writelines(outline)
 
     if os.path.exists(cerr):
-        filter_output(cerr, escaped_user, 'Warning', 'Suspect', 'yellow', 'red', 'elevated', suppress_browser, suppress)
+        filter_output(cerr, escaped_user, 'Warning', 'Suspect', 'yellow', 'red', 'elevated', supbrwLIST, suppress_browser, suppress)

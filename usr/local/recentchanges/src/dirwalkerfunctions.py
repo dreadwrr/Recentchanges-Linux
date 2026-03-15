@@ -1,71 +1,19 @@
 import csv
-import grp
-import hashlib
 import logging
 import os
-import pwd
 import stat
-import sys
-from dataclasses import dataclass
 from io import StringIO
-from pathlib import Path
-from typing import Dict
-from .config import load_toml
-from .configfunctions import find_install
-from .configfunctions import get_config
+from .dirwalkerlinux import return_info
 from .fileops import calculate_checksum
 from .fileops import find_link_target
 from .fileops import set_stat
 from .gpgcrypto import decrm
 from .logs import emit_log
-from .pyfunctions import epoch_to_date
-from .pyfunctions import epoch_to_str
-from .pyfunctions import user_path
 
+# 03/14/2026
 
 # Globals
 fmt = "%Y-%m-%d %H:%M:%S"
-
-
-@dataclass
-class ConfigData:
-    appdata_local: Path
-    home_dir: Path
-    xdg_runtime: Path
-    toml_file: Path
-    json_file: Path
-    log_file: Path
-    uid: int
-    gid: int
-    config: Dict
-    EXCLDIRS: list
-    nogo: list
-    suppress_list: list
-    driveTYPE: str
-    ll_level: str
-
-
-# read the config for dirwalker to avoid passing too many arguments
-# return configs files toml, json and log file
-# if the user is root return a root log file to avoid permission errors if user switches back to user
-def get_config_data(USR):
-    appdata_local = find_install()  # Path(__file__).resolve().parent.parent
-    toml_file, json_file, home_dir, _, xdg_runtime, USR, uid, gid = get_config(appdata_local, USR)  # xdg_config
-    config = load_toml(toml_file)
-    if not config:
-        sys.exit(1)
-    EXCLDIRS = user_path(config['search']['EXCLDIRS'], USR)
-    nogo = user_path(config['shield']['nogo'], USR)
-    suppress_list = user_path(config['shield']['filterout'], USR)
-    driveTYPE = config['search']['driveTYPE']
-
-    ll_level = config['logs']['logLEVEL']
-    root_log_file = config['logs']['rootLOG']
-    log_file = config['logs']['userLOG'] if USR != "root" else root_log_file
-
-    log_file = home_dir / ".local" / "state" / "recentchanges" / "logs" / log_file
-
-    return ConfigData(appdata_local, home_dir, xdg_runtime, toml_file, json_file, log_file, uid, gid, config, EXCLDIRS, nogo, suppress_list, driveTYPE, ll_level)
 
 
 # Cache read
@@ -147,24 +95,21 @@ def flatten_dict(dir_data):
 
 
 def none_if_empty(value):
-    if value == "":
-        return None
-    else:
-        return value
+    return value or None
 
 
-def get_dir_mtime(dirpath, locale):
-    try:
-        modified_ep = None
-        modified_time_str = None
-        st = os.lstat(dirpath)  # os.stat(file_path, follow_symlinks=False)
-        if st:
-            modified_ep = st.st_mtime
-            modified_time_str = epoch_to_str(modified_ep)
-        return modified_time_str, modified_ep, st
-    except Exception as e:
-        logging.debug(f"get_dir_mtime from {locale} access denied indexing directory on {dirpath}: {e}")
-        return None, None, None
+# def get_dir_mtime(dirpath, locale):
+#     try:
+#         modified_ep = None
+#         modified_time_str = None
+#         st = os.lstat(dirpath)  # os.stat(file_path, follow_symlinks=False)
+#         if st:
+#             modified_ep = st.st_mtime
+#             modified_time_str = epoch_to_str(modified_ep)
+#         return modified_time_str, modified_ep, st
+#     except Exception as e:
+#         logging.debug(f"get_dir_mtime from {locale} access denied indexing directory on {dirpath}: {e}")
+#         return None, None, None
 
 
 def get_base_folders(base_dir, EXCLDIRS_FULLPATH):
@@ -184,45 +129,10 @@ def get_base_folders(base_dir, EXCLDIRS_FULLPATH):
     return base_folders, c
 
 
-def return_info(file_path, st, symlink, link_target, logger):
-    target = sym = hardlink = None
-
-    if symlink:
-        sym = "y"
-        target = link_target
-
-    mode = oct(stat.S_IMODE(st.st_mode))[2:]  # '644' # stat.filemode(st.st_mode)  '-rw-r--r--'
-    inode = st.st_ino
-
-    if stat.S_ISREG(st.st_mode):
-        hardlink = st.st_nlink
-    try:
-        owner = pwd.getpwuid(st.st_uid).pw_name
-    except KeyError:
-        emit_log("DEBUG", f"set_stat failed to convert uid to user name for file: {file_path}", logger)
-        owner = str(st.st_uid)
-    try:
-        group = grp.getgrgid(st.st_gid).gr_name
-    except KeyError:
-        emit_log("DEBUG", f"set_stat failed to convert gid to group name for file: {file_path}", logger)
-        group = str(st.st_gid)
-
-    m_epoch = st.st_mtime
-    m_epoch_ns = st.st_mtime_ns
-    c_epoch = st.st_ctime
-    a_epoch = st.st_atime
-    m_dt = epoch_to_date(m_epoch)
-    m_time = m_dt.strftime(fmt)
-    c_time = epoch_to_str(c_epoch)
-    a_time = epoch_to_str(a_epoch)
-    size = st.st_size
-    return sym, target, mode, inode, hardlink, owner, group, m_dt, m_epoch_ns, m_time, c_time, a_time, size
-
-
 # os.scandir meta DirEntry object formerly walk_meta
 # for Build IDX meta - either to specifications or XzmProfile template
 # take initial stat. run the checksum then stat again to confirm hash.
-def scandir_meta(file_name, hash_path, st, symlink, link_target, found, sys_data, logger=None):
+def scandir_meta(file_path, hash_path, st, symlink, link_target, found, sys_data, log_q=None):
 
     count = 1  # init version #
     status = None
@@ -230,7 +140,7 @@ def scandir_meta(file_name, hash_path, st, symlink, link_target, found, sys_data
 
     try:
 
-        file_info = return_info(file_name, st, symlink, link_target, logger)
+        file_info = return_info(file_path, st, symlink, link_target, log_q)
 
         sym, target, mode, inode, hardlink, owner, group, m_dt, m_epoch_ns, m_time, c_time, a_time, size = file_info
 
@@ -238,141 +148,131 @@ def scandir_meta(file_name, hash_path, st, symlink, link_target, found, sys_data
 
         if found and sym != "y":
 
-            checks, file_dt, file_us, st, status = calculate_checksum(hash_path, m_dt, mtime_us, inode, size, retry=2, max_retry=2, cacheable=False, logger=logger)
+            checks, file_dt, file_us, file_st, status = calculate_checksum(hash_path, m_dt, mtime_us, inode, size, retry=2, max_retry=2, cacheable=False, log_q=log_q)
 
             if checks is not None:  # if status in ("Returned", "Retried"):
                 if status == "Retried":
-                    line = ', '.join(map(str, file_info))
-
-                    mtime, mtime_us, ctime, inode, size, owner, group, mode, sym, hardlink = set_stat(line, file_dt, st, file_us, inode, owner, group, mode, sym, hardlink, logger)
+                    checks, mtime, st, mtime_us, c_time, inode, size = set_stat(file_info, checks, file_dt, file_st, file_us, inode, log_q)
                     if mtime is None:
-                        emit_log("ERROR", f"scandir_meta Retried mtime was None skipping file {file_name}", logger)
+                        emit_log("ERROR", f"scandir_meta Retried mtime was None skipping file {file_path}", log_q)
                         return None, status
+
                     m_time = mtime.strftime(fmt)
-                    c_time = ctime.strftime(fmt) if ctime else None
+                    c_time = c_time.strftime(fmt) if c_time else None
+
             else:
                 if status == "Nosuchfile":
                     return False, status
-        # status in ("Returned", "Retried", "Changed"):
 
-        sys_data.append((m_time, file_name, c_time, inode, a_time, checks, size, sym, owner, group, mode, cam, target, lastmodified, hardlink, count, mtime_us))
+        # status in ("Returned", "Retried", "Changed"):
+        sys_data.append((m_time, file_path, c_time, inode, a_time, checks, size, sym, owner, group, mode, cam, target, lastmodified, hardlink, count, mtime_us))
         return True, status
 
     except PermissionError as e:
-        emit_log("ERROR", f"scandir_meta Permission error on: {file_name} {e}", logger)
+        emit_log("ERROR", f"scandir_meta Permission error on: {file_path} {e}", log_q)
         return None, status
     except FileNotFoundError:
         return False, "Nosuchfile"
     except Exception as e:
-        emit_log("ERROR", f"scandir_meta Problem getting metadata skipped: {file_name} err:{type(e).__name__}: {e}", logger)
-        return None, status
+        emit_log("ERROR", f"scandir_meta Problem getting metadata skipped: {file_path} err:{type(e).__name__}: {e}", log_q)
+        raise
 
 
 # For Scan IDX meta
 # same as above but have previous checksum of file. stat and hash each profile item and check to original to find any
 # changes including modifications without a new modified time or faked modified time.
-def meta_sys(file_path, file_name, previous_md5, previous_sym, previous_target, previous_count, is_sym, sys_data, link_data, logger=None):
+#
+# a file could change to a symlink and vice versa. which wouldnt effect anything but is info that can be output for symmetric
+# differences
+# previous_symlink before
+# and symlink\\sym after
+#
+def meta_sys(file_path, previous_md5, previous_symlink, previous_target, previous_count, is_sym, sys_data, link_data, log_q=None):
 
     status = None
     checks = size = hardlink = None
+
     target = None
-    cas = None  # record[9]
+
+    cam = None  # record[9]
     lastmodified = None  # record[11]
     count = previous_count + 1
 
     try:
 
-        st = file_path.lstat()
+        st = os.lstat(file_path)
+
         symlink = False
         if stat.S_ISLNK(st.st_mode):
             symlink = True
-            target = find_link_target(file_path, logger)
+            target = find_link_target(file_path, log_q)
 
-        file_info = return_info(file_path, st, symlink, target, logger)
+        file_info = return_info(file_path, st, symlink, target, log_q)
 
-        sym, target, mode, inode, hardlink, owner, group, m_dt, m_epoch_ns, m_time, c_time, a_time, size = file_info
+        sym, target, mode, inode, hardlink, owner, domain, m_dt, m_epoch_ns, m_time, c_time, a_time, size = file_info
 
         mtime_us = m_epoch_ns // 1_000
 
         if sym != "y":
 
-            checks, file_dt, file_us, st, status = calculate_checksum(file_path, m_dt, mtime_us, inode, size, retry=2, max_retry=2, cacheable=False, logger=logger)
+            checks, file_dt, file_us, file_st, status = calculate_checksum(file_path, m_dt, mtime_us, inode, size, retry=2, max_retry=2, cacheable=False, log_q=log_q)
             if checks is not None:  # if status in ("Returned", "Retried"):
                 if status == "Retried":
-                    line = ', '.join(map(str, file_info))
-                    mtime, mtime_us, ctime, inode, size, owner, group, mode, sym, hardlink = set_stat(line, file_dt, st, file_us, inode, owner, group, mode, sym, hardlink, logger)
+                    checks, mtime, st, mtime_us, c_time, inode, size = set_stat(file_info, checks, file_dt, file_st, file_us, inode, log_q)
                     if mtime is None:
-                        emit_log("ERROR", f"meta_sys Retried mtime was None skipping file {file_name}", logger)
+                        emit_log("ERROR", f"meta_sys Retried mtime was None skipping file {file_path}", log_q)
                         return None, status
+
                     m_time = mtime.strftime(fmt)
-                    c_time = ctime.strftime(fmt) if ctime else None
+                    c_time = c_time.strftime(fmt) if c_time else None
+
                 # status in ("Returned", "Retried"):
                 if checks != previous_md5:
-                    sys_data.append((m_time, file_name, c_time, inode, a_time, checks, size, sym, owner, group, mode, cas, target, lastmodified, hardlink, count, mtime_us))
+                    sys_data.append((m_time, file_path, c_time, inode, a_time, checks, size, sym, owner, domain, mode, cam, target, lastmodified, hardlink, count, mtime_us))
 
             else:  # status == "Nosuchfile" or status == "Changed"
                 if status == "Changed":
                     print(f"File changed during scan skipping. file: {file_path}")
                 return False, status
         else:
-            if is_sym and previous_sym == "y":
+            if is_sym and previous_symlink == "y":
                 if target != previous_target:
-                    link_data.append((m_time, file_name, c_time, inode, a_time, checks, size, sym, owner, group, mode, cas, target, lastmodified, hardlink, count, mtime_us))
+                    link_data.append((m_time, file_path, c_time, inode, a_time, checks, size, sym, owner, domain, mode, cam, target, lastmodified, hardlink, count, mtime_us))
                     link_data.append((previous_target, target))
 
         return True, status
 
     except PermissionError as e:
-        emit_log("ERROR", f"meta_sys Permission error on: {file_name} err: {e}", logger)
+        emit_log("ERROR", f"meta_sys Permission error on: {file_path} err: {e}", log_q)
         return None, status
     except FileNotFoundError:
         return False, "Nosuchfile"
     except Exception as e:
-        emit_log("ERROR", f"meta_sys Problem getting metadata skipped: {file_name} err:{type(e).__name__}: {e}", logger)
-        return None, status
+        emit_log("ERROR", f"meta_sys Problem getting metadata skipped: {file_path} err:{type(e).__name__}: {e}", log_q)
+        raise
 
 
-def get_md5(file_path):
-    try:
-        hash_func = hashlib.md5()
-        with open(file_path, 'rb') as f:
-            while chunk := f.read(8192):
-                hash_func.update(chunk)
-        return hash_func.hexdigest()
-    except Exception:
-        return None
-
-
-def resolve_profile_link(file_path, base):
+def resolve_profile_link(file_path, base, logger=None):
+    log = logger if logger else logging
     try:
         target = os.readlink(file_path)
         absolute = os.path.abspath(os.path.join(base, target))
         return absolute
     except OSError as e:
-        logging.debug(f"Error checking xzm symlink target file: {file_path}: {e}")
+        log.debug(f"Error checking xzm symlink target file: {file_path}: {e}")
         return None
 
 
-def get_stat(path, entry, symlink, logger):
+def get_stat(entry, log_q=None, log_entries=None, logger=None):
     try:
-        if symlink:
-            stat_info = os.lstat(path)
-        else:
-            stat_info = entry.stat()
-        return stat_info
+        return entry.stat(follow_symlinks=False)
     except OSError as e:
-        logger.debug(f"OSError cannot stat  {type(e).__name__} {e} : {path}")
+        emsg = f"OSError cannot stat  {type(e).__name__} {e} : {entry.path}"
+        if logger:
+            logger.debug(emsg)
+        elif log_q or log_entries is not None:
+            emit_log("DEBUG", emsg, log_q, log_entries)
         return None
-
-# def get_md5(file_path):
-#     try:
-#         with open(file_path, "rb") as f:
-#             return hashlib.md5(f.read()).hexdigest()
-#     except FileNotFoundError:
-#         return None
-#     except Exception:
-#         # print(f"Error reading {file_path}: {e}")
-#         return None
 
 
 # if stat.S_IXUSR & stat_info.st_mode:

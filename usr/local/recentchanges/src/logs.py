@@ -1,9 +1,17 @@
 import logging
 import os
 from pathlib import Path
-from .configfunctions import find_install
+
 
 WORKER_LOG_Q = None
+
+
+LEVEL_MAP = {
+    "CRITICAL": logging.CRITICAL,
+    "ERROR": logging.ERROR,
+    "WARNING": logging.WARNING,
+    "DEBUG": logging.DEBUG,
+}
 
 
 def filename_of_handler():
@@ -27,13 +35,8 @@ def set_logger(root, process_label="MAIN", level=None):
 
 
 def set_log_level(log_file, level):
-    level_map = {
-        "CRITICAL": logging.CRITICAL,
-        "ERROR": logging.ERROR,
-        "WARNING": logging.WARNING,
-        "DEBUG": logging.DEBUG,
-    }
-    log_level = level_map.get(level, logging.ERROR)
+
+    log_level = LEVEL_MAP.get(level, logging.ERROR)
     return log_level
 
 
@@ -61,18 +64,28 @@ def setup_logger(log_file, level="ERROR", process_label="MAIN"):
     return root
 
 
-def change_logger(file_name, level, process_label):
+def change_logger(log_file, level, process_label):
 
     root = logging.getLogger()
 
-    appdata_local = find_install()
-    log_file = appdata_local / "logs" / file_name
+    log_level = LEVEL_MAP.get(str(level).upper(), logging.ERROR)
+
+    fmt = logging.Formatter(
+        f"%(asctime)s [%(name)s] [{process_label}] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
     for h in root.handlers[:]:
         if isinstance(h, logging.FileHandler):
             root.removeHandler(h)
+            h.close()
 
-    set_format(log_file, level, process_label)
+    fh = logging.FileHandler(Path(log_file))
+    fh.setLevel(log_level)
+    fh.setFormatter(fmt)
+    root.addHandler(fh)
+
+    root.setLevel(log_level)
 
     return root, log_file
 

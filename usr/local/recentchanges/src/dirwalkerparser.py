@@ -12,7 +12,7 @@ def build_dwalk_parser():
 
     # HARDLINK SUBCOMMAND
     hardlink_p = subparsers.add_parser("hardlink", help="Set hardlinks for log files")
-
+    hardlink_p.add_argument("appdata")
     hardlink_p.add_argument("dbopt")
     hardlink_p.add_argument("dbtarget")
     hardlink_p.add_argument("basedir")
@@ -26,6 +26,7 @@ def build_dwalk_parser():
     # SCAN SUBCOMMAND
     scan_p = subparsers.add_parser("scan", help="Scan IDX for changes to profile files")
 
+    scan_p.add_argument("appdata")
     scan_p.add_argument("dbopt")
     scan_p.add_argument("dbtarget")
     scan_p.add_argument("basedir")
@@ -44,6 +45,7 @@ def build_dwalk_parser():
     # BUILD SUBCOMMAND
     build_p = subparsers.add_parser("build", help="Build IDX or drive index")
 
+    build_p.add_argument("appdata")
     build_p.add_argument("dbopt")
     build_p.add_argument("dbtarget")
     build_p.add_argument("basedir")
@@ -52,6 +54,7 @@ def build_dwalk_parser():
     build_p.add_argument("email")
     build_p.add_argument("ANALYTICSECT", nargs="?", type=to_bool, default=True, help="show extra display such as total time")
     build_p.add_argument("idx_drive", nargs="?", type=to_bool, default=False, help="idx_drive boolean its a drive index and exit early (default: False)")
+    build_p.add_argument("gnupghome", nargs="?", type=str, default=None, help="GNUPGHOME to filter out runtime file (default: None)")
     build_p.add_argument("compLVL", nargs="?", type=int, default=200, help="compLVL integer when to turn off compression (default: 200)")
     build_p.add_argument("iqt", nargs="?", type=to_bool, default=False, help="iqt boolean from Qt app show progress (default: False)")
     build_p.add_argument("strt", nargs="?", type=int, default=0, help="strt integer where to start progress (default: 0)")
@@ -60,12 +63,14 @@ def build_dwalk_parser():
     # DOWNLOADS SUBCOMMAND
     downloads_p = subparsers.add_parser("downloads", help="Find downloads button")
 
+    downloads_p.add_argument("appdata")
     downloads_p.add_argument("dbopt")
     downloads_p.add_argument("dbtarget")
     downloads_p.add_argument("basedir")
     downloads_p.add_argument("user")
     downloads_p.add_argument("mdltype", help="basedir model ssd or hdd for branch logic serial or multi")
-    downloads_p.add_argument("tempdir")
+    downloads_p.add_argument("tempdir"),
+    downloads_p.add_argument("gnupghome", help="GNUPGHOME to filter out runtime file (default: None)"),
     downloads_p.add_argument("CACHE_S")
     downloads_p.add_argument("dspEDITOR", type=multi_value)
     downloads_p.add_argument("dspPATH")

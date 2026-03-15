@@ -269,7 +269,7 @@ def update_cache(keys, conn, table):
     try:
         with conn:
             c = conn.cursor()
-            columns = ['modified_time', 'filename', 'file_count', 'idx_bytes', 'max_depth']
+            columns = ['modified_time', 'filename', 'file_count', 'idx_bytes', 'max_depth', 'type', 'target']
             placeholders = ', '.join(['?'] * len(columns))
             col_str = ', '.join(columns)
 
@@ -279,7 +279,8 @@ def update_cache(keys, conn, table):
             ON CONFLICT(filename) DO UPDATE SET
                 modified_time = excluded.modified_time,
                 file_count = excluded.file_count,
-                idx_bytes = excluded.idx_bytes
+                type = excluded.type,
+                target = excluded.target
             '''
             c.executemany(sql, keys)
             return True

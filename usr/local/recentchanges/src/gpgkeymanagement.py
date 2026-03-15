@@ -1,5 +1,4 @@
 import getpass
-from .rntchangesfunctions import removefile
 import glob
 import logging
 import os
@@ -8,7 +7,10 @@ import tempfile
 import traceback
 from pathlib import Path
 from typing import Any
+from .config import get_json_settings
+from .config import set_json_settings
 from .rntchangesfunctions import name_of
+from .rntchangesfunctions import removefile
 
 
 def iskey(email):
@@ -105,8 +107,34 @@ def import_key(argv):
         return 1
 
 
+def find_gnupg_home(json_file, j_settings=None):
+    """ try to find gnupg home for exclusion purposes in build index """
+    gnupg_home = None
+    gpg_home = os.environ.get("GNUPGHOME")
+    try:
+        if gpg_home:
+            gnupg_home = gpg_home
+        else:
+            if j_settings:
+                gnupg_home = j_settings.get("gnupghome")
+            else:
+                setting = get_json_settings(["gnupghome"], filepath=json_file)
+                gnupg_home = setting.get("gnupghome")
+            if not gnupg_home:
+                result = subprocess.run(["gpgconf", "--list-dirs", "homedir"], capture_output=True, text=True)
+                if result.returncode == 0:
+                    gpg_home = result.stdout.strip()
+                    if gpg_home:
+                        gnupg_home = gpg_home
+                        set_json_settings({"gnupghome": gpg_home}, None, filepath=json_file)
+        return gnupg_home
+    except OSError as e:
+        print(f"Couldnt get gnupg_home for exclusion file: {json_file} {type(e).__name__} err: {e}")
+        return None
+
+
 # same as bash rntchangesfunctions. setup keypair for user and root
-def genkey(appdata_local, USR, email, name, dbtarget, CACHE_F, CACHE_S, TEMPD, is_polkit, passphrase=None):
+def genkey(appdata_local, USR, email, name, dbtarget, CACHE_F, CACHE_S, flth, TEMPD, is_polkit, passphrase=None):
 
     if not passphrase:
         passphrase = getpass.getpass("Enter passphrase for new GPG key: ")
@@ -114,18 +142,20 @@ def genkey(appdata_local, USR, email, name, dbtarget, CACHE_F, CACHE_S, TEMPD, i
     if not p:
         return False
 
-    params = f"""%echo Generating a GPG key
-Key-Type: RSA
-Key-Length: 4096
-Subkey-Type: RSA
-Subkey-Length: 4096
-Name-Real: {name}
-Name-Email: {email}
-Expire-Date: 0
-Passphrase: {p}
-%commit
-%echo done
-"""
+    param_lines = [
+        "%echo Generating a GPG key",
+        "Key-Type: RSA",
+        "Key-Length: 4096",
+        "Subkey-Type: RSA",
+        "Subkey-Length: 4096",
+        f"Name-Real: {name}",
+        f"Name-Email: {email}",
+        "Expire-Date: 0",
+        # Passphrase: {p},
+        "%commit",
+        "%echo done",
+    ]
+    params = "\n".join(param_lines) + "\n"
     with tempfile.TemporaryDirectory(dir=TEMPD) as kp:
 
         ftarget = os.path.join(kp, 'keyparams.conf')
@@ -229,7 +259,7 @@ Passphrase: {p}
                 return False
             finally:
                 removefile(keyfile)
-        clear_gpg(USR, dbtarget, CACHE_F, CACHE_S)
+        clear_gpg(USR, dbtarget, CACHE_F, CACHE_S, flth)
         print(f"GPG key generated for {email}.")
         return True
 
@@ -250,12 +280,13 @@ def get_key_fingerprint(email, root_target=None):
     return None
 
 
-def clear_gpg(usr, dbtarget, CACHE_F, CACHE_S):
+def clear_gpg(usr, dbtarget, CACHE_F, CACHE_S, flth):
     """ delete ctimecache & db .gpg & profile .gpgs """
     systimeche = name_of(CACHE_S)
+    dbopt = name_of(dbtarget, '.db')
     file_path = os.path.dirname(CACHE_S)
     pattern = os.path.join(file_path, f"{systimeche}*")
-    for r in (CACHE_F, dbtarget, *glob.glob(pattern)):
+    for r in (CACHE_F, dbopt, dbtarget, flth, *glob.glob(pattern)):
         p = Path(r)
         try:
             is_root_owned = p.exists() and p.stat().st_uid == 0
@@ -267,7 +298,7 @@ def clear_gpg(usr, dbtarget, CACHE_F, CACHE_S):
             pass
 
 
-def delete_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S):
+def delete_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S, flth):
 
     def instruct_out():
         print("To import the key for one to the other to attempt to repair it, try the following. If it doesn't work delete the key pair and start over.")
@@ -317,7 +348,7 @@ def delete_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S):
                         result = True
                         exec_delete_keys(usr, email, fingerprint)
 
-                clear_gpg(usr, dbtarget, CACHE_F, CACHE_S)
+                clear_gpg(usr, dbtarget, CACHE_F, CACHE_S, flth)
                 if result:
                     # print(f"\nDelete {dbtarget} if it exists as it uses the old key pair.")
                     return 0
@@ -335,10 +366,10 @@ def delete_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S):
             print("Invalid input, please enter 'Y' or 'N'.")
 
 
-def reset_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S, agnostic_check, no_key=False):
+def reset_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S, flth, agnostic_check, no_key=False):
     if agnostic_check is False and no_key is True:
         print("only root has key\n")
     elif agnostic_check is True and no_key is False:
         print("only user has key. Select n and manually import the key for root to fix it. or delete the key pair to reset state.\n")
     print("A problem was detected with key pair. ")
-    return delete_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S)
+    return delete_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S, flth)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# pstsrg.py - Process and store logs in a SQLite database, encrypting the database       03/03/2026
+# pstsrg.py - Process and store logs in a SQLite database, encrypting the database       03/14/2026
 import os
 import sqlite3
 import sys
@@ -7,6 +7,7 @@ import traceback
 from .dirwalker import index_system
 from .gpgcrypto import encr
 from .gpgcrypto import decr
+from .gpgkeymanagement import find_gnupg_home
 from .hanlyparallel import hanly_parallel
 from .pyfunctions import cprint
 from .pyfunctions import unescf_py
@@ -22,7 +23,7 @@ from .rntchangesfunctions import cnc
 from .rntchangesfunctions import removefile
 
 
-def main(dbopt, dbtarget, basedir, xdata, COMPLETE, rout, scr, cerr, CACHE_S, user_setting, logging_values, dcr=False, iqt=False, strt=65, endp=90):
+def main(dbopt, dbtarget, basedir, xdata, COMPLETE, rout, scr, cerr, CACHE_S, cachermPATTERNS, json_file, gnupg_home, user_setting, logging_values, dcr=False, iqt=False, strt=65, endp=90):
 
     user = user_setting['USR']
     email = user_setting['email']
@@ -103,9 +104,12 @@ def main(dbopt, dbtarget, basedir, xdata, COMPLETE, rout, scr, cerr, CACHE_S, us
 
                 new_profile = True
 
-                print('Generating system profile.')
+                if not gnupg_home:
+                    gnupg_home = find_gnupg_home(json_file)
 
-                res = index_system(dbopt, dbtarget, basedir, user, CACHE_S, email, ANALYTICSECT, False, compLVL, iqt, strt, endp)
+                print('Generating system profile.')
+                appdata_local = logging_values[2]
+                res = index_system(appdata_local, dbopt, dbtarget, basedir, user, CACHE_S, email, ANALYTICSECT, False, gnupg_home, compLVL, iqt, strt, endp)
                 if res != 0:
                     print("index_system from dirwalker failed to hash in pstsrg")
 
@@ -120,7 +124,8 @@ def main(dbopt, dbtarget, basedir, xdata, COMPLETE, rout, scr, cerr, CACHE_S, us
                 try:
                     if iqt:
                         print(f"Progress: {strt}", flush=True)
-                    csum = hanly_parallel(model_type, rout, scr, cerr, xdata, ANALYTICSECT, checksum, cdiag, dbopt, is_ps, user, logging_values, sys_tables, iqt, strt, endp)
+
+                    csum = hanly_parallel(model_type, rout, scr, cerr, xdata, cachermPATTERNS, ANALYTICSECT, checksum, cdiag, dbopt, is_ps, user, logging_values, sys_tables, iqt, strt, endp)
 
                 except Exception as e:
                     print(f"hanlydb failed to process : {type(e).__name__} : {e} \n{traceback.format_exc().strip()}", file=sys.stderr)

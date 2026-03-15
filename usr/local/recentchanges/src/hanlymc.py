@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from .logs import emit_log
 from . import logs
-from .pyfunctions import get_delete_patterns
 from .pyfunctions import is_valid_datetime
 from .pyfunctions import is_integer
 from .pyfunctions import matches_any_pattern
@@ -36,7 +35,7 @@ def stealth(filename, label, entry, current_size, original_size, cdiag):
                     entry["scr"].append(message)
 
 
-def hanly(parsed_chunk, checksum, cdiag, dbopt, ps, usr, logging_values, sys_tables, show_progress=False, strt=65, endp=90):
+def hanly(parsed_chunk, checksum, cdiag, dbopt, ps, usr, logging_values, sys_tables, cachermPATTERNS, show_progress=False, strt=65, endp=90):
 
     results = []
     sys_records = []
@@ -291,7 +290,7 @@ def hanly(parsed_chunk, checksum, cdiag, dbopt, ps, usr, logging_values, sys_tab
                             if is_sys:
                                 entry["scr"].append(f'{message} and is a system file.')
                             else:
-                                screen = get_delete_patterns(usr)
+                                screen = cachermPATTERNS
                                 if not matches_any_pattern(label, screen):
                                     entry["scr"].append(message)
 

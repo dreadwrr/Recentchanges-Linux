@@ -110,7 +110,7 @@ class ConfigurationError(Exception):
 
 
 class DriveSelectorDialog(QDialog):
-    def __init__(self, basedir, j_settings, filter_out=None, parent=None):
+    def __init__(self, basedir, j_settings, idx_drive=False, filter_out=None, parent=None):
         super().__init__(parent)
 
         self.final_drives = {}
@@ -120,9 +120,10 @@ class DriveSelectorDialog(QDialog):
         layout = QVBoxLayout(self)
 
         self.drive_combo = QComboBox()
-        drives = self.get_physical_drives(basedir, j_settings, filter_out)
 
-        self.drives = drives
+        if idx_drive:
+            drives = self.get_physical_drives(basedir, j_settings, filter_out)
+            self.drives = drives
 
         self.drive_combo.addItems(drives)
         layout.addWidget(self.drive_combo)
@@ -165,21 +166,27 @@ class DriveSelectorDialog(QDialog):
             # build dev - uuid hash map
             by_part_path = "/dev/disk/by-partuuid/"
             if os.path.exists(by_part_path):
-                for entry in os.listdir(by_part_path):
-                    full_path = os.path.realpath(os.path.join(by_part_path, entry))
-                    dev_uuid_hash[full_path] = entry
+                with os.scandir(by_part_path) as it:
+                    for entry in it:
+                        if entry.is_symlink():
+                            full_path = os.path.realpath(entry.path)
+                            dev_uuid_hash[full_path] = entry.name
             else:
                 print(f"Error: {by_part_path} does not exist.")
             for dev, drv in devices:
                 if dev in dev_uuid_hash:
-                    self.final_drives[drv] = dev_uuid_hash[dev]
+                    self.final_drives[drv] = {
+                        "uuid": dev_uuid_hash[dev],
+                        "dev": os.path.basename(dev)
+                    }
 
-            for drive, uuid in self.final_drives.items():
-                if uuid not in known_uuid:
-                    # print(uuid, drive)
+            for drive, drive_info in self.final_drives.items():  # drive, uuid
+                uuid = drive_info.get("uuid")
+
+                if uuid and uuid not in known_uuid:
                     drives.append(drive)
 
-        return drives
+            return drives
 
 
 @dataclass
@@ -195,15 +202,17 @@ class BasedirDrive:
 
 
 class BasedirProfiles:
-    def __init__(self):
+    def __init__(self, drive_button):
         self.data = []
+        self.drive_button = drive_button
         self.current_index = 0
         self.items = 0
 
     def add_item(self, item):
         if isinstance(item, tuple):
-            self.items += 1
             self.data.append(item)
+            self.items += 1
+            return self.items - 1
         else:
             raise ValueError("Item must be a tuple.")
 
@@ -217,23 +226,16 @@ class BasedirProfiles:
         else:
             raise IndexError("No current item or invalid index.")
 
-    def remove_item(self, index):
+    def remove_item(self, index, current_index):
         x = self.items
         if 0 <= index < x:
             del self.data[index]
             self.items -= 1
-
-            if index == self.current_index:
-                if self.items > 0:
-                    self.current_index = min(self.current_index, self.items - 1)
-                else:
-                    self.current_index = -1
-
-            elif index < self.current_index:
-                self.current_index -= 1
+            if index <= current_index:
+                self.current_index = max(0, self.current_index - 1)
             return self.current_index
         else:
-            raise IndexError("Index out of range.")
+            raise IndexError("remove_item Index out of range.")
 
     def set_item(self, index, item):
         if 0 <= index < self.items:
@@ -253,34 +255,21 @@ class BasedirProfiles:
         else:
             raise IndexError("No current item or invalid index.")
 
-    def index_of_uuid(self, uuid):
-        for i, drive_data in enumerate(self.data):
-            drive_uuid, drv, info = drive_data
-            if uuid == drive_uuid:
-                return i
-        return -1
-
-    def index_of_suffix(self, suffix):
+    def index_by_value(self, value):
         for i, drive_data in enumerate(self.data):
             _, drive_object, _ = drive_data
-            if suffix == drive_object.suffix:
+            if value in (drive_object.part_uuid, drive_object.suffix, drive_object.moi, drive_object.cache_s, drive_object.systimeche):
                 return i
         return -1
 
-    def set_current_index(self, index, drive_button, mount_point=None):
+    def set_current_index(self, index):
         x = self.items
-        if x == 0:
-            self.current_index = -1
-            return
         if 0 <= index < x:
             self.current_index = index
-            t = mount_point if mount_point else self.data[index][0]
-            drive_button.setText(t)
+            uuid, drive, info = self.data[index]
+            self.drive_button.setText(drive.moi)
         else:
             raise IndexError("Index out of range.")
-
-    def get_data(self):
-        return self.data
 
 
 class GpgPromptWorker(QObject):

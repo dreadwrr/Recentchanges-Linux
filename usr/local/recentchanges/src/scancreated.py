@@ -1,4 +1,4 @@
-# Find downloads                                                            01/26/2026
+# Find downloads                                                           03/14/2026
 #
 # Using the directory cache use the mtime of the dir to find new files. At the end
 # the cache file is up to date with any new dir mtimes.
@@ -6,98 +6,122 @@
 # dont care about as if there is a problem can just reindex. Windows only has certain junctions ect.
 #
 # Adding to much info or trying to maintain a cache ie removing deleted files can result in desync.
+#
+# # os.scandir recursion
 import os
 import traceback
-from .dirwalkerfunctions import get_dir_mtime
+from pathlib import Path
+from .dirwalkerfunctions import get_stat
+from .fileops import find_link_target
+from .logs import write_logs_to_logger
+from .pyfunctions import epoch_to_str
 
 
-def scan_created(chunk, basedir, EXCLDIRS_FULLPATH, filter_tup, CACHE_S, root_count, i, total_chunks, show_progress=False, strt=0, endp=0):
+def scan_created(chunk, basedir, EXCLDIRS_FULLPATH, filter_tup, CACHE_S, root_count, i, num_chunks, show_progress=False, logger=None, strt=0, endp=0):
 
     sys_data = []
     results = []
-    logs = []
-
+    log_entries = []
     cckSEEN = set()
 
-    def process_directory(root, results, sys_data, logs):
+    def process_directory(root, root_path):
 
         x = 0
-        ix = 0
-        entry = {"dirl": {}, "cfr_reparse": {}, "cfr_data": {}}
-
-        if root in cckSEEN:
-            return
-        cckSEEN.add(root)
-        prev_entry = CACHE_S.get(root)  # skip known reparse
-        if prev_entry and prev_entry.get("type"):
-            return
-
-        filename = None
-        previous_mtime = None
-        dirl = False
-        scanf = True
-        # rtype = None
-
-        modified_dt, modified_ep, st = get_dir_mtime(root, "scan_created")
-        if not st:
-            logs.append(("DEBUG", f"process_directory Skipped. chunk {i} of {total_chunks}. Unable to access directory: {root} no modified_ep mtime"))
-            return
-
-        if prev_entry:
-            entry["dirl"][root] = "entry"
-            previous_mtime = prev_entry.get('modified_ep')
-
-            if not previous_mtime or modified_ep > previous_mtime:
-                dirl = True
-            elif modified_ep <= previous_mtime:
-                scanf = False
-        else:
-            dirl = True
-            # if stat.S_ISLNK(st.st_mode):  # *ignore new symlink
-            # entry["cfr_reparse"][root] = {
-            #     'modified_time': modified_dt if modified_dt else '',
-            #     'modified_ep' : modified_ep,
-            #     'file_count': 0,
-            #     'idx_count': 0,
-            #     'max_depth': root.count(os.sep),
-            #     'type': rtype,
-            #     'target': os.path.realpath(root)
-            # }
-            # results.append(entry)
-            # logging.debug(f"folder was a reparse point: {root}")
-            # return
 
         try:
+            entry = {"dirl": {}, "cfr_reparse": {}, "cfr_data": {}}
 
-            with os.scandir(root) as entries:
+            if root_path in cckSEEN:
+                return
+
+            cckSEEN.add(root_path)  # recursion safety
+            prev_entry = CACHE_S.get(root_path)  # skip known reparse
+            if prev_entry and prev_entry.get("type"):
+                return
+
+            rtype = target = None
+            symlink = False
+
+            previous_mtime = None
+            dirl = False
+            scanf = True
+
+            stat_info = get_stat(root, log_entries=log_entries, logger=logger)
+            if not stat_info:
+                return
+
+            modified_ep = stat_info.st_mtime
+            modified_dt = epoch_to_str(modified_ep)
+
+            if prev_entry:
+                entry["dirl"][root_path] = "entry"
+                previous_mtime = prev_entry['modified_ep']
+
+                if not previous_mtime or modified_ep > previous_mtime:
+                    dirl = True
+                elif modified_ep <= previous_mtime:
+                    scanf = False
+            else:
+                dirl = True
+                symlink = root.is_symlink()
+                if symlink:
+                    rtype = "symlink"
+                # new reparse
+                if rtype:
+                    target = find_link_target(root_path, log_entries=log_entries, logger=logger)
+                    entry["cfr_reparse"][root_path] = {
+                        'modified_time': modified_dt if modified_dt else '',
+                        'modified_ep': modified_ep,
+                        'file_count': 0,
+                        'idx_count': 0,
+                        'max_depth': root_path.count(os.sep),
+                        'type': rtype,
+                        'target': target
+                    }
+                    results.append(entry)
+                    msg = f"process_directory folder was a reparse point: {root_path}"
+                    if logger:
+                        logger.debug(msg)
+                    else:
+                        log_entries.append(("DEBUG", msg))
+                    return
+
+            with os.scandir(root_path) as entries:
                 for record in entries:
+
+                    full_path = record.path
 
                     try:
 
                         if record.is_dir(follow_symlinks=False):
-                            if record.path in EXCLDIRS_FULLPATH:
+                            if full_path in EXCLDIRS_FULLPATH:
                                 continue
-                            if root != basedir:
-                                process_directory(record.path, results, sys_data, logs)
+
+                            if root_path != basedir:
+                                process_directory(record, full_path)
                         if not scanf:
                             continue
 
                         if record.is_file():
-                            filename = record.path
-
                             x += 1
-                            stat_info = record.stat()
-                            sze = stat_info.st_size
-                            ix += sze
-                            file_mtime = stat_info.st_mtime
-                            if previous_mtime is None or file_mtime > previous_mtime:
-                                if not filename.startswith(filter_tup):
 
-                                    sys_data.append((filename, file_mtime))  # new file found
+                            stat_info = get_stat(record, log_entries=log_entries, logger=logger)
+                            if not stat_info:
+                                continue
+
+                            file_mtime = stat_info.st_mtime
+
+                            if previous_mtime is None or file_mtime > previous_mtime:
+                                if not full_path.lower().startswith(filter_tup):
+                                    sys_data.append((full_path, file_mtime))  # new file found
 
                     except OSError as e:
-                        logs.append(("DEBUG", f"error could not stat file: {record.path} {type(e).__name__} {e}"))
-
+                        emsg = f"error could not stat file: {full_path} {type(e).__name__} {e}"
+                        if logger:
+                            logger.debug(emsg)
+                        else:
+                            log_entries.append(("DEBUG", emsg))
+                        continue
                 if dirl:
                     if prev_entry:
                         entry_data = prev_entry.copy()
@@ -105,7 +129,7 @@ def scan_created(chunk, basedir, EXCLDIRS_FULLPATH, filter_tup, CACHE_S, root_co
                         entry_data = {
                             'idx_count': 0,
                             'idx_bytes': 0,
-                            'max_depth': root.count(os.sep),
+                            'max_depth': root_path.count(os.sep),
                             'type': '',
                             'target': ''
                         }
@@ -113,40 +137,52 @@ def scan_created(chunk, basedir, EXCLDIRS_FULLPATH, filter_tup, CACHE_S, root_co
                     entry_data.update({
                         'modified_time': modified_dt if modified_dt else '',
                         'modified_ep': modified_ep,
-                        'idx_bytes': ix,
                         'file_count': x
                     })
-                    entry["cfr_data"][root] = entry_data
-
-                if entry["cfr_reparse"] or entry["dirl"] or entry["cfr_data"]:
+                    entry["cfr_data"][root_path] = entry_data
+                if entry["dirl"] or entry["cfr_data"]:
                     results.append(entry)
 
-        except (ValueError, TypeError) as e:
-            logs.append(("ERROR", f"file loop error detected process_directory : dir: {root}, file: {filename} {type(e).__name__} {e} \n {traceback.format_exc()}"))
-            return
-
+        except PermissionError as e:
+            em = f"process_directory: {root_path} error: {e}"
+            if logger:
+                logger.debug(em)
+            else:
+                log_entries.append(("DEBUG", em))
         except OSError as e:
-            logs.append(("ERROR",  f"chunk {i} of {total_chunks} file loop error detected process_directory : dir: {root}, file: {filename} {type(e).__name__} {e} \n{traceback.format_exc()}"))
-            return
+            em = f"chunk {i} of {num_chunks} file loop error detected process_directory : dir: {root_path} {type(e).__name__} {e} \n{traceback.format_exc()}"
+            if logger:
+                logger.error(em)
+            else:
+                log_entries.append(("ERROR", em))
 
     f = 0
     scale = (endp - strt) / root_count
     current_step = 0
-    steps = sorted(set(int((i / 10) * root_count) for i in range(1, 11)))
+    steps = sorted(set(int((r / 10) * root_count) for r in range(1, 11)))
     step_len = len(steps)
 
-    for root in chunk:
+    try:
+        for root in chunk:
 
-        f += 1
-        process_directory(root, results, sys_data, logs)
+            f += 1
+            process_directory(Path(root), root)
 
-        if show_progress:
-            if current_step < step_len and f >= steps[current_step]:
-                prog_v = strt + (f * scale)
-                print(f"Progress: {prog_v:.2f}%", flush=True)
-                current_step += 1
-            #
-    if show_progress and current_step <= len(steps) - 1:
-        print(f"Progress: {endp:.2f}%", flush=True)
+            if show_progress:
+                if current_step < step_len and f >= steps[current_step]:
+                    prog_v = strt + (f * scale)
+                    print(f"Progress: {prog_v:.2f}%", flush=True)
+                    current_step += 1
+        if show_progress and current_step <= len(steps) - 1:
+            print(f"Progress: {endp:.2f}%", flush=True)
+    except Exception as e:
+        em = f"file loop error {i}\\{num_chunks}, detected scan_created line {f} of {root_count} : dir: {root} {type(e).__name__} {e}"
+        if logger:
+            logger.error(em)
+        else:
+            log_entries.append(("ERROR", em))
 
-    return sys_data, results, logs, f
+        write_logs_to_logger(log_entries, logger)
+        raise
+
+    return sys_data, results, log_entries, f

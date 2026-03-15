@@ -9,6 +9,7 @@ import threading
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures.process import BrokenProcessPool
 from .hanlymc import hanly
+from .logs import emit_log
 from .logs import init_process_worker
 from .logs import logs_to_queue
 from .logs import logging_worker
@@ -17,7 +18,7 @@ from .pyfunctions import escf_py
 from .pysql import detect_copy
 from .pysql import increment_f
 
-# 03/03/2026
+# 03/14/2026
 
 
 # tfile
@@ -108,7 +109,7 @@ def logger_process(results, sys_records, sys_tables, rout, scr, cerr, dbopt, ps,
                     log.error(em, exc_info=True)
 
 
-def hanly_parallel(drive_type, rout, scr, cerr, parsed, ANALYTICSECT, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, iqt=False, strt=65, endp=90):
+def hanly_parallel(drive_type, rout, scr, cerr, parsed, cachermPATTERNS, ANALYTICSECT, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, iqt=False, strt=65, endp=90):
 
     all_results = []
     batch_incr = []
@@ -139,7 +140,7 @@ def hanly_parallel(drive_type, rout, scr, cerr, parsed, ANALYTICSECT, checksum, 
             tlog = threading.Thread(target=logging_worker, args=(log_q, len_parsed, strt, endp, show_progress, logger), daemon=True)
             tlog.start()
 
-            all_results, batch_incr, log_entries, csum = hanly(parsed, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, show_progress, strt, endp)
+            all_results, batch_incr, log_entries, csum = hanly(parsed, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, cachermPATTERNS, show_progress, strt, endp)
             if log_entries:
                 logs_to_queue(log_entries, log_q)
 
@@ -166,7 +167,7 @@ def hanly_parallel(drive_type, rout, scr, cerr, parsed, ANALYTICSECT, checksum, 
             ) as executor:
                 futures = [
                     executor.submit(
-                        hanly, chunk, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, show_progress, strt, endp
+                        hanly, chunk, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, cachermPATTERNS, show_progress, strt, endp
                     )
                     for chunk in chunks
                 ]
@@ -191,14 +192,13 @@ def hanly_parallel(drive_type, rout, scr, cerr, parsed, ANALYTICSECT, checksum, 
 
                     except BrokenProcessPool as e:
                         print("hanly encountered an error")
-                        logger.error(f"unable to run hanly an error occured {e} \n{traceback.format_exc()}")
-                        for f in futures:
-                            f.cancel()
+                        emit_log("ERROR", f"unable to run hanly an error occured {e} \n{traceback.format_exc()}", log_q)
                         break
                     except Exception as e:
-                        em = f"Worker error from hanly multiprocessing: {type(e).__name__} {e} \n {traceback.format_exc()}"
+                        em = f"Worker error from hanly multiprocessing: {type(e).__name__} {e}"
                         print(em)
-                        logger.error(em)
+                        emit_log("ERROR", f"{em} \n {traceback.format_exc()}", log_q)
+                        break
         finally:
             log_q.put(None)
             log_t.join()

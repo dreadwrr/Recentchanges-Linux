@@ -20,10 +20,10 @@ from .pysql import update_cache
 from .qtdrivefunctions import get_idx_tables
 from .qtdrivefunctions import parse_systimeche
 from .rntchangesfunctions import cnc
-# 02/04/2026
+# 03/14/2026
 
 
-def hardlinks(basedir, database, target, conn, cur, email, user, compLVL):
+def hardlinks(basedir, database, target, conn, cur, email, user, compLVL, logger=None):
     try:
 
         cur.execute("SELECT filename, inode FROM logs WHERE hardlinks is NOT NULL and hardlinks != ''")
@@ -105,7 +105,9 @@ def hardlinks(basedir, database, target, conn, cur, email, user, compLVL):
         print(f"hardlinks Error executing database query/update. err: {type(e).__name__}: {e}")
         conn.rollback()
     except Exception as e:
-        print(f"Error setting hardlinks: {e} {type(e).__name__} \n{traceback.format_exc()}")
+        em = f"Error setting hardlinks: {e} {type(e).__name__}"  # \n{traceback.format_exc()}
+        print(em)
+        logger.error(em, exc_info=True)
     return None
 
 

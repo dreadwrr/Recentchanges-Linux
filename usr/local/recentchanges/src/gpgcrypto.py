@@ -10,7 +10,6 @@ from typing import Any
 from .configfunctions import user_info
 from .rntchangesfunctions import change_perm
 from .rntchangesfunctions import cnc
-
 from .rntchangesfunctions import removefile
 
 

@@ -1,4 +1,5 @@
 import logging
+import math
 import multiprocessing as mp
 import os
 import queue
@@ -6,16 +7,70 @@ import traceback
 import threading
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures.process import BrokenProcessPool
-from .fsearch import process_line_worker
 from .fsearchfunctions import upt_cache
+from . import logs
 from .logs import emit_log
 from .logs import init_process_worker
 from .logs import logs_to_queue
 from .logs import logging_worker
-# Get metadata hash of files and return array 03/02/2026
+# Get metadata hash of files and return array 03/11/2026
 
 
-def process_lines(lines, file_type, search_start_dt, process_label, user_setting, logging_values, CACHE_F, iqt=False, strt=20, endp=60):
+def process_line_worker(search_fn, chunk, checksum, file_type, search_start_dt, CACHE_F, show_progress, strt, endp):
+
+    results = []
+    log_entries = []
+    # delta_p = endp - strt if show_progress else 0
+    dbit = False
+
+    r = x = 0
+
+    t_chunk = 0
+    current_step = 0
+    if show_progress:
+        dbit = True
+        t_chunk = len(chunk)
+
+        steps = sorted({math.ceil(i * t_chunk / 10) for i in range(1, 11)})
+        step_len = len(steps)
+
+    for i, line in enumerate(chunk):
+        try:
+
+            result, log_ = search_fn(line, checksum, file_type, search_start_dt, CACHE_F)
+
+            if result is not None:
+                results.append(result)
+            if log_:
+                log_entries.extend(log_)
+
+        except Exception as e:
+            em = f"process_line_worker - Error line {i} of {len(chunk)}: {type(e).__name__} {e}"
+            print(em)
+            emit_log("ERROR", f"{em}", logs.WORKER_LOG_Q)
+            raise
+        r = i + 1
+        x += 1
+        if dbit:
+
+            if current_step < step_len and r >= steps[current_step]:
+
+                emit_log("prog", x, logs.WORKER_LOG_Q)
+                x = 0
+                current_step += 1
+                # prog_v = strt + round(delta_p * (steps[current_step] / t_chunk))
+                # print(f"Progress: {prog_v}%", flush=True)
+
+            # prog_i = strt + ((i + 1) / t_chunk) * delta_p
+            # print(f"Progress: {prog_i:.2f}", flush=True)
+
+    if dbit and current_step <= len(steps) - 1:
+        emit_log("prog", x, logs.WORKER_LOG_Q)
+
+    return results, log_entries, r
+
+
+def process_lines(search_fn, lines, file_type, search_start_dt, process_label, user_setting, logging_values, CACHE_F, iqt=False, strt=20, endp=60):
 
     drive_type = user_setting['driveTYPE']
     checksum = user_setting['checksum']
@@ -24,6 +79,8 @@ def process_lines(lines, file_type, search_start_dt, process_label, user_setting
 
     logger = logging.getLogger(process_label)
     len_lines = len(lines)
+    if len_lines == 0:
+        return [], []
 
     show_progress = False
     if iqt:
@@ -39,9 +96,14 @@ def process_lines(lines, file_type, search_start_dt, process_label, user_setting
             tlog = threading.Thread(target=logging_worker, args=(log_q, len_lines, strt, endp, show_progress, logger), daemon=True)
             tlog.start()
 
-            ck_results, log_entries, _ = process_line_worker(lines, checksum, file_type, search_start_dt, CACHE_F, show_progress, strt, endp)
+            ck_results, log_entries, _ = process_line_worker(search_fn, lines, checksum, file_type, search_start_dt, CACHE_F, show_progress, strt, endp)
             if log_entries:
                 logs_to_queue(log_entries, log_q)
+        except Exception as e:
+            emsg = f"Worker error occurred: {type(e).__name__} : {e}"
+            print(emsg)
+            emit_log("ERROR", f"{emsg} \n{traceback.format_exc()}", log_q)
+            return None, None
         finally:
             log_q.put(None)
             tlog.join()
@@ -67,7 +129,7 @@ def process_lines(lines, file_type, search_start_dt, process_label, user_setting
             ) as executor:
                 futures = [
                     executor.submit(
-                        process_line_worker, chunk, checksum, file_type, search_start_dt, CACHE_F, show_progress, strt, endp
+                        process_line_worker, search_fn, chunk, checksum, file_type, search_start_dt, CACHE_F, show_progress, strt, endp
 
                     )
                     for idx, chunk in enumerate(chunks)
@@ -86,13 +148,13 @@ def process_lines(lines, file_type, search_start_dt, process_label, user_setting
                     except BrokenProcessPool as e:
                         print("search failed in mc")
                         emit_log("ERROR", f"fsearch error {e} \n{traceback.format_exc()}", log_q)
-                        for f in futures:
-                            f.cancel()
-                        break
+                        return None, None
                     except Exception as e:
-                        emsg = f"Worker error occurred: {type(e).__name__} : {e} \n{traceback.format_exc()}"
+                        emsg = f"Worker error occurred: {type(e).__name__} : {e}"
                         print(emsg)
-                        emit_log("ERROR", emsg, log_q)
+                        emit_log("ERROR", f"{emsg} \n{traceback.format_exc()}", log_q)
+                        return None, None
+
         finally:
             log_q.put(None)
             log_t.join()
@@ -101,6 +163,12 @@ def process_lines(lines, file_type, search_start_dt, process_label, user_setting
 
     results = [item for item in ck_results if item is not None]  # results = [item for sublist in ck_results if sublist is not None for item in sublist]  # flatten the list
 
+    return process_results(results, CACHE_F) if results else ([], [])
+
+
+def process_results(results, CACHE_F):
+
+    logger = logging.getLogger("PROCESSRESULTS")
     sortcomplete = []
     complete = []
     cwrite = []

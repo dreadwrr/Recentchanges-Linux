@@ -5,7 +5,6 @@ import traceback
 from PySide6.QtCore import Signal
 from .gpgcrypto import encr
 from .gpgcrypto import start_gpg_agent
-from .pyfunctions import reset_csvliteral
 from .pysql import clear_conn
 from .pysql import clear_sys_profile
 from .query import main as query_main
@@ -14,8 +13,9 @@ from .qtfunctions import clear_cache
 from .query import blank_count
 from .rntchangesfunctions import cnc
 from .rntchangesfunctions import removefile
+from .rntchangesfunctions import reset_csvliteral
 # import io
-# 02/21/2026
+# 03/14/2026
 
 
 # QObject
@@ -47,6 +47,9 @@ class ClearWorker(Worker):
         self.sys_tables = sys_tables
         self.cache_table = cache_table
         self.systimeche = systimeche
+
+    def set_cache(self, cachermPATTERNS):
+        self.cachermPATTERNS = cachermPATTERNS
 
     def on_timeout(self):
         self.log.emit("Please enter passphrase in terminal")
@@ -87,7 +90,7 @@ class ClearWorker(Worker):
 
                         if action == "cache":
 
-                            if clear_cache(conn, cur, self.usr, log_fn=self.log.emit):
+                            if clear_cache(conn, cur, self.cachermPATTERNS, log_fn=self.log.emit):
                                 rlt = 0
                                 try:
                                     reset_csvliteral(self.flth)

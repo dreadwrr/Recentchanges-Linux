@@ -17,6 +17,7 @@ class ProcessHandler(QObject):
 
     def __init__(self, lclhome, xdg_runtime, dblabel_text, use_polkit=True):
         super().__init__()
+        self.process = QProcess(self)
 
         self.lclhome = lclhome
         self.xdg_runtime = xdg_runtime
@@ -24,8 +25,6 @@ class ProcessHandler(QObject):
         self.is_polkit = use_polkit
 
         self.icon = str(lclhome / "Resources" / "gnupg-streamline.png")
-
-        self.process = QProcess(self)
 
         self.process.readyReadStandardOutput.connect(self.handle_stdout)
         self.process.readyReadStandardError.connect(self.handle_stderr)
@@ -166,17 +165,19 @@ class ProcessHandler(QObject):
         self.is_search = is_search
         self.is_postop = is_postop
         self.is_scanIDX = is_scanIDX
+
         if ANALYTICSECT:
             self.st_time = time.time()
             self.ANALYTICSECT = True
 
-        args = list(args) if args else []  # args = [str(a) for a in args if a is not None]
+        # args = list(args) if args else []  # args = [str(a) for a in args if a is not None]
 
         if "findfile.py" in args:
             if self.rangeVALUE is not None:
                 args += [self.rangeVALUE]
             if self.is_compress:
                 args += [self.zipPROGRAM, self.zipPATH, self.USRDIR, self.downloads]
+        args = [str(a) for a in args if a is not None]  # list(args) if args else []
         self.args = args
 
         if self.is_polkit:

@@ -73,7 +73,24 @@ def averagetm(conn, cur):
     return "N/A"
 
 
-def main(appdata_local, home_dir, user, email, reset=None, database=None, log_fn=print):
+def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, database=None, log_fn=print):
+
+    if not database:
+
+        if not appdata_local:
+            appdata_local = find_install()
+
+        # if shutil.which("gpg") is None:
+        #     set_gpg(appdata_local, "gpg")
+        # if not check_for_gpg():
+        #     print("Unable to verify gpg in path. Likely path was partially initialized. quitting")
+        #     return 1
+
+        toml_file, json_file, home_dir, xdg_config, xdg_runtime, USR, uid, gid = get_config(appdata_local, user, platform="Linux")
+        config = load_toml(toml_file)
+        if not config:
+            return 1
+        email = config['backend']['email']
 
     pst_data = Path(home_dir) / ".local" / "share" / "recentchanges"
     flth = pst_data / "flth.csv"
@@ -82,7 +99,6 @@ def main(appdata_local, home_dir, user, email, reset=None, database=None, log_fn
     CACHE_S = pst_data / "systimeche.gpg"
 
     output = name_of(dbtarget, '.db')
-
     flth = str(flth)
     dbtarget = str(dbtarget)
 
@@ -90,7 +106,7 @@ def main(appdata_local, home_dir, user, email, reset=None, database=None, log_fn
 
     if reset:
 
-        return delete_gpg_keys(user, email, dbtarget, CACHE_F, CACHE_S)
+        return delete_gpg_keys(user, email, dbtarget, CACHE_F, CACHE_S, flth)
 
     try:
 
@@ -105,9 +121,7 @@ def main(appdata_local, home_dir, user, email, reset=None, database=None, log_fn
                 #  the search runs as root check that there are no problems there
                 if not gpg_can_decrypt(user, dbtarget):
                     return 1
-
                 dbopt = os.path.join(tempdir, output)
-
                 result = decr(dbtarget, dbopt, user)
 
                 # can easily break if trying to automate fixing keys. let the user do it if wanted.
@@ -129,8 +143,8 @@ def main(appdata_local, home_dir, user, email, reset=None, database=None, log_fn
                             FROM logs
                             WHERE accesstime IS NOT NULL;
                         """)
-                        result = cur.fetchone()
-                        average_accesstime = result[0] if result and result[0] is not None else None
+                        rows = cur.fetchone()
+                        average_accesstime = rows[0] if rows and rows[0] is not None else None
                         if average_accesstime:
                             log_fn(f'Average access time: {average_accesstime}')
                         log_fn(f'Avg hour of activity: {atime}')
@@ -268,26 +282,6 @@ def main(appdata_local, home_dir, user, email, reset=None, database=None, log_fn
     return 1
 
 
-def run_query(USR, argone):
-    appdata_local = find_install()
-    toml_file, json_file, home_dir, xdg_config, xdg_runtime, USR, uid, gid = get_config(appdata_local, USR)
-    config = load_toml(toml_file)
-    if not config:
-        return 1
-
-    email = config['backend']['email']
-    is_reset = argone == "reset"
-    return main(appdata_local, home_dir, USR, email, is_reset)
-
-
 if __name__ == "__main__":
-    if len(sys.argv) < 5:
-        print("Usage: query.py <app_install> <home_dir> <user> <email>")
-        sys.exit(0)
 
-    app_install, home_dir, user, email = sys.argv[1:5]
-
-    reset = sys.argv[5] if len(sys.argv) > 5 else None
-    database = sys.argv[6] if len(sys.argv) > 6 else None
-
-    sys.exit(main(app_install, home_dir, user, email, reset=reset, database=database))
+    sys.exit(main(*sys.argv))

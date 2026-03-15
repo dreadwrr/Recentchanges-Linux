@@ -37,8 +37,8 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from . import processha
+from .config import dump_toml
 from .config import load_toml
-from .config import update_toml_values
 from .configfunctions import check_config
 from .configfunctions import find_install
 from .configfunctions import get_config
@@ -130,7 +130,7 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
     global is_mcore
 
     appdata_local = find_install()  # appdata software install aka workdir
-    toml_file, json_file, home_dir, xdg_config, xdg_runtime, USR, uid, gid = get_config(appdata_local, USR)
+    toml_file, json_file, home_dir, xdg_config, xdg_runtime, USR, uid, gid = get_config(appdata_local, USR, platform="Linux")
 
     script_dir = appdata_local / "scripts"
     inotify_creation_file = Path("/tmp/file_creation_log.txt")
@@ -156,10 +156,13 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
     autooutput = config['src']['autooutput']
     xzmname = config['src']['xzmname']
     cmode = config['src']['cmode']
+    cachermPATTERNS = config['backend']['cachermPATTERNS']
     checksum = config['diagnostics']['checkSUM']
     cdiag = config['diagnostics']['cdiag']
     scanIDX = config['diagnostics']['scanIDX']
+    autoIDX = config['diagnostics']['autoIDX']
     suppress_browser = config['diagnostics']['supbrw']
+    supbrwLIST = config['diagnostics']['supbrwLIST']
     suppress = config['diagnostics']['suppress']
     POSTOP = config['diagnostics']['POSTOP']
     ps = config['shield']['proteusSHIELD']  # proteus shield
@@ -182,6 +185,32 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
     #     dspEDITOR = multi_value(dspEDITOR)
     # dspPATH_frm = config['display']['dspPATH'].rstrip('/')
 
+    escaped_user = re.escape(USR)
+
+    # if filter was in .toml. regex
+    # filters_toml = appdata_local / "filter.toml"
+    # filters = load_config(filters_toml)
+    # if not filters:
+    # return 1
+    # filter_toml = filters.get("filter", None)
+    # filter_escaped = [
+    #     p.replace("\\", "\\\\")
+    #     for p in filter_toml
+    # ]
+
+    # db cache patterns in config
+    cachermPATTERNS = config['backend']['cachermPATTERNS']
+    cachermPATTERNS = [
+        p.replace("{{user}}", USR)
+        for p in cachermPATTERNS
+    ]
+
+    # suppress browser list in config. regex
+    supbrwLIST = [
+        p.replace("{{user}}", escaped_user)
+        for p in supbrwLIST
+    ]
+
     # make a named tuple or dict for args and to pass less args for clarity
     user_setting = {
         'USR': USR,
@@ -197,13 +226,21 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
     }
 
     # init
+    gnupg_home = None
 
     if iqt:
         basedir = drive
         show_diff = showDiff
         POSTOP = POST_OP
         scanIDX = scan_idx
+        # dspPATH = dspPATH
     else:
+        # Windows
+        # if shutil.which("gpg") is None:
+        #     gpg_path, gnupg_home = set_gpg(appdata_local, "gpg")
+        # if not check_for_gpg():
+        #     print("Unable to verify gpg in path. Likely path was partially initialized. quitting")
+        #     return 1
 
         # opening editor as root is disabled
         # dspPATH = ""
@@ -227,8 +264,6 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
         # if for some reason the mount changed for the drive update the json, rename the cache files and rename database tables
 
         j_settings = None
-        if argone == "downloads":
-            j_settings = {}
 
         CACHE_S, _, suffix, driveTYPE = setup_drive_cache(
             basedir, appdata_local, dbopt, dbtarget, json_file, toml_file, CACHE_S_str, driveTYPE, USR, email, compLVL, j_settings=j_settings
@@ -240,7 +275,6 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
 
     # VARS
     log_file = home_dir / ".local" / "state" / "recentchanges" / "logs" / log_file
-    escaped_user = re.escape(USR)
 
     TMPOUTPUT = []  # holding
     # Searches
@@ -335,14 +369,25 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
         scr = os.path.join(tempwork, "scr")  # feedback
         cerr = os.path.join(tempwork, "cerr")  # priority
 
+        # Windows key gen
+        # if not iqt:
+        #     is_key, err = iskey(email)
+        #     if is_key is False:
+        #         if not genkey(appdata_local, USR, email, email_name, dbtarget, CACHE_F, CACHE_S, flth, tempwork):
+        #             print("Failed to generate a gpg key. quitting")
+        #             return 1
+        #     elif is_key is None:
+        #         print(err)
+        #         return 1
+
+        cfr = decr_ctime(CACHE_F, USR, iqt)
+
+        start = time.time()
+
         logging_values = (log_file, ll_level, appdata_local, tempwork)
 
         setup_logger(log_file, logging_values[1], "MAIN")
         change_perm(log_file, uid, gid)
-
-        start = time.time()
-
-        cfr = decr_ctime(CACHE_F, USR, iqt)
 
         # initialize
 
@@ -424,7 +469,7 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
             cmin = ["-cmin", f"-{search_time}"]
             current_time = datetime.now()
             if search_list:
-                search_paths = 'Running command:' + ' '.join(["find"] + search_list + cmin + TAIL)  # Windows
+                search_paths = 'Running command:' + ' '.join(["find"] + search_list + cmin + TAIL)
 
             find_command_cmin = F + PRUNE + cmin + TAIL
             init = True
@@ -439,6 +484,7 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
             cmin_start = current_time.timestamp()
             cmin_offset = time_convert(cmin_end - cmin_start, 60, 2)
             check_stop(stopf)
+
             mmin = ["-mmin", f"-{search_time + cmin_offset:.2f}"]
             if search_list:
                 search_paths = 'Running command:' + ' '.join(["find"] + search_list + mmin + TAIL)
@@ -454,6 +500,10 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
             )
 
         cend = time.time()
+
+        # end Main search
+        if RECENT is None or tout is None:
+            return 1
 
         # end Main search
 
@@ -509,13 +559,11 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
         deduped = list(seen.values())
 
         # inclusions from this script /  sort -u
-        patts = get_runtime_exclude_list(USRDIR, MODULENAME, USR, str(file_out), flth, dbtarget, CACHE_F, CACHE_S, str(log_file), str(toml_default))
-
-        exclude_patterns = [p for p in patts if p]
+        exclude_patterns = get_runtime_exclude_list(USRDIR, MODULENAME, USR, str(file_out), flth, dbtarget, CACHE_F, CACHE_S, str(log_file), str(toml_default))
 
         def filepath_included(filepath, exclude_patterns):
             filepath = filepath.lower()
-            return not any(filepath.startswith(p.lower()) for p in exclude_patterns)
+            return not any(filepath.startswith(p) for p in exclude_patterns)
 
         SORTCOMPLETE = [
             entry for entry in deduped
@@ -685,10 +733,11 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
             check_stop(stopf)
             if iqt:
                 print(f"Progress: {proval}", flush=True)
+
             # Backend
             dbopt, csum = pst_srg(
-                dbopt, dbtarget, basedir, SORTCOMPLETE, COMPLETE, rout, scr, cerr, CACHE_S, user_setting, logging_values,
-                dcr=dcr, iqt=iqt, strt=proval, endp=endval
+                dbopt, dbtarget, basedir, SORTCOMPLETE, COMPLETE, rout, scr, cerr, CACHE_S, cachermPATTERNS,
+                json_file, gnupg_home, user_setting, logging_values, dcr=dcr, iqt=iqt, strt=proval, endp=endval
             )
             # dbopt return from pst_srg is either path, encr_error, new_profile or None
             proval = endval
@@ -714,7 +763,7 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
                 print()
 
             # Diff output to user
-            processha.processha(rout, ABSENT, diff_file, cerr, flsrh, argf, SRTTIME, escaped_user, suppress_browser, suppress)
+            processha.processha(rout, ABSENT, diff_file, cerr, flsrh, argf, SRTTIME, escaped_user, supbrwLIST, suppress_browser, suppress)
 
             # Filter hits
             update_filter_csv(RECENT, flth, escaped_user)
@@ -728,12 +777,14 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
                         change_perm(outpath, uid, gid)
                         cprint.green(f"File doctrine.tsv created {USRDIR}/{tsv_doc}")
                 elif not iqt:
-                    update_toml_values({'diagnostics': {'POSTOP': False}}, toml_file)  # if one was already made disable the setting
+                    # update_toml_values({'diagnostics': {'POSTOP': False}}, toml_file)  # if one was already made disable the setting
+                    config['diagnostics']['POSTOP'] = False
+                    dump_toml(None, config, toml_file)
 
             # Terminal output process scr/cer
             if not csum and not suppress:
                 if os.path.exists(scr):
-                    filter_output(scr, escaped_user, 'Checksum', 'no', 'blue', 'yellow', 'scr', suppress_browser)
+                    filter_output(scr, escaped_user, 'Checksum', 'no', 'blue', 'yellow', 'scr', supbrwLIST, suppress_browser, suppress)
 
             if csum:
                 if os.path.isfile(cerr):
@@ -784,9 +835,14 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
             diff_file = diff_file if diffrlt else get_diff_file(USRDIR, MODULENAME)
 
             check_stop(stopf)
-            rlt = scan_system(dbopt, dbtarget, basedir, USR, diff_file, CACHE_S, email, ANALYTICSECT, show_diff, compLVL, dcr=dcr, iqt=iqt, strt=proval, endp=endval)
-            if not iqt:  # if commandline, turn off so doesnt scan every time
-                update_toml_values({'diagnostics': {'scanIDX': False}}, toml_file)
+            rlt = scan_system(appdata_local, dbopt, dbtarget, basedir, USR, diff_file, CACHE_S, email, ANALYTICSECT, show_diff, compLVL, dcr=dcr, iqt=iqt, strt=proval, endp=endval)
+            if not iqt and not autoIDX:  # if commandline, turn off so doesnt scan every time
+                # update_toml_values({'diagnostics': {'scanIDX': False}}, toml_file)
+                config['diagnostics']['scanIDX'] = False
+                dump_toml(None, config, toml_file)
+                #
+                #
+                #
             if rlt != 0:
                 if rlt == 1:
                     print("Post op index scan failed scan_system dirwalker.py")

@@ -14,6 +14,7 @@ from .gpgcrypto import encr
 from .pysql import table_exists
 from .rntchangesfunctions import cnc
 from .rntchangesfunctions import name_of
+from .rntchangesfunctions import removefile
 
 
 def parse_drive(basedir):
@@ -24,8 +25,18 @@ def parse_suffix(input_text: str):
     if input_text == "cache_s":
         return input_text, None
     parts = input_text.split('_', 1)
-    key = parts[1] if len(parts) > 1 else ""
+    key = parts[1] if len(parts) > 1 else "/"
     return parts[0], key
+
+
+def parse_key(basedir, cache_file=None, idx_suffix=None):
+    if idx_suffix:
+        return idx_suffix
+    elif cache_file:
+        if "_" in cache_file:
+            part = name_of(cache_file)
+            return part.split("_", 1)[-1]
+    return device_name_of_mount(basedir)
 
 
 def parse_systimeche(basedir, CACHE_S):
@@ -34,8 +45,9 @@ def parse_systimeche(basedir, CACHE_S):
     systimeche = name_of(CACHE_S)
     key = basedir
     if basedir != "/":
-        systimeche, key = systimeche.split("_", 1)
-        systimeche = systimeche + f"_{key}"
+        if "_" not in systimeche:
+            raise TypeError("idx_suffix requires for drive", basedir)
+        _, key = systimeche.split("_", 1)
     return systimeche, key
 
 
@@ -49,9 +61,7 @@ def get_cache_s(basedir, cache_file, idx_suffix=None):
     systimeche = prefix
     key = basedir
     if basedir != "/":
-        if not idx_suffix:
-            raise TypeError("idx_suffix requires for drive", basedir)
-        key = idx_suffix
+        key = parse_key(basedir, cache_file, idx_suffix)
         CACHE_S = prefix + f"_{key}.gpg"
         app_path = os.path.dirname(cache_file)
         CACHE_S = os.path.join(app_path, CACHE_S)
@@ -68,11 +78,7 @@ def get_idx_tables(basedir, cache_file, idx_suffix=None):
     cache_table = "cache_s"
     key = basedir
     if basedir != "/":
-        if idx_suffix:
-            key = idx_suffix
-        else:
-            part = name_of(cache_file)
-            key = part.split("_", 1)[-1]
+        key = parse_key(basedir, cache_file, idx_suffix)
         sys_a = f"_{key}"
         cache_table = "cache" + sys_a
     sys_b = "sys2" + sys_a
@@ -80,10 +86,10 @@ def get_idx_tables(basedir, cache_file, idx_suffix=None):
     return (sys_a, sys_b), cache_table, key
 
 
-def get_new_idx_suffix(basedir, j_settings):
-    if basedir == "/":
-        return ""
-    key = parse_drive(basedir)
+def get_new_idx_suffix(device, j_settings):
+    if device == "/":
+        return device
+    key = device
     while j_settings.get(key) is not None:
         key = "x" + key
     return key
@@ -129,12 +135,25 @@ def get_mountpoint(dev_path: str) -> str | None:
 def device_name_of_mount(mount_point: str) -> str | None:
     if not mount_point:
         return None
-    with open("/proc/self/mounts") as f:
-        for line in f:
-            parts = line.split()
-            if parts[1] == mount_point:
-                return os.path.basename(parts[0])
+
+    target = os.path.realpath(mount_point)
+
+    for part in psutil.disk_partitions(all=True):
+        if os.path.realpath(part.mountpoint) == target:
+            return os.path.basename(part.device)
+
     return None
+
+# using above have psutil so use that
+# def device_name_of_mount(mount_point: str) -> str | None:
+#     if not mount_point:
+#         return None
+#     with open("/proc/self/mounts") as f:
+#         for line in f:
+#             parts = line.split()
+#             if parts[1] == mount_point:
+#                 return os.path.basename(parts[0])
+#     return None
 
 
 def parent_of_device(device: str) -> str:
@@ -266,24 +285,19 @@ def setup_drive_settings(basedir, key, driveTYPE, toml_file, user_json=None, j_s
     if not drive_info:
         return None
 
-    device_name, parent_device, drive_id_model, mtype, drive_type = drive_info
-    # if we dont know
+    device_name, parent_device, drive_id_model, model_type, drive_type = drive_info
     if drive_type is None:
         print("Couldnt determine speed defaulting to HDD. change in config.toml to SSD", toml_file)
         drive_type = "HDD"
 
-    model_type = mtype
-
     if toml_file and not idx_drive:
         update_toml_values({'search': {'driveTYPE': drive_type}}, toml_file)  # update config.toml the basedir
 
-    # config.toml is where basedir ie / info is stored. the 'driveTYPE' HDD or SSD
-
-    # if its an idx_drive usrprofile.json is where its info is stored. 'drive_type' and 'drive_model'
+    # config.toml is where basedir ie C:\\ info is stored. the 'modelTYPE' HDD or SSD
+    # if its a basedir we only want to put the info in the usrprofile.toml if we have it. This is used for diagnostics to return more info about settings in ui.
+    # if we were to put the wrong info in usrprofile.toml and config.toml the user would have to update two config files which is unlikely.
     #
-    #
-    # if we were to put the wrong info in usrprofile and config.toml the user would have to update two config files which is unlikely.
-
+    # if its an idx_drive we need this info regardless as usrprofile.toml is where its info is stored. 'drive_type' and 'drive_model'
     if user_json:
         if idx_drive or model_type:
             if model_type is None:
@@ -294,9 +308,7 @@ def setup_drive_settings(basedir, key, driveTYPE, toml_file, user_json=None, j_s
                 dump_j_settings(j_settings, user_json)
             elif key:
                 set_json_settings({"idx_suffix": device_name, "parent_device": parent_device, "mount_of_index": basedir, "drive_id_model": drive_id_model, "model_type": model_type, "drive_type": drive_type}, drive=key, filepath=user_json)
-    # print("idx_suffix ", device_name)
-    # print("parent_device ", parent_device)
-    # print("mount_of_index", basedir)
+
     print(f"model {drive_id_model}")
     print(f"model_type {model_type}")
     print(f"drive_type {drive_type}")
@@ -331,29 +343,30 @@ def get_cache_files(basedir, dbopt, dbtarget, CACHE_S, json_file, user, email, c
                     print(f"couldnt find uuid for {basedir} mount point")
                     return None, None, None
 
-            drive_suffix = parse_drive(basedir)  # basedir.split('/')[-1]
+            drive_suffix = device_name_of_mount(basedir)  # basedir.split('/')[-1]
 
             x = 0
-            drive_info = None
-            suffix = None
+            drive = suffix = drive_info = None
 
             found = False
-            for key in j_settings.keys():
-                drive_info = j_settings.get(key, {})
-                if isinstance(drive_info, dict):
-                    drive_partuuid = drive_info.get("drive_partuuid")
-                    if not found and drive_partuuid and drive_partuuid == uuid:
-                        suffix = key
-                        found = True
-                    elif isinstance(key, str) and key.endswith(drive_suffix):
-                        x += 1
+            for key, di in j_settings.items():
+                if not isinstance(di, dict):
+                    continue
+                drive_partuuid = di.get("drive_partuuid")
+                if not found and drive_partuuid and drive_partuuid == uuid:
+                    suffix = key
+                    moi = di.get("mount_of_index")
+                    found = True
+                elif isinstance(key, str) and key.endswith(drive_suffix):
+                    x += 1
 
             if suffix:
 
                 cache_file, systimeche, _ = get_cache_s(basedir, CACHE_S, suffix)
 
                 # if the mountpoint changed for the uuid update json, move cache file and db tables
-                if drive_suffix not in suffix:
+                #
+                if moi and moi != basedir:
 
                     # old
                     old_cache_s = cache_file
@@ -362,20 +375,17 @@ def get_cache_files(basedir, dbopt, dbtarget, CACHE_S, json_file, user, email, c
                     drive_suffix = ('x' * x) + drive_suffix
                     new_cache_s, new_systimeche, _ = get_cache_s(basedir, CACHE_S, drive_suffix)
 
-                    # rename any cache file
-                    if os.path.isfile(old_cache_s):
-                        os.rename(old_cache_s, new_cache_s)
+                    # rename any cache file. after database query
 
                     # if from cmd line get db
                     if not os.path.isfile(dbopt):
                         if os.path.isfile(dbtarget):
-                            res = decr(dbtarget, dbopt, user)
+                            res = decr(dbtarget, dbopt)
                             if not res:
                                 if res is None:
                                     print(f"There is no key for {dbtarget}.")
                                 else:
-                                    print("Decryption failed. exiting.")
-                                return None, None, None
+                                    print("Decryption failed.")
 
                     # rename any database tables
                     if os.path.isfile(dbopt):
@@ -390,41 +400,52 @@ def get_cache_files(basedir, dbopt, dbtarget, CACHE_S, json_file, user, email, c
                             (systimeche, new_systimeche)
                         ]
                         try:
-                            psEXTN = drive_info.get("proteusEXTN")
-                            moi = drive_info.get("mount_of_index")
                             with sqlite3.connect(dbopt) as conn:
                                 cur = conn.cursor()
-                                if psEXTN and moi:
-                                    for table in table_list:
-                                        table_name = table[0]
-                                        if table_exists(conn, table_name):
-                                            cur.execute(f"""
-                                                UPDATE {table_name}
-                                                SET filename = REPLACE(filename, ?, ?)
-                                                WHERE filename LIKE ?;
-                                            """, (moi, basedir, moi + "%"))
-                                            cur.execute(f"""
-                                                UPDATE {table_name}
-                                                SET target = REPLACE(target, ?, ?)
-                                                WHERE target LIKE ?;
-                                            """, (moi, basedir, moi + "%"))
+                                for table in table_list:
+                                    table_name = table[0]
+                                    if table_exists(conn, table_name):
+                                        cur.execute(f"""
+                                            UPDATE {table_name}
+                                            SET filename = REPLACE(filename, ?, ?)
+                                            WHERE filename LIKE ?;
+                                        """, (moi, basedir, moi + "%"))
+                                        cur.execute(f"""
+                                            UPDATE {table_name}
+                                            SET target = REPLACE(target, ?, ?)
+                                            WHERE target LIKE ?;
+                                        """, (moi, basedir, moi + "%"))
                                 for old_table, new_table in table_list:
                                     if table_exists(conn, old_table):
                                         cur.execute(f"ALTER TABLE {old_table} RENAME TO {new_table};")
                                 conn.commit()
+
+                            nc = cnc(dbopt, compLVL)
+                            if encr(dbopt, dbtarget, email, no_compression=nc, dcr=iqt):  # leave open for gui
+                                # rename any cache file
+                                if os.path.isfile(old_cache_s):
+                                    os.rename(old_cache_s, new_cache_s)
+                                update_dict(None, j_settings, drive)  # remove the old
+                            else:
+                                if not iqt:
+                                    removefile(dbopt)
+                                print(f"Reencryption failed on updating guid for drive {basedir}.\n")
+                                print("If unable to resolve reset json file and clear gpgs")
+
                         except sqlite3.Error as e:
-                            emsg = f"Database error get_cache_files while moving tables db {dbopt} err: {e}"
-                            print(emsg)
-                            # logging.error(emsg, exc_info=True)
-                        nc = cnc(dbopt, compLVL)
-                        if not encr(dbopt, dbtarget, email, user=user, no_compression=nc, dcr=iqt):  # leave open for gui
-                            print(f"Reencryption failed on updating uuid for drive {basedir}.\n")
-                            print("If unable to resolve reset json file and clear gpgs")
-                            return None, None, None
-                    update_dict(None, j_settings, suffix)  # remove the old
+                            if not iqt:
+                                removefile(dbopt)
+                            print(f"Database error get_cache_files while moving tables db {dbopt} err: {e}")
+                        except Exception as e:
+                            if not iqt:
+                                removefile(dbopt)
+                            print(f"err {type(e).__name__}: {e}\ncontinuing")
+
                     drive_info["mount_of_index"] = basedir
-                    j_settings[drive_suffix] = drive_info  # add the new now that nothing went wrong
+                    drive_info["idx_suffix"] = drive_suffix
+                    j_settings[basedir] = drive_info  # add the new now that nothing went wrong
                     dump_j_settings(j_settings, json_file)
+
                     suffix = drive_suffix
                     cache_file = new_cache_s
                     systimeche = new_systimeche
