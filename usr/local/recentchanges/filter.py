@@ -1,4 +1,4 @@
-# Filter modified date: 02/21/2025       SN:049BN6KZ01
+# Filter modified date: 02/21/2026       SN:049BN6KZ01
 #
 #   Notes: Nemesis 25.04
 #
@@ -10,9 +10,9 @@
 # r'/var/run',
 # can be combined as
 # r'^/var/(cache|run)'
-def get_exclude_patterns():
 
-    return [
+
+_filter = [
 
         # Base var exclusions
         r'/var/cache',
@@ -68,3 +68,18 @@ def get_exclude_patterns():
         #    we dont want  /etc/
         # r'^/etc'  # Uncomment to exclude /etc
     ]
+
+
+# filter hits to reset on cache clear in ftlh.csv in app install. copy from filter items above
+_filterhitRESET = [
+    r'/home/{{user}}/\.config',
+    r'/home/{{user}}/\.Xauthority',
+    r'/home/{{user}}/\.local/state/wireplumber',
+    r'/root/\.Xauthority',
+    r'/root/\.local/state/wireplumber',
+    r'\.cache',
+    r'\.gnupg',
+    r'\.local/share'
+
+]
+
