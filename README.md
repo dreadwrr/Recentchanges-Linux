@@ -36,7 +36,7 @@ then as root <br>
 sudo su <br>
 cd /root <br>
 mkdir .gnupg <br>
-echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf
+echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br>
 gpgconf --kill gpg-agent<br><br>
 This version can be built with pyinstaller with main.spec. if building the launcher script /usr/local/bin/recentchanges and polkit have to be changed. <br><br>
 in /usr/local/bin/recentchanges change python3 "$app_install"/src/rntchanges.py to "$app_install"/main in two places <br>
