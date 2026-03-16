@@ -45,6 +45,10 @@ and<br>
 /usr/share/polkit-1/actions/org.freedesktop.set-recentchanges.policy   ln14 <br>
 change to /usr/local/recentchanges/main <br><br>
 or use pyinstaller version with changes made <br>
+replace the following files from pyinstaller source: <br>
+/usr/local/bin/recentchanges <br>
+/usr/local/recentchanges/src/rntchangesfunctions <br>
+/usr/share/polkit-1/actions/org.freedesktop.set-recentchanges.policy <br>
 PyInstaller<br>
 https://github.com/dreadwrr/Linux-Pyinstaller <br>
 to build a binary with all the packages and not needing any on the system <br><br>
