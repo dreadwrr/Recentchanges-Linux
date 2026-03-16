@@ -44,7 +44,7 @@ in /usr/local/bin/recentchanges change python3 "$app_install"/src/rntchanges.py 
 and<br>
 /usr/share/polkit-1/actions/org.freedesktop.set-recentchanges.policy   ln14 <br>
 change to /usr/local/recentchanges/main <br><br>
-
+or use pyinstaller version with changes made <br>
 PyInstaller<br>
 https://github.com/dreadwrr/Linux-Pyinstaller <br>
 to build a binary with all the packages and not needing any on the system <br><br>
