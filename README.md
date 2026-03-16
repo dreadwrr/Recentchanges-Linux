@@ -38,8 +38,12 @@ cd /root <br>
 mkdir .gnupg <br>
 echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br><br>
 
+This version can be built with pyinstaller with main.spec. if building the launcher script /usr/local/bin/recentchanges and polkit have to be changed. <br><br>
+in /usr/local/bin/recentchanges change python3 "$app_install"/src/rntchanges.py to "$app_install"/main in two places <br>
+/usr/local/recentchanges/scripts/rntchangesfunction ln121 to "$app_install"/main and below <br><br>
+/usr/share/polkit-1/actions/org.freedesktop.set-recentchanges.policy   change to /usr/local/recentchanges/main <br><br>
 
-## PyInstaller<br>
+PyInstaller<br>
 https://github.com/dreadwrr/Linux-Pyinstaller <br>
 to build a binary with all the packages and not needing any on the system <br><br>
 picture for graphic https://i.imgur.com/UoL7CHQ.jpeg<br>
