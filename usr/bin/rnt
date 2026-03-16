@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-#      recentchanges search        filtered     recentchanges v5.0
-/usr/local/bin/recentchanges "$@" "inv"
