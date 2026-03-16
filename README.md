@@ -1,4 +1,4 @@
-New release! with changes and new features from the windows version <br><br>
+New release! added changes and new features from windows version <br><br>
 Linux file search application with hybrid analysis
 <p>
 Save encrypted notes <br>
