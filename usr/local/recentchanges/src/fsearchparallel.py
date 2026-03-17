@@ -2,7 +2,6 @@ import logging
 import math
 import multiprocessing as mp
 import os
-import queue
 import traceback
 import threading
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -13,14 +12,14 @@ from .logs import emit_log
 from .logs import init_process_worker
 from .logs import logs_to_queue
 from .logs import logging_worker
-# Get metadata hash of files and return array 03/11/2026
+# Get metadata hash of files and return array 03/17/2026
 
 
-def process_line_worker(search_fn, chunk, checksum, file_type, search_start_dt, CACHE_F, show_progress, strt, endp):
+def process_line_worker(search_fn, chunk, checksum, file_type, search_start_dt, CACHE_F, show_progress=False, logger=None, strt=20, endp=60):
 
     results = []
     log_entries = []
-    # delta_p = endp - strt if show_progress else 0
+    delta_p = endp - strt if show_progress else 0
     dbit = False
 
     r = x = 0
@@ -53,19 +52,24 @@ def process_line_worker(search_fn, chunk, checksum, file_type, search_start_dt, 
         x += 1
         if dbit:
 
-            if current_step < step_len and r >= steps[current_step]:
+            if logger:
+                prog_i = strt + ((i + 1) / t_chunk) * delta_p  # original
+                print(f"Progress: {prog_i:.2f}", flush=True)
+            else:
+                if current_step < step_len and r >= steps[current_step]:
+                    # if logger:
+                    #     prog_v = strt + round(delta_p * (steps[current_step] / t_chunk))
+                    #     print(f"Progress: {prog_v}%", flush=True)
+                    # else:
+                    emit_log("prog", x, logs.WORKER_LOG_Q)
+                    x = 0
+                    current_step += 1
 
-                emit_log("prog", x, logs.WORKER_LOG_Q)
-                x = 0
-                current_step += 1
-                # prog_v = strt + round(delta_p * (steps[current_step] / t_chunk))
-                # print(f"Progress: {prog_v}%", flush=True)
-
-            # prog_i = strt + ((i + 1) / t_chunk) * delta_p
-            # print(f"Progress: {prog_i:.2f}", flush=True)
-
-    if dbit and current_step <= len(steps) - 1:
-        emit_log("prog", x, logs.WORKER_LOG_Q)
+    if dbit:
+        if logger:
+            print(f"Progress:{endp:.2f}", flush=True)
+        if current_step <= len(steps) - 1:
+            emit_log("prog", x, logs.WORKER_LOG_Q)
 
     return results, log_entries, r
 
@@ -88,25 +92,26 @@ def process_lines(search_fn, lines, file_type, search_start_dt, process_label, u
 
     if len_lines < 80 or drive_type.lower() == "hdd":
 
-        log_q = queue.SimpleQueue()
-        init_process_worker(log_q)
+        # log_q = queue.SimpleQueue()
+        # init_process_worker(log_q)
 
         try:
 
-            tlog = threading.Thread(target=logging_worker, args=(log_q, len_lines, strt, endp, show_progress, logger), daemon=True)
-            tlog.start()
+            # tlog = threading.Thread(target=logging_worker, args=(log_q, len_lines, strt, endp, show_progress, logger), daemon=True)
+            # tlog.start()
 
-            ck_results, log_entries, _ = process_line_worker(search_fn, lines, checksum, file_type, search_start_dt, CACHE_F, show_progress, strt, endp)
-            if log_entries:
-                logs_to_queue(log_entries, log_q)
+            ck_results, _, _ = process_line_worker(search_fn, lines, checksum, file_type, search_start_dt, CACHE_F, show_progress, logger, strt, endp)
+            # if log_entries:
+            #     logs_to_queue(log_entries, log_q)
         except Exception as e:
             emsg = f"Worker error occurred: {type(e).__name__} : {e}"
             print(emsg)
-            emit_log("ERROR", f"{emsg} \n{traceback.format_exc()}", log_q)
+            logger.error(f"{emsg} \n{traceback.format_exc()}")
+            # emit_log("ERROR", f"{emsg} \n{traceback.format_exc()}", log_q)
             return None, None
-        finally:
-            log_q.put(None)
-            tlog.join()
+        # finally:
+        #     log_q.put(None)
+        #     tlog.join()
     else:
 
         # min_chunk_size = 10
@@ -129,7 +134,7 @@ def process_lines(search_fn, lines, file_type, search_start_dt, process_label, u
             ) as executor:
                 futures = [
                     executor.submit(
-                        process_line_worker, search_fn, chunk, checksum, file_type, search_start_dt, CACHE_F, show_progress, strt, endp
+                        process_line_worker, search_fn, chunk, checksum, file_type, search_start_dt, CACHE_F, show_progress
 
                     )
                     for idx, chunk in enumerate(chunks)

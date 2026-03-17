@@ -33,7 +33,7 @@ def build_index(chunk, i, num_chunks, show_progress=False, strt=0, endp=100):
         x += 1
         if len(record) < 6:
             continue
-
+        file_path = record[0]
         try:
 
             if dbit:
@@ -53,9 +53,8 @@ def build_index(chunk, i, num_chunks, show_progress=False, strt=0, endp=100):
                 #     if p_g >= endp:
                 #         dbit = False
 
-            file_path = record[0]
-            hash_path = record[1]
             if os.path.isfile(file_path):
+                hash_path = record[1]
                 st = record[2]
                 sym = record[3]
                 target = record[4]

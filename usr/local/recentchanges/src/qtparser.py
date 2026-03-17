@@ -14,17 +14,13 @@ from src.qtfunctions import kill_process
 # 03/14/2026
 
 def dispatch_internal(argv):
-    if not argv:
-        return False
     arglen = len(argv)
-    if arglen < 2:
-        return False
     if arglen >= 3:
         script = argv[1].lower()
         args = argv[2:]
-        cmd = args[0]
+        cmd = args[0]   
         if arglen > 5:
-        
+
             DISPATCH_MAP = {
                 "dirwalker.py": {
                     "hardlink": 9,
@@ -66,9 +62,9 @@ def dispatch_internal(argv):
 
         elif script == "run":
             if cmd == "filemanager":
-                return load_file_manager(*args[1:])  # lclhome, popPATH=
+                sys.exit(load_file_manager(*args[1:]))  # lclhome, popPATH=
             if cmd == "terminal":
-                return load_konsole(*args[1:])  # lclhome, popPATH=
+                sys.exit(load_konsole(*args[1:]))  # lclhome, popPATH=
             if cmd == "kill":
-                return kill_process(*args[1:])
-        sys.exit(rntchanges_main(argv))
+                sys.exit(kill_process(*args[1:]))
+    sys.exit(rntchanges_main(argv))

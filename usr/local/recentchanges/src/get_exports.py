@@ -20,16 +20,16 @@ def get_exports():
     appdata_local = find_install()  # software install aka workdir
 
     toml_file, json_file, home_dir, xdg_config, xdg_runtime, user, uid, gid = get_config(appdata_local, user, platform="Linux")
-
+    # XDG_STATE_HOME look into this
     log_dir = home_dir / ".local" / "state" / "recentchanges" / "logs"
-    os.makedirs(log_dir, mode=0o755, exist_ok=True)
+
     with open(toml_file, "rb") as f:
         config = tomllib.load(f)
 
     if user != "root":
         user_log = config.get("logs", {}).get("userLOG")
         log_path = log_dir / user_log
-        check_log_perms(log_path)
+        check_log_perms(log_path, log_dir)
 
     # to /usr/local/bin/recentchanges
     nested_sections = {
@@ -60,6 +60,7 @@ def get_exports():
     export_a = {
         "home_dir": home_dir,
         "tomlf": str(toml_file),
+        "CMD_LINE": "1",
         "LAUNCHED_NON_ROOT": user,
         "XDG_CONFIG_HOME": xdg_config,
         "XDG_RUNTIME_DIR": xdg_runtime

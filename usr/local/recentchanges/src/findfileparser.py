@@ -3,6 +3,7 @@ from .rntchangesfunctions import multi_value
 
 
 def parse_recent_args(parser):
+    parser.add_argument("appdata", help="app data or app install for config defaults")
     parser.add_argument("filename", help="the filename or pattern to search for")
     parser.add_argument("extension", help="extension to match")
     parser.add_argument("basedir", help="search target")
@@ -10,7 +11,7 @@ def parse_recent_args(parser):
     parser.add_argument("dspEDITOR", type=multi_value, help="Either \"False\" or 7zip or winrar")
     parser.add_argument("dspPATH", help="Path to run text editor executable")
     parser.add_argument("temp_dir", help="The work area to do temp work")
-
+    parser.add_argument("log_path", help="path to app log file for exclusion")
     parser.add_argument("cutoffTIME", nargs="?", default=None,
                         help="modified time for compress option (default: None)")
     parser.add_argument("zipPROGRAM", nargs="?", default=None,

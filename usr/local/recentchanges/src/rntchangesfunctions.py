@@ -350,7 +350,7 @@ def porteus_linux_check():
 # One search ctime > mtime for downloaded, copied or preserved metadata files. cmin. Main search for mtime newer than mmin.
 
 def find_files(find_command, search_paths, file_type, RECENT, COMPLETE, RECENTNUL, init, cfr, search_start_dt, user_setting, logging_values, end, cstart, iqt=False, strt=20, endp=60, logger=None):
-    file_entries = []
+    records = []
 
     if search_paths:
         print(search_paths)
@@ -358,12 +358,57 @@ def find_files(find_command, search_paths, file_type, RECENT, COMPLETE, RECENTNU
         print('Running command:', ' '.join(find_command))
 
     try:
-
+        buffer = b''
         proc = subprocess.Popen(find_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # stderr=subprocess.DEVNULL
-        output, err = proc.communicate()
+        # output, err = proc.communicate()  # original
+
+        # if proc.returncode not in (0, 1):  # original
+        #     stderr_str = err.decode("utf-8")
+        #     print(stderr_str)
+        #     print("Find command failed, unable to continue. Quitting.")
+        #     sys.exit(1)
+        while True:
+            if proc.stdout is None:
+                break
+            chunk = proc.stdout.read(8192)
+            if not chunk:
+                break
+            buffer += chunk
+            while b'\0' in buffer:
+                part, buffer = buffer.split(b'\0', 1)
+                if part.strip():
+
+                    line = part.decode("utf-8", errors="replace")
+                    fields = line.split(maxsplit=10)
+                    if len(fields) >= 11:
+                        if file_type == "main":
+                            file_path = fields[10]
+                            RECENTNUL += (file_path.encode() + b'\0')  # copy file list `recentchanges` null byte
+                            if user_setting['FEEDBACK']:  # scrolling terminal look       alternative output
+                                print(fields[10], flush=True)
+                        # escaped_entry = " ".join(fields)
+                        records.append(fields)
+        if buffer.strip():
+            try:
+                line = buffer.decode('utf-8', errors='replace')
+                fields = line.split(maxsplit=10)
+                if len(fields) >= 11:
+                    records.append(fields)
+
+            except Exception as e:
+                print(f"fault in trailing buffer ignored. {type(e).__name__} {e}")
+                pass
+
+        if proc.stdout is not None:
+            proc.stdout.close()
+        proc.wait()
 
         if proc.returncode not in (0, 1):
-            stderr_str = err.decode("utf-8")
+            # for line in iter(proc.stderr.readline, b''):
+            #     decoded = line.decode('utf-8', errors='replace').strip()
+            # if decoded:
+            #     print(decoded)
+            stderr_str = proc.stderr.decode('utf-8', errors='replace').strip()
             print(stderr_str)
             print("Find command failed, unable to continue. Quitting.")
             sys.exit(1)
@@ -378,7 +423,7 @@ def find_files(find_command, search_paths, file_type, RECENT, COMPLETE, RECENTNU
     if file_type == "main":
         end = time.time()
 
-    file_entries = [entry.decode('utf-8', errors='backslashreplace') for entry in output.split(b'\0') if entry]
+    # file_entries = [entry.decode('utf-8', errors='backslashreplace') for entry in output.split(b'\0') if entry]  # original
 
     # using escf_py and unesc_py for bash support otherwise can use: filename.encode('unicode_escape').decode('ascii') , codecs.decode(escaped, 'unicode_escape')
     # using escf_py and unesc_py for bash
@@ -387,18 +432,20 @@ def find_files(find_command, search_paths, file_type, RECENT, COMPLETE, RECENTNU
     # json.dumps(filename)    " -> \"   \n -> \\n   \ -> \\   \t -> \\t  \r \\r
     # json.loads(line)
 
-    records = []
-    for entry in file_entries:
-        fields = entry.split(maxsplit=10)
-        if len(fields) >= 11:
-            if file_type == "main":
-                file_path = fields[10]
-                RECENTNUL += (file_path.encode() + b'\0')  # copy file list `recentchanges` null byte
-                if user_setting['FEEDBACK']:  # scrolling terminal look       alternative output
-                    print(fields[10], flush=True)
+    # original
+    # records = []
+    # for entry in file_entries:
+    #     fields = entry.split(maxsplit=10)
+    #     if len(fields) >= 11:
+    #         if file_type == "main":
+    #             file_path = fields[10]
+    #             RECENTNUL += (file_path.encode() + b'\0')  # copy file list `recentchanges` null byte
+    #             if user_setting['FEEDBACK']:  # scrolling terminal look       alternative output
+    #                 print(fields[10], flush=True)
 
-            # escaped_entry = " ".join(fields)
-            records.append(fields)
+    #         # escaped_entry = " ".join(fields)
+    #         records.append(fields)
+    # end original
 
     if file_type not in ("ctime", "main"):
         raise ValueError(f"Invalid search type: {file_type}")

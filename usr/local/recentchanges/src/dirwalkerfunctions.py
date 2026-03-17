@@ -34,9 +34,17 @@ def decr_cache(CACHE_S, user=None):
             continue
 
         modified_ep_s = row.get('modified_ep') or ''
+        try:
+            modified_ep = float(modified_ep_s) if modified_ep_s else None
+        except ValueError:
+            modified_ep = None
+        if modified_ep is None:
+            continue
+
+        modified_ep_s = row.get('modified_ep') or ''
         cfr_src[root] = {
             'modified_time': str(row.get('modified_time', '')),
-            'modified_ep': float(modified_ep_s) if modified_ep_s else 0.0,
+            'modified_ep': modified_ep,
             'file_count': str(row.get('file_count', '0')),
             'idx_count': str(row.get('idx_count', '0')),
             'idx_bytes': str(row.get('idx_bytes', '0')),
@@ -112,15 +120,15 @@ def none_if_empty(value):
 #         return None, None, None
 
 
-def get_base_folders(base_dir, EXCLDIRS_FULLPATH):
+def get_base_folders(basedir, EXCLDIRS_FULLPATH):
     c = 0
     base_folders = []
-    if os.path.isdir(base_dir):
+    if os.path.isdir(basedir):
         c += 1
-        base_folders.append(base_dir)
+        base_folders.append(basedir)
 
-    for folder_name in os.listdir(base_dir):
-        folder_path = os.path.join(base_dir, folder_name)
+    for folder_name in os.listdir(basedir):
+        folder_path = os.path.join(basedir, folder_name)
         if folder_path in EXCLDIRS_FULLPATH:
             continue
         if os.path.isdir(folder_path):
@@ -211,6 +219,8 @@ def meta_sys(file_path, previous_md5, previous_symlink, previous_target, previou
 
         sym, target, mode, inode, hardlink, owner, domain, m_dt, m_epoch_ns, m_time, c_time, a_time, size = file_info
 
+        if previous_symlink == "y" and sym != "y":
+            emit_log("ERROR", f"meta_sys Warning symlink changed to file: {file_path}", log_q)
         mtime_us = m_epoch_ns // 1_000
 
         if sym != "y":
@@ -231,14 +241,15 @@ def meta_sys(file_path, previous_md5, previous_symlink, previous_target, previou
                     sys_data.append((m_time, file_path, c_time, inode, a_time, checks, size, sym, owner, domain, mode, cam, target, lastmodified, hardlink, count, mtime_us))
 
             else:  # status == "Nosuchfile" or status == "Changed"
-                if status == "Changed":
-                    print(f"File changed during scan skipping. file: {file_path}")
                 return False, status
+
         else:
             if is_sym and previous_symlink == "y":
                 if target != previous_target:
                     link_data.append((m_time, file_path, c_time, inode, a_time, checks, size, sym, owner, domain, mode, cam, target, lastmodified, hardlink, count, mtime_us))
                     link_data.append((previous_target, target))
+            elif not previous_symlink:
+                emit_log("ERROR", f"meta_sys Warning file changed to symlink: {file_path}", log_q)
 
         return True, status
 
@@ -267,11 +278,7 @@ def get_stat(entry, log_q=None, log_entries=None, logger=None):
     try:
         return entry.stat(follow_symlinks=False)
     except OSError as e:
-        emsg = f"OSError cannot stat  {type(e).__name__} {e} : {entry.path}"
-        if logger:
-            logger.debug(emsg)
-        elif log_q or log_entries is not None:
-            emit_log("DEBUG", emsg, log_q, log_entries)
+        emit_log("DEBUG", f"OSError cannot stat  {type(e).__name__} {e} : {entry.path}", log_q, log_entries, logger)
         return None
 
 
@@ -321,11 +328,12 @@ def get_extension_tup(extension):
     is_noextension = False
     for e in extension:
         if e:
-            if e == ".so":
+            e_lower = e.lower()
+            if e_lower == ".so":
                 # pull out and set flag to check for .so
                 is_shared = True
                 continue
-            extn_set.add(e.lower())
+            extn_set.add(e_lower)
         else:
             is_noextension = True
     return tuple(extn_set), is_noextension, is_shared

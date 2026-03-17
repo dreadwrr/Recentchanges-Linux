@@ -3,7 +3,6 @@ import logging
 import traceback
 import multiprocessing as mp
 import os
-import queue
 import sqlite3
 import threading
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -132,21 +131,22 @@ def hanly_parallel(drive_type, rout, scr, cerr, parsed, cachermPATTERNS, ANALYTI
 
     if len_parsed < 80 or drive_type.lower() == "hdd":
 
-        log_q = queue.SimpleQueue()
-        init_process_worker(log_q)
+        # log_q = queue.SimpleQueue()
+        # init_process_worker(log_q)
 
-        try:
+        # try:
 
-            tlog = threading.Thread(target=logging_worker, args=(log_q, len_parsed, strt, endp, show_progress, logger), daemon=True)
-            tlog.start()
+        # tlog = threading.Thread(target=logging_worker, args=(log_q, len_parsed, strt, endp, show_progress, logger), daemon=True)
+        # tlog.start()
 
-            all_results, batch_incr, log_entries, csum = hanly(parsed, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, cachermPATTERNS, show_progress, strt, endp)
-            if log_entries:
-                logs_to_queue(log_entries, log_q)
+        init_process_worker(None)
+        all_results, batch_incr, log_entries, csum = hanly(parsed, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, cachermPATTERNS, show_progress, logger, strt, endp)
+        # if log_entries:
+        #     logs_to_queue(log_entries, log_q)
 
-        finally:
-            log_q.put(None)
-            tlog.join()
+        # finally:
+        #     log_q.put(None)
+        #     tlog.join()
 
     else:
 
@@ -167,7 +167,7 @@ def hanly_parallel(drive_type, rout, scr, cerr, parsed, cachermPATTERNS, ANALYTI
             ) as executor:
                 futures = [
                     executor.submit(
-                        hanly, chunk, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, cachermPATTERNS, show_progress, strt, endp
+                        hanly, chunk, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, cachermPATTERNS, show_progress, None, strt, endp
                     )
                     for chunk in chunks
                 ]

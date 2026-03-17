@@ -52,7 +52,7 @@ def get_config_data(appdata_local, USR):
     return ConfigData(home_dir, xdg_runtime, toml_file, json_file, log_file, uid, gid, config, EXCLDIRS, nogo, filterout_list, driveTYPE, ll_level)
 
 
-def return_info(file_path, st, symlink, link_target, logger):
+def return_info(file_path, st, symlink, link_target, log_q):
     fmt = "%Y-%m-%d %H:%M:%S"
     target = sym = hardlink = None
 
@@ -68,12 +68,12 @@ def return_info(file_path, st, symlink, link_target, logger):
     try:
         owner = pwd.getpwuid(st.st_uid).pw_name
     except KeyError:
-        emit_log("DEBUG", f"set_stat failed to convert uid to user name for file: {file_path}", logger)
+        emit_log("DEBUG", f"set_stat failed to convert uid to user name for file: {file_path}", log_q)
         owner = str(st.st_uid)
     try:
         group = grp.getgrgid(st.st_gid).gr_name
     except KeyError:
-        emit_log("DEBUG", f"set_stat failed to convert gid to group name for file: {file_path}", logger)
+        emit_log("DEBUG", f"set_stat failed to convert gid to group name for file: {file_path}", log_q)
         group = str(st.st_gid)
 
     m_epoch = st.st_mtime

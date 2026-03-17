@@ -528,7 +528,7 @@ def help_about(lclhome, hudt):
     # layout.setSpacing(15)
     # layout.setContentsMargins(20, 20, 20, 20)
 
-    label = QLabel("v5.0\n\nCreated by Colby Saigeon\nh&k enterprisez\n\nFind recent files using powershell.")
+    label = QLabel("v5.0.7\n\nCreated by Colby Saigeon\nh&k enterprisez\n\nFind recent files using powershell.")
     # label.setWordWrap(True)
     layout.addWidget(label)
 

@@ -8,7 +8,6 @@ import traceback
 import zipfile
 from collections import Counter
 from .config import load_toml
-from .configfunctions import find_install
 from .configfunctions import get_config
 from .findfileparser import build_parser
 from .pyfunctions import cprint
@@ -297,14 +296,13 @@ def comp_archive(target_files, archive, temp_dir, downloads, arch_exclude, USR, 
     return res
 
 
-def main(filename, extension, basedir, USR, dspEDITOR, dspPATH, temp_dir, cutoffTIME=None, zipPROGRAM=None, zipPATH=None, USRDIR=None, downloads=None):
+def main(localappdata, filename, extension, basedir, USR, dspEDITOR, dspPATH, temp_dir, log_path, cutoffTIME=None, zipPROGRAM=None, zipPATH=None, USRDIR=None, downloads=None):
 
     if not (filename or extension):
         print("Invalid input. exiting.")
         return 1
 
-    localappdata = find_install()
-    log_path = localappdata / "logs" / "errs.log"
+    # localappdata = find_install()
 
     toml, json_file, home_dir, xdg_config, xdg_runtime, USR, uid, gid = get_config(localappdata, USR, platform="Linux")
     config = load_toml(toml)
@@ -508,6 +506,7 @@ def main_entry(argv):
     args = parser.parse_args(argv)
 
     calling_args = [
+        args.appdata,
         args.filename,
         args.extension,
         args.basedir,
@@ -515,6 +514,7 @@ def main_entry(argv):
         args.dspEDITOR,
         args.dspPATH,
         args.temp_dir,
+        args.log_path,
         args.cutoffTIME,
         args.zipPROGRAM,
         args.zipPATH,
