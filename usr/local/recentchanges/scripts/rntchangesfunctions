@@ -118,8 +118,9 @@ EOF
 }
 
 setup_exports() {
-	[[ "$1" = "query" ]] && { python3 "$app_install"/src/rntchanges.py "$USR" "$PWD" query ; exit ; }
-	[[ "$1" = "reset" ]] && { python3 "$app_install"/src/rntchanges.py "$USR" "$PWD" reset ; exit ; }
+	export CMD_LINE="1"
+	[[ "$1" = "query" ]] && { "$app_install"/main "$USR" "$PWD" query ; exit ; }
+	[[ "$1" = "reset" ]] && { "$app_install"/main "$USR" "$PWD" reset ; exit ; }
 	output=$( python3 "$app_install"/src/get_exports.py $USR) ; res=$?
 	if [[ $res -ne 0 ]]; then echo "Couldnt get config file config.toml" && exit 1 ; fi
 	eval "$output"  # def main(home_dir, user, email, reset=None, database=None, log_fn=print):
