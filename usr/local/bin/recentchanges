@@ -13,7 +13,7 @@ if [ $USR != "root" ]; then
 	#sudo -k ; exec sudo XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" LAUNCHED_NON_ROOT="$LAUNCHED_NON_ROOT" -- "$0" $USR "$PWD" $1 "$2" $3  # change for working with 
 	echo "Please enter your root password below"
 	#su - root -s /bin/bash -c 'export XDG_RUNTIME_DIR="$1" ; export LAUNCHED_NON_ROOT="$2" ; exec "$3" "$4" "$5" "$6" "$7" "$8"' _ "$XDG_RUNTIME_DIR" "$LAUNCHED_NON_ROOT" "$0" "$USR" "$PWD" "$1" "$2" "$3"
-	su - -c "export XDG_RUNTIME_DIR='$XDG_RUNTIME_DIR' ; export LAUNCHED_NON_ROOT='$LAUNCHED_NON_ROOT' ; '$0' '$USR' '$PWD' '$1' '$2' $3"  #  DISPLAY='$DISPLAY' XAUTHORITY='$XAUTHORITY'
+	su - -c "export CMD_LINE='$CMD_LINE' ; export XDG_RUNTIME_DIR='$XDG_RUNTIME_DIR' ; export LAUNCHED_NON_ROOT='$LAUNCHED_NON_ROOT' ; '$0' '$USR' '$PWD' '$1' '$2' $3"  #  DISPLAY='$DISPLAY' XAUTHORITY='$XAUTHORITY'
 	res=$?
 	output_results
 fi
@@ -21,7 +21,7 @@ fi
 if [[ -z "$LAUNCHED_NON_ROOT" ]]; then
 	echo "$0" query and text editor cant be run as root. comment out this line if always run as root && exit 0
 	setup_exports $1
-	python3 "$app_install"/src/rntchanges.py $USR "$PWD" "$@"
+	"$app_install"/main $USR "$PWD" "$@"
 	res=$?
 	output_results
 fi
@@ -36,5 +36,5 @@ fi
 #    export GPG_TTY=$(tty)
 #    export GPG_AGENT_INFO=/root/.gnupg/S.gpg-agent:0:1
 #fi
-python3 "$app_install"/src/rntchanges.py "$@"
+"$app_install"/main "$@"
 #if [ -n "$AGENT_PID" ]; then kill "$AGENT_PID"; fi
