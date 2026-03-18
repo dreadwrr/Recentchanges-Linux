@@ -1,6 +1,7 @@
 New release! added changes and new features from windows version <br><br>
 ## Note <br>
-there is a bug ln2821 and ln2822 in main.py should be uncommented. Should have the patch in shortly but have to verify both windows and linux <br><br>
+changed a bug and commited. will give it about a week to vet any new changes
+the bug was ln2821 and ln2822 in main.py should be uncommented. Should have the patch in shortly but have to verify both windows and linux <br><br>
 Linux file search application with hybrid analysis
 <p>
 Save encrypted notes <br>
