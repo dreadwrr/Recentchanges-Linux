@@ -79,20 +79,21 @@ def scan_created(chunk, basedir, EXCLDIRS_FULLPATH, filter_tup, CACHE_S, root_co
                                 continue
 
                             if dirl:
+                                stat_info = get_stat(record, log_entries=log_entries, logger=logger)
+                                if not stat_info:
+                                    continue
                                 symlink = record.is_symlink()
                                 if symlink:
                                     rtype = "symlink"
                                 # new reparse
                                 if rtype:
-                                    stat_info = get_stat(record, log_entries=log_entries, logger=logger)
-                                    if not stat_info:
-                                        continue
-                                    modified_ep = stat_info.st_mtime
-                                    modified_dt = epoch_to_str(modified_ep)
+
+                                    m_epoch = stat_info.st_mtime
+                                    mtime_dt = epoch_to_str(m_epoch)
                                     target = find_link_target(path, log_entries=log_entries, logger=logger)
                                     entry["cfr_reparse"][path] = {
-                                        'modified_time': modified_dt if modified_dt else '',
-                                        'modified_ep': modified_ep,
+                                        'modified_time': mtime_dt if mtime_dt else '',
+                                        'modified_ep': m_epoch,
                                         'file_count': 0,
                                         'idx_count': 0,
                                         'idx_bytes': 0,
@@ -100,7 +101,6 @@ def scan_created(chunk, basedir, EXCLDIRS_FULLPATH, filter_tup, CACHE_S, root_co
                                         'type': rtype,
                                         'target': target
                                     }
-                                    results.append(entry)
                                     emit_log("DEBUG", f"process_directory folder was a reparse point: {path}", log_entries=log_entries, logger=logger)
                                     continue
 
@@ -143,7 +143,7 @@ def scan_created(chunk, basedir, EXCLDIRS_FULLPATH, filter_tup, CACHE_S, root_co
                         'file_count': x
                     })
                     entry["cfr_data"][root] = entry_data
-                if entry["dirl"] or entry["cfr_data"]:
+                if entry["dirl"] or entry["cfr_data"] or entry["cfr_reparse"]:
                     results.append(entry)
 
         except PermissionError as e:
