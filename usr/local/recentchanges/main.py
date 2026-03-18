@@ -1,4 +1,4 @@
-# 03/14/2026              Qt gui linux                 Developer buddy 5.0
+# 03/17/2026              Qt gui linux                 Developer buddy 5.0.7
 import glob
 import logging
 import multiprocessing
@@ -182,12 +182,12 @@ class MainWindow(QMainWindow):
         # QTimer.singleShot(5000, self.display_db)
 
         # Vars
-        self.app_version = "5.0.6"
+        self.app_version = "5.0.7"
         self.PWD = os.getcwd()
         self.home_dir = home_dir
         config_local = home_dir / ".config" / "recentchanges"
-        self.pst_data = home_dir / ".local" / "share" / "recentchanges"
         self.xdg_runtime = xdg_runtime
+        self.pst_data = pst_data  # home_dir / ".local" / "share" / "recentchanges"
         self.USRDIR = os.path.join(home_dir, "Downloads")
         self.lclhome = appdata_local
         self.lclscripts = appdata_local / "scripts"
@@ -1727,7 +1727,7 @@ class MainWindow(QMainWindow):
         # cmd = os.path.join(self.lclhome, "findfile.py")  # this example would be run python on findfile.py if not using polkit  # Note: "src",  # find script source if meipath ect. qt doesnt run as root and uses polkit helper\wrapper.
         # using polkit set_recent_helper
 
-        self.proc.start_pyprocess(str(self.dispatch), ["findfile.py", fpath, extension, self.basedir, self.usr, self.dspEDITOR, self.dspPATH, self.tempdir], dbtarget=self.dbtarget, user=self.usr, email=self.email)
+        self.proc.start_pyprocess(str(self.dispatch), ["findfile.py", str(self.lclhome), fpath, extension, self.basedir, self.usr, self.dspEDITOR, self.dspPATH, self.tempdir, str(self.log_path)], dbtarget=self.dbtarget, user=self.usr, email=self.email)
 
     # compress
     def ffcompress(self):
@@ -2812,14 +2812,13 @@ def start_main_window():
     if not check_config(proteuspaths, nogo, suppress_list) or not check_utility(zipPATH, downloads, popPATH):
         return 1
 
-    os.makedirs(log_dir, mode=0o755, exist_ok=True)
     log_path = log_dir / log_file
-    check_log_perms(log_path)
+    check_log_perms(log_path, log_dir)
     setup_logger(log_path, ll_level, process_label="mainwindow")
 
     gnupg_home = os.getenv("GNUPGHOME")
-    # if not gnupg_home:
-    #     gnupg_home = home_dir / ".gnupg" # Windows sets to bundled gpg and sets environment
+    if not gnupg_home:
+        gnupg_home = home_dir / ".gnupg"  # Windows sets to bundled gpg and sets environment
     gpg_path = shutil.which("gpg")
     if not gpg_path:
         QMessageBox.critical(None, "Error", "Unable to verify gpg in path. Likely path was partially initialized. quitting")  # QMessageBox.warning(None, "")
@@ -2878,9 +2877,12 @@ def start_main_window():
                     rlt = test_gpg_agent(email)
                     if rlt is None:
 
-                        cfg = parse_gpg_agent_conf(gnupg_home)
-                        pinentry = cfg.get("pinentry-program")
+                        pinentry = None
                         is_curses = False
+                        if gnupg_home:
+                            cfg = parse_gpg_agent_conf(gnupg_home)
+                            pinentry = cfg.get("pinentry-program")
+
                         if pinentry and ("tty" in pinentry or "curses" in pinentry):
                             is_curses = any(x in pinentry.lower() for x in ("tty", "curses"))
 
@@ -2957,8 +2959,7 @@ def start_main_window():
                 # else:
                     # app_inst = QApplication(sys.argv)
 
-                log_pth = os.path.join(appdata_local, "logs", "errs.log")
-                print(f"Unhandled exception {exc_type.__name__} stack trace logged to: {log_pth}")
+                print(f"Unhandled exception {exc_type.__name__} stack trace logged to: {log_path}")
                 sys.exit(1)
             sys.excepthook = excepthook
 
@@ -2985,6 +2986,8 @@ def start_main_window():
 
 
 if __name__ == "__main__":
+    caller = os.environ.get("CMD_LINE")
     multiprocessing.freeze_support()
-    if not dispatcher(sys.argv):
-        sys.exit(start_main_window())
+    if caller or len(sys.argv) >= 2:
+        dispatcher(sys.argv)
+    sys.exit(start_main_window())
