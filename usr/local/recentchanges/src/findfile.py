@@ -6,6 +6,7 @@ import sys
 import threading
 import traceback
 import zipfile
+from pathlib import Path
 from collections import Counter
 from .config import load_toml
 from .configfunctions import get_config
@@ -303,7 +304,7 @@ def main(localappdata, filename, extension, basedir, USR, dspEDITOR, dspPATH, te
         return 1
 
     # localappdata = find_install()
-
+    localappdata = Path(localappdata)
     toml, json_file, home_dir, xdg_config, xdg_runtime, USR, uid, gid = get_config(localappdata, USR, platform="Linux")
     config = load_toml(toml)
     if not config:
