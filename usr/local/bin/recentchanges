@@ -21,7 +21,7 @@ fi
 if [[ -z "$LAUNCHED_NON_ROOT" ]]; then
 	echo "$0" query and text editor cant be run as root. comment out this line if always run as root && exit 0
 	setup_exports $1
-	"$app_install"/main $USR "$PWD" "$@"
+	python3 "$app_install"/src/rntchanges.py $USR "$PWD" "$@"
 	res=$?
 	output_results
 fi
@@ -36,5 +36,5 @@ fi
 #    export GPG_TTY=$(tty)
 #    export GPG_AGENT_INFO=/root/.gnupg/S.gpg-agent:0:1
 #fi
-"$app_install"/main "$@"
+python3 "$app_install"/src/rntchanges.py "$@"
 #if [ -n "$AGENT_PID" ]; then kill "$AGENT_PID"; fi
