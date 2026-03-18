@@ -100,7 +100,7 @@ def create_table_cache(c, table, unique_columns):
         'modified_time TEXT',
         'filename TEXT',
         'file_count INTEGER',
-        'idx_count INTEGER',
+        'idx_count INTEGER DEFAULT 0',
         'idx_bytes INTEGER',
         'max_depth INTEGER',
         'type TEXT',
