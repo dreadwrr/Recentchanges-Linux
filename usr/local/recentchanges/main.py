@@ -953,7 +953,6 @@ class MainWindow(QMainWindow):
                                 self.rmv_basedir(ix, self.basedirs.current_index)  # changed mounts
 
                         if drive_not_indexed:
-                            cache_moved = False
 
                             CACHE_S, systimeche, drive_idx, driveTYPE = setup_drive_cache(
                                 basedir, self.lclhome, self.dbopt, self.dbtarget, self.sj, self.toml_file, self.CACHE_S_str, driveTYPE,
@@ -973,7 +972,7 @@ class MainWindow(QMainWindow):
                                     if not isinstance(di, dict):
                                         continue
                                     if di.get("idx_suffix") == idx:
-                                        self.ui.hudt.appendPlainText(f"drive changed mounts and wasnt properly updated check {self.sj} and set to idx_suffix for drive {basedir}, guid {uuid}")
+                                        self.ui.hudt.appendPlainText(f"drive changed mounts and wasnt properly updated check {self.sj} and set idx_suffix for drive {basedir} to {drive_idx}, guid {uuid}")
                                         # raise DriveLogicError(f"drive changed mounts and wasnt properly updated check {self.sj} and set to {drive_idx} for guid {guid}")
 
                             drive_uuid = drive_info.get("drive_partuuid")
@@ -1086,7 +1085,7 @@ class MainWindow(QMainWindow):
             self.open_proc()
             self.proc.complete.connect(lambda code, _: self.update_ui_sn.emit(code, "editor"))
             # self.proc.complete.connect(lambda code, _: self.set_config(code))
-            self.proc.complete.connect(lambda code, status: QTimer.singleShot(500, lambda: self.set_config(code)))
+            self.proc.complete.connect(lambda code, status: QTimer.singleShot(1000, lambda: self.set_config(code)))
             self.proc.start_tomledit(self.dspEDITOR, [str(self.toml_file)])
 
         else:
@@ -1975,7 +1974,7 @@ class MainWindow(QMainWindow):
             return
 
         # some distros list by device name
-        # some list by part uuid
+        # some list by part uuid <--- ubuntu
 
         idx_suffix = "/"
         if drive != "/":
@@ -2925,23 +2924,28 @@ def start_main_window():
             j_settings = {}  # load it once. dump often to avoid desync but saves on unecessary reads
 
             CACHE_S, systimeche, suffix, driveTYPE = setup_drive_cache(
-                basedir, appdata_local, dbopt, dbtarget, json_file, toml_file,
-                CACHE_S_str, driveTYPE_frm, usr, email, compLVL, j_settings=j_settings, iqt=True
+                basedir, appdata_local, dbopt, dbtarget, json_file, toml_file, CACHE_S_str,
+                driveTYPE_frm, usr, email, compLVL, j_settings=j_settings, iqt=True
             )
             if not CACHE_S or not suffix or not j_settings:
+                print(CACHE_S)
+                print(suffix)
+                print("b")
                 return 1
-
+            print("c")
             # config changes
             json_dump = False
 
             # from user install
             if gnupg_home:
                 gpg_home = j_settings.get("gnupghome")
-                if gnupg_home != gpg_home:
-                    j_settings["gnupghome"] = gnupg_home
+                if str(gnupg_home) != gpg_home:
+                    j_settings["gnupghome"] = str(gnupg_home)
                     json_dump = True
             else:
-                gnupg_home = find_gnupg_home(json_file, j_settings)  # detect and save
+                gnupg_home = find_gnupg_home(json_file, j_settings, iqt=True)  # detect and save
+                if gnupg_home:
+                    json_dump = True
 
             distro_name = j_settings.setdefault("/", {}).get("distro_name")
             if not distro_name:
