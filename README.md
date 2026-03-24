@@ -1,5 +1,3 @@
-New release! added changes and new features from windows version <br><br>
-## Note <br>
 Released 5.0.7! added key optimizations and drive logic. Added environment variable to launcher. One step by installer build is preferred <br><br>
 Linux file search application with hybrid analysis <br><br>
 <p>
