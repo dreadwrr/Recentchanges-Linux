@@ -713,14 +713,16 @@ def index_system(appdata_local, dbopt, dbtarget, basedir, user, CACHE_S, email, 
     # handle inclusions EXCLDIRS filterout_list get converted to tuples after
     EXCLDIRS += nogo
 
-    # handle exclusions
-    # Linux temp folder
-    exclude_temp = "tmp"
-    if exclude_temp not in EXCLDIRS:
-        EXCLDIRS.append('tmp')
     # filter out
     filterout_list = [os.path.join(basedir, d) for d in filterout_list]
     if basedir == "/":
+
+        # handle exclusions
+        # Linux temp folder
+        exclude_temp = "tmp"
+        if exclude_temp not in EXCLDIRS:
+            EXCLDIRS.append('tmp')
+
         # biggest exclude is .gnupg/random_seed and any runtime files
         #
         # Note:
@@ -1306,7 +1308,7 @@ def scan_system(appdata_local, dbopt, dbtarget, basedir, user, difffile, CACHE_S
             print(f"{write_type} to difference file {difffile}")
         elif showDiff:
             print("no symmetric differences found.")
-
+    change_perm(difffile, uid, gid)
     if rlt == 0:
         if iqt:
             print(f"Progress: {endp}%", flush=True)

@@ -428,7 +428,6 @@ def get_cache_files(basedir, dbopt, dbtarget, CACHE_S, json_file, user, email, c
                                 for old_table, new_table in table_list:
                                     if table_exists(conn, old_table):
                                         cur.execute(f"ALTER TABLE {old_table} RENAME TO {new_table};")
-                                conn.commit()
 
                             nc = cnc(dbopt, compLVL)
                             if encr(dbopt, dbtarget, email, no_compression=nc, dcr=iqt):  # leave open for gui

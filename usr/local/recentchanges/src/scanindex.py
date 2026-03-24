@@ -57,7 +57,7 @@ def scan_index(chunk, is_sym, i, num_chunks, show_progress=False, strt=0, endp=1
                 previous_symlink = record[7]
                 previous_target = record[12]
                 previous_count = record[15]
-                if not previous_md5:
+                if not previous_symlink and not previous_md5:
                     emit_log("DEBUG", f"Previous hash was missing attempting to run checksum. file:  {file_path}", logs.WORKER_LOG_Q)
                 rlt, status = meta_sys(file_path, previous_md5, previous_symlink, previous_target, previous_count, is_sym, sys_data, link_data, logs.WORKER_LOG_Q)  # append meta data to sys_data
                 if not rlt:

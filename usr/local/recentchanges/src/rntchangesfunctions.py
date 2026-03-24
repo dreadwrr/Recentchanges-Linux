@@ -597,11 +597,19 @@ def get_diff_file(USRDIR, MODULENAME):
 
     diff_file = None
 
+    all_matches = []
     for pattern in patterns:
-        matches = glob.glob(pattern)
-        if matches:
-            diff_file = sorted(matches, key=os.path.getmtime, reverse=True)[0]
-            break
+        all_matches.extend(glob.glob(pattern))
+
+    if all_matches:
+        diff_file = max(all_matches, key=os.path.getmtime)
+
+    # selects /tmp first # original
+    # for pattern in patterns:
+    #     matches = glob.glob(pattern)
+    #     if matches:
+    #         diff_file = sorted(matches, key=os.path.getmtime, reverse=True)[0]
+    #         break
 
     if not diff_file:
         diff_file = default_diff

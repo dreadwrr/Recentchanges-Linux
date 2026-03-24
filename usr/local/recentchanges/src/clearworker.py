@@ -7,10 +7,10 @@ from .gpgcrypto import encr
 from .gpgcrypto import start_gpg_agent
 from .pysql import clear_conn
 from .pysql import clear_sys_profile
+from .query import blank_count
 from .query import main as query_main
 from .qtclasses import Worker
 from .qtfunctions import clear_cache
-from .query import blank_count
 from .rntchangesfunctions import cnc
 from .rntchangesfunctions import removefile
 from .rntchangesfunctions import reset_csvliteral

@@ -2,8 +2,8 @@
 # Build index - Scan a drive for specified files and hash/get meta data.
 # formerly scan_f # 03/14/2026
 import os
-from .logs import emit_log
 from . import logs
+from .logs import emit_log
 from .dirwalkerfunctions import scandir_meta
 
 
