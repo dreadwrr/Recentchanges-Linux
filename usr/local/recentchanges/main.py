@@ -386,7 +386,7 @@ class MainWindow(QMainWindow):
 
         self.ui.actionExit.triggered.connect(QApplication.quit)
         self.ui.actionClear_extensions.triggered.connect(self.clear_extensions)
-        self.ui.actionUpdates.triggered.connect(lambda: check_for_updates(self.app_version, "dreadwrr", "Recentchanges", self))
+        self.ui.actionUpdates.triggered.connect(lambda: check_for_updates(self.app_version, "dreadwrr", "Recentchanges-Linux", self))
 
         self.ui.actionCommands_2.triggered.connect(lambda: show_cmddoc(self.command_file, self.lclhome, self.pst_data, self.gpg_path, self.gnupg_home, self.email, self.systimeche, self.ui.hudt))
         self.ui.actionQuick1.triggered.connect(lambda: display(self.dspEDITOR, self.command_file, True, self.dspPATH))
@@ -2935,17 +2935,15 @@ def start_main_window():
             json_dump = False
 
             # from user install
-            if not gnupg_home:
-                gnupg_home = os.environ.get("GNUPGHOME")
-                if gnupg_home:
-                    gpg_home = j_settings.get("gnupghome")
-                    if gnupg_home != gpg_home:
-                        j_settings["gnupghome"] = gnupg_home
-                        json_dump = True
-                else:
-                    gnupg_home = find_gnupg_home(json_file, j_settings)  # detect and save
+            if gnupg_home:
+                gpg_home = j_settings.get("gnupghome")
+                if gnupg_home != gpg_home:
+                    j_settings["gnupghome"] = gnupg_home
+                    json_dump = True
+            else:
+                gnupg_home = find_gnupg_home(json_file, j_settings)  # detect and save
 
-            distro_name = j_settings.get("/", {}).get("distro_name")
+            distro_name = j_settings.setdefault("/", {}).get("distro_name")
             if not distro_name:
                 _, distro_name = get_linux_distro()
                 if distro_name:
