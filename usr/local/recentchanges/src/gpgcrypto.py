@@ -133,7 +133,7 @@ def decr_ctime(CACHE_F: str, user: str, iqt: bool) -> dict:
     if not csv_path:
         if csv_path is None:
             print("if having problems run recentchanges reset to clear .gpg files and keys")
-        print(f"Unable to retrieve cache file {CACHE_F} quitting.")
+        print(f"Unable to retrieve cache file {CACHE_F}. cache file might be corrupt removing the file may resolve issue. quitting.")
         sys.exit(1)
 
     cfr_src = {}
@@ -166,7 +166,8 @@ def decr_ctime(CACHE_F: str, user: str, iqt: bool) -> dict:
     return cfr_src
 
 
-# commandline start the users gpg agent before decrypting the cache file ***
+# commandline start the users gpg agent before decrypting the cache file above ***
+# also used for processhandler.py to start the gpg agent before QProcess
 def start_user_agent(gpg_file, user=None):
     cmd = set_cmd(user)
     cmd += ["gpg", "--decrypt", "--dry-run", gpg_file]
@@ -182,6 +183,8 @@ def start_user_agent(gpg_file, user=None):
 
 
 # Qt precache or refresh gpg passphrase.
+# this function either refreshes the passphrase or can detect when passphrase has expired so can prompt
+# the user in the gui to user terminal as many would have curses or tty pinentry
 def start_gpg_agent(email):
     """ purpose to know when passphrase has expired then prompt with Qt dialog """
     result = subprocess.run(["gpg", "--default-key", email, "--pinentry-mode", "loopback", "--passphrase", "phraseunkown", "-s"], input=b"", capture_output=True)
@@ -203,6 +206,7 @@ def start_gpg_agent(email):
     return True
 
 
+# probe the gpg agent for pin-entry program
 def test_gpg_agent(email):
     """ If result is None there is no tty and user is using tty or curses
     purpose is to refresh the cached passphrase or see if passphrase has expired """

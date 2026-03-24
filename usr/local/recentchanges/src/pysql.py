@@ -100,7 +100,7 @@ def create_table_cache(c, table, unique_columns):
         'modified_time TEXT',
         'filename TEXT',
         'file_count INTEGER',
-        'idx_count INTEGER DEFAULT 0',
+        'idx_count INTEGER',
         'idx_bytes INTEGER',
         'max_depth INTEGER',
         'type TEXT',
@@ -781,6 +781,9 @@ def increment_f(conn, c, sys_tables, records, logger=None):
 
 
 def find_symmetrics(dbopt, cache_table, systimeche):
+
+    # dirs that had no files and now do
+
     cache_records = []
     has_systime = False
     conn = cur = None
@@ -826,6 +829,8 @@ def find_symmetrics(dbopt, cache_table, systimeche):
                                 cache_records.append(record)
                         except (FileNotFoundError, PermissionError):
                             pass
+
+        # new directories
 
         sql = f"""
         SELECT DISTINCT s.filename

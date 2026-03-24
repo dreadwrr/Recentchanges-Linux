@@ -790,7 +790,7 @@ def user_data_from_database(logger, textEdit, combffile, extensions, dbopt, pare
             query = dmn.execute(sql)
             if query and query.exec() and query.next():
                 if query.value(0):
-
+                    # if using gnupg package but disabled as not needed for minimum dependencies
                     # logging.getLogger('gnupg').setLevel(logging.CRITICAL)
                     # gpg = gnupg.GPG()
                     encrypted_blob = query.value(0)

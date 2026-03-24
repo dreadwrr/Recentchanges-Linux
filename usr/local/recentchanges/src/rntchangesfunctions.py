@@ -1,4 +1,4 @@
-# developer buddy v5.0 core                     03/03/2026
+# developer buddy v5.0 core                     03/23/2026
 import csv
 import glob
 import importlib.util
@@ -23,7 +23,7 @@ filter_patterns_path = install_root / "filter.py"
 spec = importlib.util.spec_from_file_location("user_filter", filter_patterns_path)
 user_filter = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(user_filter)
-# Note: For database cacheclear / terminal supression see pyfunctions.py
+# Note: For database cacheclear / terminal supression see config.toml
 
 
 def reset_csvliteral(csv_file):
@@ -360,9 +360,9 @@ def find_files(find_command, search_paths, file_type, RECENT, COMPLETE, RECENTNU
     try:
         buffer = b''
         proc = subprocess.Popen(find_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # stderr=subprocess.DEVNULL
-        # output, err = proc.communicate()  # original
+        # output, err = proc.communicate()  # original if buffering
 
-        # if proc.returncode not in (0, 1):  # original
+        # if proc.returncode not in (0, 1):  # original if buffering
         #     stderr_str = err.decode("utf-8")
         #     print(stderr_str)
         #     print("Find command failed, unable to continue. Quitting.")
@@ -404,7 +404,7 @@ def find_files(find_command, search_paths, file_type, RECENT, COMPLETE, RECENTNU
         proc.wait()
 
         if proc.returncode not in (0, 1):
-            # for line in iter(proc.stderr.readline, b''):
+            # for line in iter(proc.stderr.readline, b''):  # if buffering
             #     decoded = line.decode('utf-8', errors='replace').strip()
             # if decoded:
             #     print(decoded)
@@ -423,7 +423,7 @@ def find_files(find_command, search_paths, file_type, RECENT, COMPLETE, RECENTNU
     if file_type == "main":
         end = time.time()
 
-    # file_entries = [entry.decode('utf-8', errors='backslashreplace') for entry in output.split(b'\0') if entry]  # original
+    # file_entries = [entry.decode('utf-8', errors='backslashreplace') for entry in output.split(b'\0') if entry]  # original if buffering
 
     # using escf_py and unesc_py for bash support otherwise can use: filename.encode('unicode_escape').decode('ascii') , codecs.decode(escaped, 'unicode_escape')
     # using escf_py and unesc_py for bash
@@ -432,7 +432,7 @@ def find_files(find_command, search_paths, file_type, RECENT, COMPLETE, RECENTNU
     # json.dumps(filename)    " -> \"   \n -> \\n   \ -> \\   \t -> \\t  \r \\r
     # json.loads(line)
 
-    # original
+    # original if buffering
     # records = []
     # for entry in file_entries:
     #     fields = entry.split(maxsplit=10)
@@ -784,9 +784,6 @@ def build_tsv(SORTCOMPLETE, TMPOPT, logf, rout, escaped_user, outpath, method, f
             SORTCOMPLETE = filter_lines_from_list(SORTCOMPLETE, escaped_user)
 
     tsv_files = []
-    mtyp = is_copy = ""
-
-    is_statable = st = None
 
     try:
         copy_paths = set()
@@ -804,11 +801,15 @@ def build_tsv(SORTCOMPLETE, TMPOPT, logf, rout, escaped_user, outpath, method, f
                     copy_paths.add(full_path)
 
         is_link = any(len(row) > 7 and row[7] == 'y' for row in SORTCOMPLETE)
-        header = "Datetime\tFile\tSize(kb)\tType\tSymlink" + ("\tTarget" if is_link else "") + "\tCreation\tcam\tAccessed\tOwner\tStatable\tCopy"
+        header = "Datetime\tFile\tSize(kb)\tType\tSymlink" + ("\tTarget" if is_link else "") + "\tChanged\tcam\tAccessed\tOwner\tStatable\tCopy"
 
         for entry in SORTCOMPLETE:
             if len(entry) < 13:
                 continue
+
+            is_statable = st = None
+            mtyp = is_copy = ""
+
             dt = entry[0]
             fpath = entry[1]
 

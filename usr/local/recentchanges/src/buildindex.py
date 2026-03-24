@@ -9,6 +9,7 @@ from .dirwalkerfunctions import scandir_meta
 
 def build_index(chunk, i, num_chunks, show_progress=False, strt=0, endp=100):
 
+    # delta_v = endp - strt
     # rec_count = 0
     c = x = 0
     dbit = False
@@ -16,7 +17,7 @@ def build_index(chunk, i, num_chunks, show_progress=False, strt=0, endp=100):
     if show_progress:
         dbit = True
         rec_count = len(chunk)
-        #     # scale = (endp - strt) / rec_count
+        #     # scale = (delta_v) / rec_count
         steps = sorted(set(int((r / 10) * rec_count) for r in range(1, 11)))
         step_len = len(steps)
 
@@ -25,7 +26,6 @@ def build_index(chunk, i, num_chunks, show_progress=False, strt=0, endp=100):
     current_step = 0
 
     # incr = 10
-    # delta_v = endp - strt
     # last_printed = -1
 
     for record in chunk:

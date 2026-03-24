@@ -13,6 +13,7 @@ from src.qtfunctions import load_file_manager
 from src.qtfunctions import kill_process
 # 03/14/2026
 
+
 def dispatch_internal(argv):
     arglen = len(argv)
     if arglen >= 3:
@@ -34,8 +35,15 @@ def dispatch_internal(argv):
             }
 
             entry = DISPATCH_MAP.get(script)
+
+            # uid_str = os.environ.get("PKEXEC_UID")
+            # if uid_str:
+            # usr_name = pwd.getpwuid(os.geteuid()).pw_name
+
+            # set process group for SIGINT SIGTERM
             # os.setsid()
             # p_id = os.getpgid(0)  # print("pid",  p_id)
+
             if isinstance(entry, dict):
                 if cmd not in entry:
                     print(

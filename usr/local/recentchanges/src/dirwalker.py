@@ -24,8 +24,8 @@ from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 from datetime import datetime
 from .buildindex import build_index
+from .config import dump_toml
 from .config import set_json_settings
-from .config import update_toml_values
 from .dirwalkerfunctions import check_specified_paths
 from .dirwalkerfunctions import chunk_split
 from .dirwalkerfunctions import decr_cache
@@ -277,8 +277,10 @@ def collect_files(basedir, EXCLDIRS_FULLPATH, filter_tup, is_xzm_profile, matche
                                                 continue
                                             if not is_path_match and not to_spec(path, stat_info, shared_object, is_shared_library, is_exec, logger):
                                                 continue
+
                                             if symlink:
                                                 target = find_link_target(path, logger=logger)
+
                                             idx_files += 1
                                             r += 1
                                             sze = stat_info.st_size
@@ -301,7 +303,6 @@ def collect_files(basedir, EXCLDIRS_FULLPATH, filter_tup, is_xzm_profile, matche
                                     target = find_dir_link_target(path, logger=logger)
                                     if target:
                                         rtype = "symlink"
-                                        target = f'broken {target}'
                                         stat_info = get_stat(entry, logger=logger)
                                         if not stat_info:
                                             logger.debug(f"could not stat broken dir symlink {path}")
@@ -323,7 +324,7 @@ def collect_files(basedir, EXCLDIRS_FULLPATH, filter_tup, is_xzm_profile, matche
                                 dir_data[path] = entry_data
 
                         except OSError as e:
-                            logger.error(f"collect_scan Exception scanning {'symlink' if symlink else 'file'} {path}: {type(e).__name__} {e}", exc_info=True)
+                            logger.error(f"collect_scan Exception scanning {'symlink' if symlink else ''} {path}: {type(e).__name__} {e}", exc_info=True)
 
                     entry_data = {
                         'modified_time': root_modified_dt if root_modified_dt else '',
@@ -393,6 +394,10 @@ def find_created(appdata_local, dbopt, dbtarget, basedir, user, mdltype, tempdir
     MODULENAME = config['paths']['MODULENAME']
 
     EXCLDIRS += nogo
+
+    # search_exclude = str(search_archive.relative_to(search_archive.anchor))  # sensitivity adjust
+    # EXCLDIRS += search_exclude
+
     filterout_list = [os.path.join(basedir, d) for d in filterout_list]
 
     if basedir == "/":
@@ -640,9 +645,8 @@ def find_created(appdata_local, dbopt, dbtarget, basedir, user, mdltype, tempdir
 # chunks = split_dirs_for_workers(all_dirs, num_chunks)
 #
 # 3
-
-
 def index_system(appdata_local, dbopt, dbtarget, basedir, user, CACHE_S, email, ANALYTICSECT=False, idx_drive=False, gnupghome=None, compLVL=200, iqt=False, strt=0, endp=100):
+
     appdata_local = Path(appdata_local)
     config_data = get_config_data(appdata_local, user)
 
@@ -662,6 +666,18 @@ def index_system(appdata_local, dbopt, dbtarget, basedir, user, CACHE_S, email, 
     configured_paths = config['shield']['proteusPATH']
     is_exec = config['shield']['exec']
     is_sym = config['shield']['sym']
+
+    if is_xzm_profile:
+        res = porteus_linux_check()
+        if not res:
+            if res is None:
+                print("inconclusive if distro is porteus ")
+            print(".xzm not supported using default specifications.")
+            # update_toml_values({'shield': {'xzm': False}}, toml_file)
+            config['shield']['xzm'] = False
+            dump_toml(None, config, toml_file)
+        if not res or basedir != "/":
+            is_xzm_profile = False
 
     rlt = 0
 
@@ -683,16 +699,25 @@ def index_system(appdata_local, dbopt, dbtarget, basedir, user, CACHE_S, email, 
     paths_tup, extn_tup = (), ()
 
     paths_tup, _ = check_specified_paths(basedir, configured_paths, "proteusPATHS", suppress=False)  # add basedir to paths and any paths that dont exist pull out and tell user
+    # exec_tup # windows
     extn_tup, is_noextension, is_shared_library = get_extension_tup(extension)  # set flags
 
     # handle inclusions EXCLDIRS filterout_list get converted to tuples after
     EXCLDIRS += nogo
 
-    EXCLDIRS.append('tmp')
+    # handle exclusions
+    # Linux temp folder
+    exclude_temp = "tmp"
+    if exclude_temp not in EXCLDIRS:
+        EXCLDIRS.append('tmp')
     # filter out
     filterout_list = [os.path.join(basedir, d) for d in filterout_list]
     if basedir == "/":
-
+        # biggest exclude is .gnupg/random_seed and any runtime files
+        #
+        # Note:
+        #
+        #
         xdg_runtime = config_data.xdg_runtime
         home_dir = config_data.home_dir
         file_out = xdg_runtime / "file_output"
@@ -704,36 +729,31 @@ def index_system(appdata_local, dbopt, dbtarget, basedir, user, CACHE_S, email, 
             download_results = os.path.join(home_dir, "Downloads", MODULENAME + "x")
             filterout_list.append(download_results)
             if '.gpg' in extension:
+
                 CACHE_F_frm = os.path.join(pst_data, "ctimecache.gpg")
                 CACHE_S_frm, _ = parse_systimeche(basedir, CACHE_S)
                 CACHE_S_frm = os.path.join(pst_data, CACHE_S_frm)
+
                 filterout_list.append(CACHE_F_frm)
                 filterout_list.append(CACHE_S_frm)
                 filterout_list.append(dbtarget)
+
             if ".csv" in extension:
+
                 flth_frm = pst_data / "flth.csv"
                 filterout_list.append(str(flth_frm))
+
             if ".db" in extension:
                 filterout_list.append(dbopt)
 
         if is_noextension and gnupghome:
+
             file_exclude = os.path.join(gnupghome, "random_seed")
             if file_exclude not in filterout_list:
                 filterout_list.append(file_exclude)
 
     EXCLDIRS_FULLPATH = set(os.path.join(basedir, d) for d in EXCLDIRS)
     filter_tup = get_filter_tup(filterout_list)
-
-    if is_xzm_profile:
-        res = porteus_linux_check()
-        if not res:
-            if res is None:
-                print("inconclusive if distro is porteus ")
-            print(".xzm not supported using default specifications.")
-            update_toml_values({'shield': {'xzm': False}}, toml_file)
-
-        if not res or basedir != "/":
-            is_xzm_profile = False
 
     logging_values = (log_file, ll_level, appdata_local)
     rootlogger = setup_logger(log_file, logging_values[1], "BUILDIDX")
@@ -807,17 +827,18 @@ def index_system(appdata_local, dbopt, dbtarget, basedir, user, CACHE_S, email, 
     end = time.time()
     if log_entries:
         write_logs_to_logger(log_entries, logger)
-    if dir_data is None:
+
+    if all_files is None:
         print(f"An error occurred while initially indexing {basedir}")
         return 1
-    if j == 0:
+    elif not all_files:  # if j == 0
         print(f"No files found while {'building directory index' if is_xzm_profile else 'searching'} {basedir}.")
+        print("if exec setting is True it can filter too many results try to adjust or set different extns to include more results")
         return 1
-    if r == 0:
-        print("failed to build profile an error occured there were no matched files. exitting")
-        return 1
+
     if iqt:
         print(f"Progress: {proval:.2f}%")  # 15 %
+
     prog_v = proval
     el = end - start
     if ANALYTICSECT:
@@ -847,6 +868,10 @@ def index_system(appdata_local, dbopt, dbtarget, basedir, user, CACHE_S, email, 
         elif res == 4:
             return 52  # likely encryption failure database integrity is fine
         return res
+
+    if r == 0:
+        print("failed to build profile an error occured there were no matched files. exitting")
+        return 1
 
     endval = deltav * .90 + strt
 
@@ -973,13 +998,13 @@ def index_system(appdata_local, dbopt, dbtarget, basedir, user, CACHE_S, email, 
 
                 if iqt:
                     print(f"Progress: {endp}%", flush=True)
-
-                _, suffix = parse_systimeche(basedir, CACHE_S)
-                if xzm_obj:
-                    extn = xzm_obj.create_xzm_baseline(suffix, json_file)
                 else:
-                    extn = extension + configured_paths
-                set_json_settings({"proteusEXTN": extn}, drive=suffix, filepath=str(json_file))
+                    _, suffix = parse_systimeche(basedir, CACHE_S)
+                    if xzm_obj:
+                        extn = xzm_obj.create_xzm_baseline(suffix, json_file)
+                    else:
+                        extn = extension + configured_paths
+                    set_json_settings({"proteusEXTN": extn}, drive=suffix, filepath=str(json_file))
 
                 print("System profile complete")
             elif rlt == 4:
@@ -1159,6 +1184,9 @@ def scan_system(appdata_local, dbopt, dbtarget, basedir, user, difffile, CACHE_S
             systimeche = name_of(CACHE_S)
             dir_diff, new_diff = find_symmetrics(dbopt, cache_table, systimeche)
 
+        if ANALYTICSECT:
+            el = end - start
+            print(f'Search took {el:.3f} seconds\n')
         if x != 0:
             p = (y / x) * 100
             if p > 30:
@@ -1166,14 +1194,10 @@ def scan_system(appdata_local, dbopt, dbtarget, basedir, user, difffile, CACHE_S
 
         # output terminal
         if all_sys:
-            if ANALYTICSECT:
-                el = end - start
-                print(f'Search took {el:.3f} seconds\n')
 
             # symmetric differences
             # show sylinks that have new targets
             # show the files that no longer exist from the miss rate
-            recent_files = []
             for record in all_sys:
                 record_str = ' '.join(map(str, record))
                 recent_files.append(record_str)
@@ -1223,13 +1247,13 @@ def scan_system(appdata_local, dbopt, dbtarget, basedir, user, difffile, CACHE_S
                 print(current_time, file=f)
 
         # symmetric differences
+        # symlink target change and files no longer present
         # show directories that had 0 files at indexing but now have files
         # show new directories since profile was created
         if showDiff and are_symmetrics:
 
             if not is_all_results:
                 print("Directory differences found")
-                print(f"{write_type} to difference file {difffile}")
                 f.write("\n")
                 print()
                 print(hdr1, file=f)
@@ -1269,7 +1293,9 @@ def scan_system(appdata_local, dbopt, dbtarget, basedir, user, difffile, CACHE_S
                 for d in new_diff:
                     f.write(d + "\n")
 
-            print("Differences included")
+            if is_all_results:
+                print("Differences included")
+            print(f"{write_type} to difference file {difffile}")
         elif showDiff:
             print("no symmetric differences found.")
 

@@ -21,7 +21,6 @@ from .pysql import increment_f
 
 
 # tfile
-#  logger_process(all_results, batch_incr, rout, scr, cerr, dbopt, ps, logger)
 def logger_process(results, sys_records, sys_tables, rout, scr, cerr, dbopt, ps, logger=None):
     # append rout messages to the rout list from hanly
     # if there are sys_records add them to the database sys changes sys_b
@@ -131,6 +130,7 @@ def hanly_parallel(drive_type, rout, scr, cerr, parsed, cachermPATTERNS, ANALYTI
 
     if len_parsed < 80 or drive_type.lower() == "hdd":
 
+        # also move off thread for single core and directly log
         # log_q = queue.SimpleQueue()
         # init_process_worker(log_q)
 

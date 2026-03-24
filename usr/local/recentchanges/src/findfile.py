@@ -210,16 +210,16 @@ def comp_archive(target_files, archive, temp_dir, downloads, arch_exclude, USR, 
                 file_list = uniques
                 if archive_failure_blk(result, file_list) == 0:
                     res = 0
-                # would miss files with newline character as zip is new line delimited
+                # would miss files with newline character as zip is new line delimited and filenames passed from stdin
                 # cmd += [f"-{zipcmode}", out_file, relative_flg]
                 # data = "\n".join(xdata).encode("utf-8")
 
             elif zipPROGRAM == "tar":
 
-                # write only duplicates to qt temp dir this way to avoid exceeding memory size if the data  is too great
+                # theory which would be ideal only write the duplicates to a temp dir this way to avoid exceeding memory size if the data  is too great
+                # with hardware today this isnt so much of a problem. Windows copies files to a temp dir if strip option is true.
                 #
-                #
-                #
+                # this implementation write duplicates to a seperate .tar archive if strip is true. no temp dir required
 
                 archflnm_two = archive + "_duplicate" + suffix
                 out_two = os.path.join(downloads, archflnm_two)
@@ -303,7 +303,6 @@ def main(localappdata, filename, extension, basedir, USR, dspEDITOR, dspPATH, te
         print("Invalid input. exiting.")
         return 1
 
-    # localappdata = find_install()
     localappdata = Path(localappdata)
     toml, json_file, home_dir, xdg_config, xdg_runtime, USR, uid, gid = get_config(localappdata, USR, platform="Linux")
     config = load_toml(toml)

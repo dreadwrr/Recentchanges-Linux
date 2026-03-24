@@ -98,7 +98,8 @@ class ClearWorker(Worker):
                                     self.log.emit("Filter hits cleared.")
                                     x = blank_count(cur)
                                     if x % 5 == 0:
-                                        self.log.emit(f"for resetting filter hits see top of {self.flth}")
+
+                                        self.log.emit("for resetting filter hits see filter.py")
                                 except Exception as e:
                                     cm = f'Failed to clear csv: {self.flth} {type(e).__name__} {e}'
                                     self.status.emit(cm)

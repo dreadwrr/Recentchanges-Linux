@@ -213,7 +213,7 @@ def sys_record_flds(record, sys_records, prev_count):
 
 
 def collisions(xdata, cerr, c, ps):
-    """ return collisions from the database. not used currently """
+    """ return collisions from the database. not used currently. for pysql.py ln628"""
     reported = set()
     csum = False
     colcheck = collision(c, ps)

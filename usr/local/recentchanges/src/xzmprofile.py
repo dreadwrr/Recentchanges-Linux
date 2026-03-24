@@ -24,13 +24,13 @@ class XzmProfile:
 
     BINARY = [
         "bin",
+        "sbin",
+        "opt/porteus-scripts",
         "usr/bin",
-        "usr/sbin",
         "usr/libexec",
+        "usr/sbin",
         "usr/local/bin",
         "usr/local/sbin",
-        "sbin",
-        "opt/porteus-scripts"
     ]
 
     def __init__(self, basedir="/", suppress=False):

@@ -97,6 +97,8 @@ def process_lines(search_fn, lines, file_type, search_start_dt, process_label, u
 
         try:
 
+            # move logging off thread for single core reduce overhead
+
             # tlog = threading.Thread(target=logging_worker, args=(log_q, len_lines, strt, endp, show_progress, logger), daemon=True)
             # tlog.start()
 

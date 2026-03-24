@@ -1,4 +1,4 @@
-# Find downloads                                                           03/14/2026
+# Find downloads                                                           03/23/2026
 #
 # Using the directory cache use the mtime of the dir to find new files. At the end
 # the cache file is up to date with any new dir mtimes.
@@ -64,45 +64,36 @@ def scan_created(chunk, basedir, EXCLDIRS_FULLPATH, filter_tup, CACHE_S, root_co
             else:
                 dirl = True
 
+                rtype = None
+                symlink = record.is_symlink()
+                if symlink:
+                    rtype = "symlink"
+                # new reparse
+                if rtype:
+                    target = find_link_target(root, log_entries=log_entries, logger=logger)
+                    entry["cfr_reparse"][root] = {
+                        'modified_time': modified_dt if modified_dt else '',
+                        'modified_ep': modified_ep,
+                        'file_count': 0,
+                        'idx_count': 0,
+                        'idx_bytes': 0,
+                        'max_depth': root.count(os.sep),
+                        'type': rtype,
+                        'target': target
+                    }
+                    results.append(entry)
+                    emit_log("DEBUG", f"process_directory folder was a reparse point: {root}", log_entries=log_entries, logger=logger)
+                    return
+
             with os.scandir(root) as entries:
                 for record in entries:
-
-                    rtype = target = None
-                    symlink = False
 
                     path = record.path
 
                     try:
-
-                        if record.is_dir(follow_symlinks=False):
+                        if record.is_dir():
                             if path in EXCLDIRS_FULLPATH:
                                 continue
-
-                            if dirl:
-                                stat_info = get_stat(record, log_entries=log_entries, logger=logger)
-                                if not stat_info:
-                                    continue
-                                symlink = record.is_symlink()
-                                if symlink:
-                                    rtype = "symlink"
-                                # new reparse
-                                if rtype:
-
-                                    m_epoch = stat_info.st_mtime
-                                    mtime_dt = epoch_to_str(m_epoch)
-                                    target = find_link_target(path, log_entries=log_entries, logger=logger)
-                                    entry["cfr_reparse"][path] = {
-                                        'modified_time': mtime_dt if mtime_dt else '',
-                                        'modified_ep': m_epoch,
-                                        'file_count': 0,
-                                        'idx_count': 0,
-                                        'idx_bytes': 0,
-                                        'max_depth': path.count(os.sep),
-                                        'type': rtype,
-                                        'target': target
-                                    }
-                                    emit_log("DEBUG", f"process_directory folder was a reparse point: {path}", log_entries=log_entries, logger=logger)
-                                    continue
 
                             if root != basedir:
                                 process_directory(record, path)
@@ -123,7 +114,7 @@ def scan_created(chunk, basedir, EXCLDIRS_FULLPATH, filter_tup, CACHE_S, root_co
                                     sys_data.append((path, file_mtime))  # new file found
 
                     except OSError as e:
-                        emit_log("DEBUG", f"error could not stat file: {path} {type(e).__name__} {e}", log_entries=log_entries, logger=logger)
+                        emit_log("DEBUG", f"error could not stat {'symlink' if symlink else ''}: {path} {type(e).__name__} {e}", log_entries=log_entries, logger=logger)
                         continue
                 if dirl:
                     if prev_entry:

@@ -23,6 +23,7 @@ def write_log(log, level, message):
     method = getattr(log, str(level).lower(), None)
     if method:
         method(message)
+    # 03/15/2026
     else:
         log.error(f"Unknown log level: {message}")
 
@@ -122,7 +123,7 @@ def setup_logger(log_file, level="ERROR", process_label="MAIN"):
 
 
 def change_logger(log_file, level, process_label):
-
+    """ 03/15/2026 for config change in gui to prevent stale handles """
     root = logging.getLogger()
 
     log_level = LEVEL_MAP.get(str(level).upper(), logging.ERROR)
