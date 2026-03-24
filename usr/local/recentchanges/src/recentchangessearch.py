@@ -786,6 +786,11 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
             if POSTOP:
                 outpath = os.path.join(USRDIR, tsv_doc)
                 if not os.path.isfile(outpath):
+
+                    # run_doctrine(appdata_local, USRDIR, SORTCOMPLETE, TMPOPT, logf, rout, toml_file, escaped_user, method, fmt)
+                    # cprint.green(f"File doctrine.tsv created {USRDIR}/{tsv_doc}")
+                    # change_perm(outpath, uid, gid)
+
                     if build_tsv(SORTCOMPLETE, TMPOPT, logf, rout, escaped_user, outpath, method, fmt):
                         change_perm(outpath, uid, gid)
                         cprint.green(f"File doctrine.tsv created {USRDIR}/{tsv_doc}")

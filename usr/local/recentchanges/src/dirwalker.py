@@ -395,7 +395,13 @@ def find_created(appdata_local, dbopt, dbtarget, basedir, user, mdltype, tempdir
 
     EXCLDIRS += nogo
 
-    # search_exclude = str(search_archive.relative_to(search_archive.anchor))  # sensitivity adjust
+    # sensitivity adjust
+
+    # search_archive = appdata_local / f"{MODULENAME}_MDY_"
+    # search_exclude = str(search_archive.relative_to(search_archive.anchor))
+    # EXCLDIRS += search_exclude
+
+    # search_exclude = "tmp" / f"{MODULENAME}_MDY_"
     # EXCLDIRS += search_exclude
 
     filterout_list = [os.path.join(basedir, d) for d in filterout_list]
@@ -688,7 +694,7 @@ def index_system(appdata_local, dbopt, dbtarget, basedir, user, CACHE_S, email, 
     deltav = endp - strt
     proval = deltav * .15 + strt
     if iqt:
-        print(f"Progress: {strt}%", flush=True)
+        print(f"Progress: {strt}%", flush=True)  # so gui knows not to prompt user for password
 
     parsedsys = []
     dir_data = {}

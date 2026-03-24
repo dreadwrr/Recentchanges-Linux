@@ -123,7 +123,7 @@ def ensure_default_utils():
             check=True
         ).stdout
     except FileNotFoundError:
-        print("Find not found version 4.8.0 required")
+        raise RuntimeError("Find not found version 4.8.0 or above required")
     except subprocess.CalledProcessError as e:
         output = e.stdout + e.stderr
         print(output)

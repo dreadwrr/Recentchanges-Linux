@@ -256,7 +256,7 @@ def comp_archive(target_files, archive, temp_dir, downloads, arch_exclude, USR, 
                     if tarcmode == "zstd":
                         cmd += ["--zstd"]
                     if tar_filter:
-                        cm_dupes += ["-I", tar_filter]
+                        cmd += ["-I", tar_filter]
                     cmd += ["--ignore-failed-read"]
 
                     if strip:

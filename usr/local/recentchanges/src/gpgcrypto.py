@@ -284,7 +284,7 @@ def gpg_can_decrypt(usr, dbtarget):
             print(f"{dbtarget} is owned by root. permission must be owned by {usr}. set permission to continue.")
             uinp = input(f"change permission to {usr} for {dbtarget} (Y/N): ").strip().lower()
             if uinp == 'y':
-                _, _, uid, gid = user_info(usr)
+                _, _, _, uid, gid = user_info(usr)
                 res = subprocess.run(["sudo", "chown", f"{uid}:{gid}", dbtarget], capture_output=True, text=True)
                 if res.returncode != 0:
                     print("failed to set permissions.")

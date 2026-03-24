@@ -121,6 +121,7 @@ class DriveSelectorDialog(QDialog):
 
         self.drive_combo = QComboBox()
 
+        drives = []
         if idx_drive:
             drives = self.get_physical_drives(basedir, j_settings, filter_out)
             self.drives = drives
@@ -187,6 +188,7 @@ class DriveSelectorDialog(QDialog):
                     drives.append(drive)
 
             return drives
+        return []
 
 
 @dataclass

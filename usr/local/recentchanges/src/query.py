@@ -284,4 +284,4 @@ def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, d
 
 if __name__ == "__main__":
 
-    sys.exit(main(*sys.argv))
+    sys.exit(main(*sys.argv[1:]))
