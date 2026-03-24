@@ -273,7 +273,7 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
             if basedir != "/":
                 print("failed to load json in setup_drive_cache")
                 return 1
-
+        user_setting['driveTYPE'] = driveTYPE
     # end init
 
     # VARS
