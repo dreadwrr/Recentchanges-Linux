@@ -20,7 +20,7 @@ usage:    recentchanges 30		system search 30 seconds or newer
 
 Modes
 
-Search        for just a system search	output user/Downloads
+Search        for just a system search	output /Downloads
 
 recentchanges search	search for files 5 minutes or newer
 recentchanges search 30	search for files 30 seconds or newer
