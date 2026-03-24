@@ -1705,7 +1705,7 @@ class MainWindow(QMainWindow):
             return
 
         self.proc = ProcessHandler(self.lclhome, self.xdg_runtime, self.ui.dbmainlabel.text(), self.is_polkit)
-        self.open_proc(120000)
+        self.open_proc(280000)
 
         if compress:
             downloads = self.ui.combffileout.currentText()
