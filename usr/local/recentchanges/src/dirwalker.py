@@ -1,4 +1,4 @@
-#   build first to find the files then distribute round-robin to multiprocessing            03/17/2026
+#   build first to find the files then distribute round-robin to multiprocessing            03/23/2026
 # to hash. This was found to be the fastest as other methods have too much overhead
 
 # scan the important files for modified with same mtime or spoofed timestamp

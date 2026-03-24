@@ -481,11 +481,9 @@ def setup_drive_cache(basedir, appdata_local, dbopt, dbtarget, json_file, toml_f
 
     CACHE_S, systimeche, suffix = get_cache_files(basedir, dbopt, dbtarget, CACHE_S, json_file, USR, email, compLVL, j_settings, partuuid, iqt)  # confirm the uuid and build the CACHE_S and suffix
     if not suffix:
-        print("d")
         return None, None, None, None
 
     if driveTYPE and j_settings:
-        print("a")
         dt = j_settings.get(suffix, {}).get("drive_type")
         if dt:
             if dt != driveTYPE:
