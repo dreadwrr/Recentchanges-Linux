@@ -21,8 +21,8 @@ import threading
 import traceback
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures.process import BrokenProcessPool
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 from .buildindex import build_index
 from .config import dump_toml
 from .config import set_json_settings
@@ -39,12 +39,12 @@ from .dirwalkerfunctions import resolve_profile_link
 from .dirwalkerfunctions import shared_executable
 from .dirwalkerlinux import get_config_data
 from .dirwalkerfunctions import to_spec
+from .dirwalkerparser import build_dwalk_parser
 from .dirwalkersrg import create_new_index
 from .dirwalkersrg import db_sys_changes
 from .dirwalkersrg import hardlinks
 from .dirwalkersrg import save_db
 from .dirwalkersrg import sync_db
-from .dirwalkerparser import build_dwalk_parser
 from .fileops import find_dir_link_target
 from .fileops import find_link_target
 from .gpgcrypto import encr
@@ -397,11 +397,13 @@ def find_created(appdata_local, dbopt, dbtarget, basedir, user, mdltype, tempdir
 
     # sensitivity adjust
 
-    # search_archive = appdata_local / f"{MODULENAME}_MDY_"
+    # search_archive = appdata_local / f"{MODULENAME}_MDY_"  # windows
     # search_exclude = str(search_archive.relative_to(search_archive.anchor))
     # EXCLDIRS += search_exclude
 
-    # search_exclude = "tmp" / f"{MODULENAME}_MDY_"
+    # dir_pth = os.path.join("/tmp", f"{MODULENAME}_MDY_*")  # linux
+    # folders = glob.glob(dir_pth)
+    # search_exclude = [Path(fld).name for fld in folders]
     # EXCLDIRS += search_exclude
 
     filterout_list = [os.path.join(basedir, d) for d in filterout_list]
