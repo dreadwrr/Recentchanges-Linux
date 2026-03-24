@@ -57,7 +57,8 @@ replace the following files from pyinstaller source: <br>
 PyInstaller<br>
 https://github.com/dreadwrr/Linux-Pyinstaller <br>
 to build a binary with all the packages and not needing any on the system <br><br>
-picture for graphic https://i.imgur.com/UoL7CHQ.jpeg<br>
+picture for graphic https://i.imgur.com/UoL7CHQ.jpeg<br><br>
+ui source file https://drive.google.com/file/d/1ndV65m31pbRN7oFnh1ut4z867GPm7rYr/view?usp=sharing<br>
 
 <br>
 Manual
