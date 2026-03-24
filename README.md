@@ -1,3 +1,6 @@
+# Note
+there is one typo in gpgkeymanagement.py ln110 qt=False should be iqt=False but no path leads to this so will run normally <br><br>
+
 Released 5.0.7! added key optimizations and drive logic. Added environment variable to launcher. <br> One step by installer build if preferred <br><br>
 Linux file search application with hybrid analysis <br><br>
 <p>
