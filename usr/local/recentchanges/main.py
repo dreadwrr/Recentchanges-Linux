@@ -2930,9 +2930,8 @@ def start_main_window():
             if not CACHE_S or not suffix or not j_settings:
                 print(CACHE_S)
                 print(suffix)
-                print("b")
                 return 1
-            print("c")
+
             # config changes
             json_dump = False
 
