@@ -54,7 +54,7 @@ printf '%s' "$k"
 }
 
 remove_gpg() {
-local files=("$home_dir/recent.gpg" "$home_dir/ctimecache.gpg" "$home_dir/systimeche*.gpg" "$home_dir/flth.csv")
+local files=("$home_dir/recent.gpg" "$home_dir/ctimecache.gpg" "$home_dir"/systimeche*.gpg "$home_dir/flth.csv")
 if [[ $USR == "root" ]]; then rm -f "${files[@]}" 2> /dev/null; else sudo rm -f "${files[@]}" 2> /dev/null; fi
 # test -d "$home_dir" && find "$home_dir" -maxdepth 1 -type f -name '*.gpg' -exec sudo rm -f -- {} +
 }

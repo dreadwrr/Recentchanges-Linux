@@ -15,7 +15,7 @@ FCOUNT=$( grep -c "${BASEDIR}" $LOGFILE)
 p=0
 z=$( insetdirectory)
 if [ "$z" != "" ]; then
-	if (( z = DEPTH)); then
+	if (( z == DEPTH)); then
     	strt=$z
     else
     	strt=$(( z + 1))

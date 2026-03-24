@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-#   Developer buddy 5.0                                               01/14/2026
+#   Developer buddy 5.0                                               03/22/2026
 # POSTOP
+# included as mime type is native and could use this instead of using magic package in rntchangesfunctions.py
 . /usr/share/porteus/porteus-functions
 get_colors
 SCRIPT_PATH="$( dirname "$0")"

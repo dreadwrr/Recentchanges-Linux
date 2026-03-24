@@ -156,7 +156,7 @@ if [ "$SRCDIR" == "SRC" ] && [ "$goahead" == "true" ]; then
 		    if [ "$usrslc" != "" ]; then
 		        if [ "$usrslc" -ge 0 ]  2>/dev/null; then
 		            echo selected "$usrslc"
-		            if [ "${#arrfiles[@]}" -ge "$usrslc" ]; then
+		            if [ "${#arrfiles[@]}" -ge "$usrslc" ] && [ "$usrslc" -gt 0 ]; then
 		                filename="${arrfiles[$(( usrslc - 1 ))]}"
 		            else
 		                echo
