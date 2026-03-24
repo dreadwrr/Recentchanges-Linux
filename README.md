@@ -1,8 +1,7 @@
 New release! added changes and new features from windows version <br><br>
 ## Note <br>
-changed a bug and commited. will give it about a week to vet any new changes <br>
-the bug was ln2821 and ln2822 in main.py should be uncommented. Should have the patch in shortly but have to verify both windows and linux <br><br>
-Linux file search application with hybrid analysis
+Released 5.0.7! added key optimizations and drive logic. Added environment variable to launcher. One step by installer build is preferred <br><br>
+Linux file search application with hybrid analysis <br><br>
 <p>
 Save encrypted notes <br>
 Quick commands displays saved commands for easy reference <br>
