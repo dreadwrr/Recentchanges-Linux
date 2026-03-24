@@ -21,7 +21,7 @@ from .gpgcrypto import decrypt_from_text
 from .gpgcrypto import encr
 from .gpgcrypto import encrypt_to_text
 from .pyfunctions import is_integer
-# 03/14/2026
+# 03/23/2026
 
 
 def polkit_check(action_id="org.freedesktop.set_recent_helper"):
@@ -58,7 +58,7 @@ def window_prompt(parent, title, message, affirm, reject):  # y/n
     msg_box = QMessageBox(parent)
     msg_box.setWindowTitle(title)
     msg_box.setText(message)
-    msg_box.setWindowIcon(QIcon("/usr/local/recentchanges/Resources/cleo.png"))
+    # msg_box.setWindowIcon(QIcon("/usr/local/recentchanges/Resources/cleo.png"))
     import_button = msg_box.addButton(affirm, QMessageBox.ButtonRole.AcceptRole)
     default_button = msg_box.addButton(reject, QMessageBox.ButtonRole.RejectRole)  # noqa: F841
     msg_box.exec()
