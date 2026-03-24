@@ -355,7 +355,7 @@ def get_cache_files(basedir, dbopt, dbtarget, CACHE_S, json_file, user, email, c
             drive_suffix = device_name_of_mount(basedir)  # basedir.split('/')[-1]
 
             x = 0
-            drive = suffix = drive_info = None
+            suffix = drive_info = None
 
             found = False
             for key, di in j_settings.items():
@@ -364,6 +364,7 @@ def get_cache_files(basedir, dbopt, dbtarget, CACHE_S, json_file, user, email, c
                 drive_partuuid = di.get("drive_partuuid")
                 if not found and drive_partuuid and drive_partuuid == uuid:
                     suffix = key
+                    drive_info = di.copy()
                     moi = di.get("mount_of_index")
                     found = True
                 elif isinstance(key, str) and key.endswith(drive_suffix):
@@ -434,7 +435,7 @@ def get_cache_files(basedir, dbopt, dbtarget, CACHE_S, json_file, user, email, c
                                 # rename any cache file
                                 if os.path.isfile(old_cache_s):
                                     os.rename(old_cache_s, new_cache_s)
-                                update_dict(None, j_settings, drive)  # remove the old
+                                update_dict(None, j_settings, suffix)  # remove the old
                             else:
                                 print(f"Reencryption failed on updating guid for drive {basedir}.\n")
                                 print("If unable to resolve reset json file and clear gpgs")
