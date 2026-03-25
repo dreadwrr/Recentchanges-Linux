@@ -61,6 +61,7 @@ from .pyfunctions import cprint
 from .pyfunctions import epoch_to_str
 from .pysql import find_symmetrics
 from .qtdrivefunctions import get_idx_tables
+from .qtdrivefunctions import get_drive_type
 from .qtdrivefunctions import parse_systimeche
 from .rntchangesfunctions import change_perm
 from .rntchangesfunctions import cnc
@@ -373,14 +374,14 @@ def collect_files(basedir, EXCLDIRS_FULLPATH, filter_tup, is_xzm_profile, matche
 # systimeche.gpg aka CACHE_S
 
 
-def find_created(appdata_local, dbopt, dbtarget, basedir, user, mdltype, tempdir, gnupg_home, CACHE_S, dspEDITOR, dspPATH, email, ANALYTICSECT=True, compLVL=200):
+def find_created(appdata_local, dbopt, dbtarget, basedir, user, dtype, tempdir, gnupg_home, CACHE_S, dspEDITOR, dspPATH, email, ANALYTICSECT=True, compLVL=200):
 
     cfr_src = decr_cache(CACHE_S, user=user)
     if not cfr_src:
         print(f"Unable to retrieve cache file {CACHE_S} quitting.")
         return 1
     appdata_local = Path(appdata_local)
-    config_data = get_config_data(appdata_local, user)  # mdltype is passed in for device from qt as driveTYPE
+    config_data = get_config_data(appdata_local, user)  # dtype is passed in for device from qt as driveTYPE
 
     home_dir = config_data.home_dir
     log_file = config_data.log_file
@@ -442,7 +443,12 @@ def find_created(appdata_local, dbopt, dbtarget, basedir, user, mdltype, tempdir
     logroot = setup_logger(log_file, logging_values[1], "DOWNLOADS")
     change_perm(log_file, uid, gid)
 
-    if mdltype.lower() == "hdd":
+    if dtype not in ("HDD", "SSD"):
+        dtype = config_data.driveTYPE
+        json_file = config_data.json_file
+        print("driveTYPE for drive", basedir, " was null check json file", json_file)
+
+    if dtype.lower() == "hdd":
 
         show_progress = True
         start = time.time()
@@ -761,6 +767,10 @@ def index_system(appdata_local, dbopt, dbtarget, basedir, user, CACHE_S, email, 
             file_exclude = os.path.join(gnupghome, "random_seed")
             if file_exclude not in filterout_list:
                 filterout_list.append(file_exclude)
+    else:
+        # use drive type stored for basedir != "/"
+        json_file = config_data.json_file
+        driveTYPE = get_drive_type(basedir, driveTYPE, CACHE_S, json_file)
 
     EXCLDIRS_FULLPATH = set(os.path.join(basedir, d) for d in EXCLDIRS)
     filter_tup = get_filter_tup(filterout_list)
@@ -1049,6 +1059,11 @@ def scan_system(appdata_local, dbopt, dbtarget, basedir, user, difffile, CACHE_S
     uid = config_data.uid
     gid = config_data.gid
     driveTYPE = config_data.driveTYPE
+
+    if basedir != "/":
+        json_file = config_data.json_file
+        driveTYPE = get_drive_type(basedir, driveTYPE, CACHE_S, json_file)
+
     ll_level = config_data.ll_level
 
     config = config_data.config
@@ -1379,7 +1394,7 @@ def main_entry(argv):
 
     elif args.action == "downloads":
         calling_args = [
-            args.appdata, args.dbopt, args.dbtarget, args.basedir, args.user, args.mdltype, args.tempdir,
+            args.appdata, args.dbopt, args.dbtarget, args.basedir, args.user, args.dtype, args.tempdir,
             args.gnupghome, args.CACHE_S, args.dspEDITOR, args.dspPATH, args.email,
             args.ANALYTICSECT, args.compLVL
         ]

@@ -103,7 +103,7 @@ def sighandle(signum, frame):
 '''
 
 
-def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None, dbopt=None, CACHE_S=None, POST_OP=False, scan_idx=False, showDiff=False, dspPATH=None):
+def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None,  dtype=None, dbopt=None, CACHE_S=None, POST_OP=False, scan_idx=False, showDiff=False, dspPATH=None):
 
     # has_tty = sys.stdin.isatty() and sys.stderr.isatty()
     # if has_tty:
@@ -211,26 +211,18 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
         for p in supbrwLIST
     ]
 
-    # make a named tuple or dict for args and to pass less args for clarity
-    user_setting = {
-        'USR': USR,
-        'email': email,
-        'driveTYPE': driveTYPE_frm,
-        'FEEDBACK': FEEDBACK,
-        'ANALYTICS': ANALYTICS,
-        'ANALYTICSECT': ANALYTICSECT,
-        'checksum': checksum,
-        'ps': ps,
-        'cdiag': cdiag,
-        'compLVL': compLVL
-    }
-
     # init
 
     gnupg_home = None
 
     if iqt:
         basedir = drive
+        driveTYPE = driveTYPE_frm
+        if dtype in ("HDD", "SSD"):
+            driveTYPE = dtype
+        else:
+            print("driveTYPE for drive", basedir, " was null check json file", json_file)
+
         show_diff = showDiff
         POSTOP = POST_OP
         scanIDX = scan_idx
@@ -273,7 +265,21 @@ def main(argone, argtwo, USR, pwrd, argf="bnk", method="", iqt=False, drive=None
             if basedir != "/":
                 print("failed to load json in setup_drive_cache")
                 return 1
-        user_setting['driveTYPE'] = driveTYPE
+
+    # make a named tuple or dict for args and to pass less args for clarity
+    user_setting = {
+        'USR': USR,
+        'email': email,
+        'driveTYPE': driveTYPE,
+        'FEEDBACK': FEEDBACK,
+        'ANALYTICS': ANALYTICS,
+        'ANALYTICSECT': ANALYTICSECT,
+        'checksum': checksum,
+        'ps': ps,
+        'cdiag': cdiag,
+        'compLVL': compLVL
+    }
+
     # end init
 
     # VARS
@@ -896,6 +902,7 @@ def main_entry(argv):
         args.method,
         args.iqt,
         args.drive,
+        args.dtype,
         args.db_output,
         args.cache_file,
         args.POST_OP,

@@ -28,7 +28,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(1693, 1062)
+        MainWindow.resize(1679, 1024)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -96,6 +96,7 @@ class Ui_MainWindow(object):
         sizePolicy1.setHeightForWidth(self.ftimebf.sizePolicy().hasHeightForWidth())
         self.ftimebf.setSizePolicy(sizePolicy1)
         self.ftimebf.setMinimumSize(QSize(89, 0))
+        self.ftimebf.setMaximumSize(QSize(89, 22))
 
         self.gridLayout.addWidget(self.ftimebf, 6, 0, 1, 1)
 
@@ -178,7 +179,7 @@ class Ui_MainWindow(object):
         self.jpgv.setSizePolicy(sizePolicy1)
         self.jpgv.setMinimumSize(QSize(533, 300))
         self.jpgv.setMaximumSize(QSize(533, 300))
-        self.jpgv.setPixmap(QPixmap(u"../.designer/.designer/.designer/.designer/.designer/.designer/.designer/.designer/.designer/.designer/mnt/sdb1/ventoy/Themes/background.png"))
+        self.jpgv.setPixmap(QPixmap(u"../../../mnt/sda3/mnt/sda3/Untitled Folder/Qinst/.designer/.designer/.designer/.designer/.designer/.designer/.designer/.designer/.designer/.designer/mnt/sdb1/ventoy/Themes/background.png"))
         self.jpgv.setScaledContents(True)
 
         self.verticalLayout_4.addWidget(self.jpgv)
@@ -624,6 +625,11 @@ class Ui_MainWindow(object):
 
         self.gridLayout_5.addWidget(self.sffile, 0, 1, 1, 1)
 
+        self.ffilelabel3 = QLabel(self.page)
+        self.ffilelabel3.setObjectName(u"ffilelabel3")
+
+        self.gridLayout_5.addWidget(self.ffilelabel3, 0, 2, 1, 1)
+
 
         self.gridLayout.addLayout(self.gridLayout_5, 32, 0, 1, 2)
 
@@ -862,7 +868,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 1693, 19))
+        self.menubar.setGeometry(QRect(0, 0, 1679, 19))
         self.menuRecent_changes = QMenu(self.menubar)
         self.menuRecent_changes.setObjectName(u"menuRecent_changes")
         self.menuHelp = QMenu(self.menubar)
@@ -901,7 +907,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.stackedWidget.setCurrentIndex(1)
+        self.stackedWidget.setCurrentIndex(0)
         self.basedirButton.setDefault(True)
         self.combffile.setCurrentIndex(0)
 
@@ -1039,6 +1045,7 @@ class Ui_MainWindow(object):
         self.combffileout.setItemText(0, QCoreApplication.translate("MainWindow", u"/tmp", None))
         self.combffileout.setItemText(1, QCoreApplication.translate("MainWindow", u"Downloads", None))
 
+        self.ffilelabel3.setText(QCoreApplication.translate("MainWindow", u"(Range)", None))
         self.combftimeout.setItemText(0, QCoreApplication.translate("MainWindow", u"/tmp", None))
 
 #if QT_CONFIG(tooltip)
