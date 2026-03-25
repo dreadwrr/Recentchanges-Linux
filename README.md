@@ -38,7 +38,7 @@ or make a symlink to /usr/local/bin . ln -s /usr/local/bin/recentchanges /usr/bi
 gpg setup <br>
 as user <br>
 echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br>
-gpgconf --kill gpg-agent
+gpgconf --kill gpg-agent <br>
 then as root <br>
 sudo su <br>
 cd /root <br>
