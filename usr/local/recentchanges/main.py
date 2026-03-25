@@ -2944,8 +2944,6 @@ def start_main_window():
                 driveTYPE_frm, usr, email, compLVL, j_settings=j_settings, iqt=True
             )
             if not CACHE_S or not suffix or not j_settings:
-                print(CACHE_S)
-                print(suffix)
                 return 1
 
             # config changes
