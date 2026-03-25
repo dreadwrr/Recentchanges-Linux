@@ -515,8 +515,8 @@ class MainWindow(QMainWindow):
 
     def add_basedir(self, basedir, drive_idx, drive_uuid, drive, drive_info):
         r = self.basedirs.add_item((drive_uuid, drive, drive_info))
+        self.ui.sbasediridx.setMaximum(self.basedirs.items - 1)
         self.update_basedir(basedir, drive_idx, drive, r)  # load the drive
-        self.ui.sbasediridx.setMaximum(r)
 
     def rmv_basedir(self, index, current_index):
         r = self.basedirs.remove_item(index, current_index)
@@ -610,6 +610,9 @@ class MainWindow(QMainWindow):
 
                 # mtype?
                 dtype = drive_info.get("drive_type")
+                if dtype not in ("HDD", "SSD"):
+                    self.ui.hudt.appendPlainText(f"Warning entry for {a} malformed in json {self.sj} defaulting to HDD.")
+                    dtype = "HDD"
                 psextn = drive_info.get("proteusEXTN")
 
                 basedirs.add_item((uuid, BasedirDrive(a, parent_device, uuid, moi, dtype, CACHE_S, systimeche, psextn), drive_info))
@@ -835,211 +838,222 @@ class MainWindow(QMainWindow):
     def set_config(self, exit_code):
 
         # self.on_exit()
+        try:
+            toml = self.toml_file
+            amt = toml.stat().st_mtime_ns
+            imt = self.tomldefault_imt
+            if amt != imt:
+                updated_config = load_toml(toml)
+                if not updated_config:
+                    raise ConfigurationError
 
-        if exit_code == 0:
+                driveTYPE_frm = updated_config['search']['driveTYPE']  # script entry
+                dspEDITOR = updated_config['display']['dspEDITOR']
+                popPATH = updated_config['display']['popPATH'].rstrip('/')
+                cachermPATTERNS = updated_config['backend']['cachermPATTERNS']
+                cachermPATTERNS = cache_clear_patterns(self.usr, cachermPATTERNS)
+                email = updated_config['backend']['email']
+                updated_downloads = user_path(updated_config['compress']['downloads'], self.usr)  # end script entry
+                ANALYTICSECT = updated_config['analytics']['ANALYTICSECT']
+                FEEDBACK = updated_config['analytics']['FEEDBACK']
+                zipPATH = updated_config['compress']['zipPATH']
+                zipPROGRAM = updated_config['compress']['zipPROGRAM'].lower()
+                checksum = updated_config['diagnostics']['checkSUM']
+                hudCOLOR = updated_config['display']['hudCOLOR']
+                hudSZE = updated_config['display']['hudSZE']
+                hudFNT = updated_config['display']['hudFNT']
+                compLVL = updated_config['logs']['compLVL']
+                MODULENAME = updated_config['paths']['MODULENAME']
+                EXCLDIRS = user_path(updated_config['search']['EXCLDIRS'], self.usr)
+                xRC = updated_config['search']['xRC']
+                basedir = updated_config['search']['drive']
+                extensions = updated_config['search']['extension']
+                proteusEXTN = updated_config['shield']['proteusEXTN']
+                proteusPATH = updated_config['shield']['proteusPATH']
+                proteusSHIELD = updated_config['shield']['proteusSHIELD']
+                xzm = updated_config['shield']['xzm']
 
-            try:
-                toml = self.toml_file
-                amt = toml.stat().st_mtime_ns
-                imt = self.tomldefault_imt
-                if amt != imt:
-                    updated_config = load_toml(toml)
-                    if not updated_config:
+                dspPATH_frm = self.config['display']['dspPATH']
+                new_dspPATH = updated_config['display']['dspPATH']
+                nogo = user_path(self.config['shield']['nogo'], self.usr)
+                new_nogo = user_path(updated_config['shield']['nogo'], self.usr)
+                suppress_list = user_path(self.config['shield']['filterout'], self.usr)
+                new_suppress_list = user_path(updated_config['shield']['filterout'], self.usr)
+
+                ll_level = self.config['logs']['logLEVEL']
+                new_ll_level = updated_config['logs']['logLEVEL']
+
+                root_log_file = self.config['logs']['rootLOG']
+                new_root_log_file = updated_config['logs']['rootLOG']
+
+                log_file = self.config['logs']['userLOG'] if self.usr != "root" else root_log_file
+                new_log_file = updated_config['logs']['userLOG'] if self.usr != "root" else new_root_log_file
+
+                new_log = False
+                if ll_level != new_ll_level:
+                    new_log = True
+                if log_file != new_log_file and self.usr != "root":
+                    new_log = True
+                if root_log_file != new_root_log_file and self.usr == "root":
+                    new_log = True
+                if new_log:
+                    new_log_file = os.path.join(self.log_dir, new_log_file)
+                    _, log_path = change_logger(new_log_file, new_ll_level, process_label="mainwindow")
+                    self.log_path = new_log_file
+                    self.ui.hudt.appendPlainText("Log level: " + new_ll_level)
+                    self.ui.hudt.appendPlainText("Log file: " + str(log_path))
+                new_downloads = updated_downloads != self.downloads
+
+                if zipPATH != self.zipPATH or new_downloads or popPATH != self.popPATH:
+                    if not check_utility(zipPATH, updated_downloads, popPATH):
                         raise ConfigurationError
 
-                    driveTYPE = updated_config['search']['driveTYPE']  # script entry
-                    dspEDITOR = updated_config['display']['dspEDITOR']
-                    popPATH = updated_config['display']['popPATH'].rstrip('/')
-                    cachermPATTERNS = updated_config['backend']['cachermPATTERNS']
-                    cachermPATTERNS = cache_clear_patterns(self.usr, cachermPATTERNS)
-                    email = updated_config['backend']['email']
-                    updated_downloads = user_path(updated_config['compress']['downloads'], self.usr)  # end script entry
-                    ANALYTICSECT = updated_config['analytics']['ANALYTICSECT']
-                    FEEDBACK = updated_config['analytics']['FEEDBACK']
-                    zipPATH = updated_config['compress']['zipPATH']
-                    zipPROGRAM = updated_config['compress']['zipPROGRAM'].lower()
-                    checksum = updated_config['diagnostics']['checkSUM']
-                    hudCOLOR = updated_config['display']['hudCOLOR']
-                    hudSZE = updated_config['display']['hudSZE']
-                    hudFNT = updated_config['display']['hudFNT']
-                    compLVL = updated_config['logs']['compLVL']
-                    MODULENAME = updated_config['paths']['MODULENAME']
-                    EXCLDIRS = user_path(updated_config['search']['EXCLDIRS'], self.usr)
-                    xRC = updated_config['search']['xRC']
-                    basedir = updated_config['search']['drive']
-                    extensions = updated_config['search']['extension']
-                    proteusEXTN = updated_config['shield']['proteusEXTN']
-                    proteusPATH = updated_config['shield']['proteusPATH']
-                    proteusSHIELD = updated_config['shield']['proteusSHIELD']
-                    xzm = updated_config['shield']['xzm']
+                if new_downloads:
+                    self.downloads = updated_downloads
+                    self.load_find_file_combo()
 
-                    dspPATH_frm = self.config['display']['dspPATH']
-                    new_dspPATH = updated_config['display']['dspPATH']
-                    nogo = user_path(self.config['shield']['nogo'], self.usr)
-                    new_nogo = user_path(updated_config['shield']['nogo'], self.usr)
-                    suppress_list = user_path(self.config['shield']['filterout'], self.usr)
-                    new_suppress_list = user_path(updated_config['shield']['filterout'], self.usr)
+                if proteusPATH != self.proteusPATH or new_nogo != nogo or new_suppress_list != suppress_list:
+                    if not check_config(proteusPATH, new_nogo, new_suppress_list):
+                        raise ConfigurationError
 
-                    ll_level = self.config['logs']['logLEVEL']
-                    new_ll_level = updated_config['logs']['logLEVEL']
-
-                    root_log_file = self.config['logs']['rootLOG']
-                    new_root_log_file = updated_config['logs']['rootLOG']
-
-                    log_file = self.config['logs']['userLOG'] if self.usr != "root" else root_log_file
-                    new_log_file = updated_config['logs']['userLOG'] if self.usr != "root" else new_root_log_file
-
-                    new_log = False
-                    if ll_level != new_ll_level:
-                        new_log = True
-                    if log_file != new_log_file and self.usr != "root":
-                        new_log = True
-                    if root_log_file != new_root_log_file and self.usr == "root":
-                        new_log = True
-                    if new_log:
-                        new_log_file = os.path.join(self.log_dir, new_log_file)
-                        _, log_path = change_logger(new_log_file, new_ll_level, process_label="mainwindow")
-                        self.log_path = new_log_file
-                        self.ui.hudt.appendPlainText("Log level: " + new_ll_level)
-                        self.ui.hudt.appendPlainText("Log file: " + str(log_path))
-                    new_downloads = updated_downloads != self.downloads
-
-                    if zipPATH != self.zipPATH or new_downloads or popPATH != self.popPATH:
-                        if not check_utility(zipPATH, updated_downloads, popPATH):
+                dspPATH = self.dspPATH
+                if dspEDITOR != self.dspEDITOR or new_dspPATH != dspPATH_frm:
+                    dspPATH = ""
+                    if dspEDITOR:
+                        dspEDITOR = multi_value(dspEDITOR)
+                        dspEDITOR, dspPATH = resolve_editor(dspEDITOR, new_dspPATH, toml)
+                        if not dspEDITOR:
                             raise ConfigurationError
 
-                    if new_downloads:
-                        self.downloads = updated_downloads
-                        self.load_find_file_combo()
+                uuid = None
+                driveTYPE = None
+                drive_not_indexed = True
+                cache_moved = False
 
-                    if proteusPATH != self.proteusPATH or new_nogo != nogo or new_suppress_list != suppress_list:
-                        if not check_config(proteusPATH, new_nogo, new_suppress_list):
-                            raise ConfigurationError
+                if basedir != self.basedir:
+                    idx = "/"
+                    if basedir != "/":
 
-                    dspPATH = self.dspPATH
-                    if dspEDITOR != self.dspEDITOR or new_dspPATH != dspPATH_frm:
-                        dspPATH = ""
-                        if dspEDITOR:
-                            dspEDITOR = multi_value(dspEDITOR)
-                            dspEDITOR, dspPATH = resolve_editor(dspEDITOR, new_dspPATH, toml)
-                            if not dspEDITOR:
-                                raise ConfigurationError
+                        idx = device_name_of_mount(basedir)
+                        uuid = get_mount_partuuid(basedir)
+                        if not uuid:
+                            raise DriveLogicError(f"couldnt find uuid for {basedir}")
 
-                    uuid = None
+                    ix = self.basedirs.index_by_value(uuid)
+                    if ix != -1:
+                        _, drive_info, _ = self.basedirs.get_item(ix)
+                        drive_idx = drive_info.suffix
 
-                    drive_not_indexed = True
-                    cache_moved = False
+                        if idx == drive_idx:
+                            drive_not_indexed = False
+                            self.update_basedir(basedir, drive_idx, drive_info, ix)  # load the drive
 
-                    if basedir != self.basedir:
-                        idx = "/"
-                        if basedir != "/":
-
-                            idx = device_name_of_mount(basedir)
-                            uuid = get_mount_partuuid(basedir)
-                            if not uuid:
-                                raise DriveLogicError(f"couldnt find uuid for {basedir}")
-
-                        ix = self.basedirs.index_by_value(uuid)
-                        if ix != -1:
-                            _, drive_info, _ = self.basedirs.get_item(ix)
-                            drive_idx = drive_info.suffix
-
-                            if idx == drive_idx:
-                                drive_not_indexed = False
-                                self.update_basedir(basedir, drive_idx, drive_info, ix)  # load the drive
-
-                            else:
-                                cache_moved = True
-                                self.rmv_basedir(ix, self.basedirs.current_index)  # changed mounts
-
-                        if drive_not_indexed:
-
-                            CACHE_S, systimeche, drive_idx, driveTYPE = setup_drive_cache(
-                                basedir, self.lclhome, self.dbopt, self.dbtarget, self.sj, self.toml_file, self.CACHE_S_str, driveTYPE,
-                                self.usr, self.email, self.compLVL, j_settings=self.j_settings, partuuid=uuid, iqt=True
-                            )
-                            if not CACHE_S or not drive_idx or not self.j_settings:
-                                raise DriveLogicError(f"Failed to build cache file for {basedir} in setup_drive_cache")
-
-                            di = self.j_settings.get(drive_idx, {})
-                            if not di:
-                                self.ui.hudt.appendPlainText(f"the json in memory wasnt updated for the drive {basedir}")
-                                raise DriveLogicError("couldnt apply changes")
-                            drive_info = self.j_settings[drive_idx].copy()
-
-                            if cache_moved:
-                                for di in self.j_settings.values():
-                                    if not isinstance(di, dict):
-                                        continue
-                                    if di.get("idx_suffix") == idx:
-                                        self.ui.hudt.appendPlainText(f"drive changed mounts and wasnt properly updated check {self.sj} and set idx_suffix for drive {basedir} to {drive_idx}, guid {uuid}")
-                                        # raise DriveLogicError(f"drive changed mounts and wasnt properly updated check {self.sj} and set to {drive_idx} for guid {guid}")
-
-                            drive_uuid = drive_info.get("drive_partuuid")
-                            moi = basedir
-                            parent_device = drive_info.get("parent_device")
-                            dtype = drive_info.get("drive_type")
-                            psEXTN = drive_info.get("proteusEXTN")
-
-                            drive = BasedirDrive(drive_idx, parent_device, drive_uuid, moi, dtype, CACHE_S, systimeche, psEXTN)
-                            self.add_basedir(basedir, drive_idx, drive_uuid, drive, drive_info)
-
-                    if hudCOLOR != self.hudCOLOR or hudSZE != self.hudSZE or hudFNT != self.hudFNT:
-                        self.hudCOLOR = hudCOLOR
-                        self.hudSZE = hudSZE
-                        self.hudFNT = hudFNT
-                        self.change_format(True)
-
-                    if extensions != self.extensions:
-                        fill_extensions(self.ui.combffile, extensions, prev_extensions=self.user_extensions)
-
-                    if driveTYPE != self.driveTYPE:
-                        if driveTYPE in ("HDD", "SSD"):
-                            self.driveTYPE = driveTYPE
-                            update_j_settings({"drive_type": self.driveTYPE}, self.j_settings, self.suffix, self.sj)
                         else:
+                            cache_moved = True
+                            self.rmv_basedir(ix, self.basedirs.current_index)  # changed mounts
+
+                    if drive_not_indexed:
+
+                        CACHE_S, systimeche, drive_idx, driveTYPE = setup_drive_cache(
+                            basedir, self.lclhome, self.dbopt, self.dbtarget, self.sj, self.toml_file, self.CACHE_S_str, driveTYPE,
+                            self.usr, self.email, self.compLVL, j_settings=self.j_settings, partuuid=uuid, iqt=True
+                        )
+                        if not CACHE_S or not drive_idx or not self.j_settings:
+                            raise DriveLogicError(f"Failed to build cache file for {basedir} in setup_drive_cache")
+
+                        di = self.j_settings.get(drive_idx, {})
+                        if not di:
+                            self.ui.hudt.appendPlainText(f"the json in memory wasnt updated for the drive {basedir}")
+                            raise DriveLogicError("couldnt apply changes")
+                        drive_info = self.j_settings[drive_idx].copy()
+
+                        if cache_moved:
+                            for di in self.j_settings.values():
+                                if not isinstance(di, dict):
+                                    continue
+                                if di.get("idx_suffix") == idx:
+                                    self.ui.hudt.appendPlainText(f"drive changed mounts and wasnt properly updated check {self.sj} and set idx_suffix for drive {basedir} to {drive_idx}, guid {uuid}")
+                                    # raise DriveLogicError(f"drive changed mounts and wasnt properly updated check {self.sj} and set to {drive_idx} for guid {guid}")
+
+                        drive_uuid = drive_info.get("drive_partuuid")
+                        moi = basedir
+                        parent_device = drive_info.get("parent_device")
+                        dtype = drive_info.get("drive_type")
+                        if dtype not in ("HDD", "SSD"):
+                            self.ui.hudt.appendPlainText(f"Warning malformed entry for {drive_idx} drive {basedir} in {self.sj}. defaulting to HDD")
+                            dtype = "HDD"
+                        psEXTN = drive_info.get("proteusEXTN")
+
+                        drive = BasedirDrive(drive_idx, parent_device, drive_uuid, moi, dtype, CACHE_S, systimeche, psEXTN)
+                        self.add_basedir(basedir, drive_idx, drive_uuid, drive, drive_info)
+
+                if hudCOLOR != self.hudCOLOR or hudSZE != self.hudSZE or hudFNT != self.hudFNT:
+                    self.hudCOLOR = hudCOLOR
+                    self.hudSZE = hudSZE
+                    self.hudFNT = hudFNT
+                    self.change_format(True)
+
+                if extensions != self.extensions:
+                    fill_extensions(self.ui.combffile, extensions, prev_extensions=self.user_extensions)
+
+                if not driveTYPE:
+                    if driveTYPE_frm != self.driveTYPE:
+                        if driveTYPE_frm in ("HDD", "SSD"):
+
+                            _, drive, info = self.basedirs.get_current_item()
+
+                            extn = drive.psextn
+                            self.basedirs.update_current_item(extn, driveTYPE_frm, drive_type=driveTYPE_frm)
+
+                            self.driveTYPE = driveTYPE_frm
+                            update_j_settings({"drive_type": self.driveTYPE}, self.j_settings, self.suffix, self.sj)  # whatever the user changed update the json
+                        else:
+                            self.ui.hudt.appendPlainText(f"Incorrect setting for driveTYPE: {driveTYPE_frm} restoring current value.")
                             update_toml_values({'search': {'driveTYPE': self.driveTYPE}}, self.toml_file)
 
-                    self.dspEDITOR = dspEDITOR
-                    self.dspPATH = dspPATH
-                    self.popPATH = popPATH
-                    self.cachermPATTERNS = cachermPATTERNS
-                    self.email = email
-                    self.ANALYTICSECT = ANALYTICSECT
-                    self.FEEDBACK = FEEDBACK
-                    self.compLVL = compLVL
-                    self.MODULENAME = MODULENAME
+                self.dspEDITOR = dspEDITOR
+                self.dspPATH = dspPATH
+                self.popPATH = popPATH
+                self.cachermPATTERNS = cachermPATTERNS
+                self.email = email
+                self.ANALYTICSECT = ANALYTICSECT
+                self.FEEDBACK = FEEDBACK
+                self.compLVL = compLVL
+                self.MODULENAME = MODULENAME
 
-                    self.proteusEXTN = ["[no extension]" if p == "" else p for p in proteusEXTN]
-                    self.proteusPATH = proteusPATH
-                    self.checksum = checksum
-                    self.proteusSHIELD = proteusSHIELD
-                    self.xzm = xzm
-                    self.is_xzm_profile = xzm if self.basedir == "/" else False
-                    self.EXCLDIRS = EXCLDIRS
-                    self.xRC = xRC
-                    self.zipPROGRAM = zipPROGRAM
-                    self.zipPATH = zipPATH
-                    self.extensions = extensions
+                self.proteusEXTN = ["[no extension]" if p == "" else p for p in proteusEXTN]
+                self.proteusPATH = proteusPATH
+                self.checksum = checksum
+                self.proteusSHIELD = proteusSHIELD
+                self.xzm = xzm
+                self.is_xzm_profile = xzm if self.basedir == "/" else False
+                self.EXCLDIRS = EXCLDIRS
+                self.xRC = xRC
+                self.zipPROGRAM = zipPROGRAM
+                self.zipPATH = zipPATH
+                self.extensions = extensions
 
-                    # config_changed = (self.config != updated_config)
-                    # if config_changed:
-                    self.ui.hudt.appendPlainText("Config changed")   # ctext = cprint.cyan("Config changed") # self.ui.hudt.append_colored_output("\033[1;32mConfig changed\033[0m")  # green
+                # config_changed = (self.config != updated_config)
+                # if config_changed:
+                self.ui.hudt.appendPlainText("Config changed")   # ctext = cprint.cyan("Config changed") # self.ui.hudt.append_colored_output("\033[1;32mConfig changed\033[0m")  # green
 
-            except ConfigurationError:
-                dump_toml(None, self.config, toml)
-            except DriveLogicError as e:
-                dump_toml(None, self.config, toml)
-                self.ui.hudt.appendPlainText(f"{type(e).__name__} {str(e)}")
-                self.ui.hudt.appendPlainText("")
-            except Exception as e:
-                dump_toml(None, self.config, toml)
-                if e:
-                    self.ui.hudt.appendPlainText(
-                        f"original settings restored. A backup of initial config was made to {self.tomldefault}. {e} {type(e).__name__}"
-                        f"\n error logged {self.lclhome}/logs"
-                    )
-                logging.error("couldnt change configs", exc_info=True)
+        except ConfigurationError:
+            dump_toml(None, self.config, toml)
+        except DriveLogicError as e:
+            dump_toml(None, self.config, toml)
+            self.ui.hudt.appendPlainText(f"{type(e).__name__} {str(e)}")
+            self.ui.hudt.appendPlainText("")
+        except Exception as e:
+            dump_toml(None, self.config, toml)
+            if e:
+                self.ui.hudt.appendPlainText(
+                    f"original settings restored. A backup of initial config was made to {self.tomldefault}. {e} {type(e).__name__}"
+                    f"\n error logged {self.lclhome}/logs"
+                )
+            logging.error("couldnt change configs", exc_info=True)
+
+        if exit_code != 0:
+            self.ui.hudt.appendPlainText(f"Editor exited with exit {exit_code}")
 
         self.config = None
         self.isexec = False
@@ -1618,6 +1632,7 @@ class MainWindow(QMainWindow):
             str(method),
             "True",
             str(self.basedir),
+            str(self.driveTYPE),
             str(self.dbopt),
             str(self.CACHE_S),
             str(postop),
@@ -2089,10 +2104,11 @@ class MainWindow(QMainWindow):
             return
 
         drive_type = self.j_settings.get(drive, {}).get("drive_type")
-        if not drive_type:
+        if drive_type not in ("HDD", "SSD"):
+            self.ui.hudt.appendPlainText("json malformed defaulting to HDD")
             drive_type = "HDD"
         else:
-            if drive == self.suffix:
+            if drive == self.suffix and drive == "/":
                 if self.driveTYPE != drive_type:
                     drive_type = self.driveTYPE
                     update_j_settings({"drive_type": self.driveTYPE}, self.j_settings, self.suffix, self.sj)
