@@ -1,4 +1,4 @@
-Released 5.0.7! added key optimizations and drive logic. Added environment variable to launcher. <br> One step by installer build if preferred <br><br>
+Released 5.0.7! added key optimizations and drive logic. Added environment variable to launcher. <br> One step py installer build if preferred <br><br>
 Linux file search application with hybrid analysis <br><br>
 ## Note:
 updated repo with drive logic as it has to pass drive type from spinner so have those changes in place <br>
