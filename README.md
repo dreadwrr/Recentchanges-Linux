@@ -2,6 +2,7 @@ Released 5.0.7! added key optimizations and drive logic. Added environment varia
 Linux file search application with hybrid analysis <br><br>
 ## Note:
 updated repo with drive logic as it has to pass drive type from spinner so have those changes in place <br>
+before the next version<br><br>
 
 for the release <br>
 there is one typo in gpgkeymanagement.py ln110 qt=False should be iqt=False but no path leads to this so will run normally <br><br>
