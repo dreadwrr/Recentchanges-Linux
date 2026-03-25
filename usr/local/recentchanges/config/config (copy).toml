@@ -177,6 +177,7 @@ dspPATH = ""
 										# wb  white on black
 										# solar   solarize cyan
 										# monochrome   for grey
+                                        # modern
 hudCOLOR = "solar"
 
 								# default 12
@@ -270,6 +271,7 @@ proteusEXTN = [
     ".sqlite3", ".mdb", ".desktop", ".service", ".socket", ".timer", ".mount", ".target",
     ".path", ".slice", ".gpg"
 ]
+
 # hash all in the following 
 proteusPATH = [
 	"etc/cron.d",
