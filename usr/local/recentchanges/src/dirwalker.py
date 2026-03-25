@@ -396,20 +396,21 @@ def find_created(appdata_local, dbopt, dbtarget, basedir, user, dtype, tempdir, 
 
     EXCLDIRS += nogo
 
-    # sensitivity adjust
-
-    # search_archive = appdata_local / f"{MODULENAME}_MDY_"  # windows
-    # search_exclude = str(search_archive.relative_to(search_archive.anchor))
-    # EXCLDIRS += search_exclude
-
-    # dir_pth = os.path.join("/tmp", f"{MODULENAME}_MDY_*")  # linux
-    # folders = glob.glob(dir_pth)
-    # search_exclude = [Path(fld).name for fld in folders]
-    # EXCLDIRS += search_exclude
-
     filterout_list = [os.path.join(basedir, d) for d in filterout_list]
 
     if basedir == "/":
+
+        # sensitivity adjust
+        # left out for speed so dont have to glob. these are intermettitent runtime files so doesnt effect anything
+        # search_archive = os.path.join(appdata_local, f"{MODULENAME}_MDY_*")  # windows
+        # search_archive = os.path.join("/tmp", f"{MODULENAME}_MDY_*")  # linux
+        # excluded = glob.glob(search_archive)
+        # search_exclude = [
+        #     str(Path(f).relative_to(Path(f).anchor))
+        #     for f in excluded
+        # ]
+        # EXCLDIRS += search_exclude
+
         MODULENAME = config['paths']['MODULENAME']
         home_dir = config_data.home_dir
         download_results = os.path.join(home_dir, "Downloads", MODULENAME + 'x')
