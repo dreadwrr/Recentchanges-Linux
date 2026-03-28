@@ -1,3 +1,5 @@
+New version 5.0.8 addresses the drive spinner to handle logic for dynamic config edits and to send the proper drive type out for search <br>
+and also profile builds and find downloads <br>
 Released 5.0.7! added key optimizations and drive logic. Added environment variable to launcher. <br> One step py installer build if preferred <br><br>
 Linux file search application with hybrid analysis <br><br>
 ## Note:
