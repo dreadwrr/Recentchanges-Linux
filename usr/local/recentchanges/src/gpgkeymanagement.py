@@ -107,7 +107,7 @@ def import_key(argv):
         return 1
 
 
-def find_gnupg_home(json_file, j_settings=None, qt=False):
+def find_gnupg_home(json_file, j_settings=None, iqt=False):
     """ try to find gnupg home for exclusion purposes in build index """
     if not j_settings and j_settings is not None:
         print("find_gnupg_home warning json file was empty")
@@ -122,7 +122,7 @@ def find_gnupg_home(json_file, j_settings=None, qt=False):
             if gpg_home and gpg_home != gnupg_home:
                 j_settings["gnupghome"] = gpg_home
                 gnupg_home = gpg_home
-                if not qt:
+                if not iqt:
                     dump_j_settings(j_settings, json_file)
         else:
             result = subprocess.run(["gpgconf", "--list-dirs", "homedir"], capture_output=True, text=True)

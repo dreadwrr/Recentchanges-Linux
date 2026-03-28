@@ -179,7 +179,7 @@ def hanly(parsed_chunk, checksum, cdiag, dbopt, ps, usr, logging_values, sys_tab
                 if recent_timestamp == previous_timestamp:
                     if checksum:
                         # file_path = Path(filename)
-                        # st = goahead(file_path)
+                        # st = goahead(file_path, logs.WORKER_LOG_Q, logger=logger)
                         # if st == "Nosuchfile":
                         #     entry["flag"].append(f'Deleted {record[0]} {record[0]} {label}')
                         #     results.append(entry)
