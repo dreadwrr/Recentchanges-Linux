@@ -1,5 +1,5 @@
-New version 5.0.8! <br>
-Added the changes from the repo for drive spinner logic. This addresses dynamic config edits and to send the proper drive type out for search and profile builds <br>
+New version 5.0.8! 03/27/26<br>
+Added the changes from the repo for drive logic for spinner and dynamic config. <br>
 Move rnt symlink to not conflict with other modules <br><br>
 Released 5.0.7 added key optimizations and drive logic. Added environment variable to launcher. <br> One step py installer build if preferred <br><br>
 Linux file search application with hybrid analysis <br><br>
