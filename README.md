@@ -4,9 +4,6 @@ Move rnt symlink to not conflict with other modules <br><br>
 Released 5.0.7 added key optimizations and drive logic. Added environment variable to launcher. <br> One step py installer build if preferred <br><br>
 Linux file search application with hybrid analysis <br><br>
 
-for release <br>
-there is one typo in gpgkeymanagement.py ln110 qt=False should be iqt=False but no path leads to this so will run normally <br><br>
-
 <p>
 Save encrypted notes <br>
 Quick commands displays saved commands for easy reference <br>
