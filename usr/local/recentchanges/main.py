@@ -694,10 +694,13 @@ class MainWindow(QMainWindow):
         else:
             if self.hudSZE == 0:
                 self.hudSZE = 12
+        qx = ""
+        if ccolor:
+            qx = f"background-color: black; color: #{ccolor};"
+
         self.ui.hudt.setStyleSheet(f"""
             QPlainTextEdit {{
-                background-color: black;
-                color: #{ccolor};
+                {qx}
                 font-family: {f_f};
                 font-size: {self.hudSZE}pt;
             }}
