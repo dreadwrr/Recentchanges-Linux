@@ -1,12 +1,8 @@
 New version 5.0.8 <br>
-addresses the drive spinner to handle logic for dynamic config edits and to send the proper drive type out for search and profile builds <br>
-added change to move symlink to not conflict with other modules <br>
+Added the changes from the repo for drive spinner logic. This addresses dynamic config edits and to send the proper drive type out for search and profile builds <br>
+Move rnt symlink to not conflict with other modules <br><br>
 Released 5.0.7! added key optimizations and drive logic. Added environment variable to launcher. <br> One step py installer build if preferred <br><br>
 Linux file search application with hybrid analysis <br><br>
-## Note:
-added modern theme to both repos <br>
-updated repo with drive logic as it has to pass drive type from spinner so have those changes in place <br>
-before the next version<br><br>
 
 for release <br>
 there is one typo in gpgkeymanagement.py ln110 qt=False should be iqt=False but no path leads to this so will run normally <br><br>
