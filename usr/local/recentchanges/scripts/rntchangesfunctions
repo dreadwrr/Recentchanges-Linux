@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#   Developer buddy 5.0 core                                               03/14/2026
+#   Developer buddy 5.0 core                                               03/23/2026
 
 # ascii positional encoding
 # escape input newlines for parsing
@@ -118,9 +118,11 @@ EOF
 }
 
 setup_exports() {
-	export CMD_LINE="1"
+    [[ "$1" = "gui" ]] && { "$app_install"/recentchanges ; exit ; }
+    export CMD_LINE="1"
 	[[ "$1" = "query" ]] && { python3 "$app_install"/src/rntchanges.py "$USR" "$PWD" query ; exit ; }
 	[[ "$1" = "reset" ]] && { python3 "$app_install"/src/rntchanges.py "$USR" "$PWD" reset ; exit ; }
+   
 	output=$( python3 "$app_install"/src/get_exports.py $USR) ; res=$?
 	if [[ $res -ne 0 ]]; then echo "Couldnt get config file config.toml" && exit 1 ; fi
 	eval "$output"  # def main(home_dir, user, email, reset=None, database=None, log_fn=print):
