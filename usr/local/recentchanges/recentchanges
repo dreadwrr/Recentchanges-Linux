@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+app_install="/usr/local/recentchanges/"
+output="$app_install"/.venv  # for app dependencies
+cd "$app_install" || exit
+
+test -f "$app_install"/main && { main ; exit ; }
+
+venv="$( find "$app_install" -maxdepth 3 -type f -path '*/bin/python' -print -quit 2>/dev/null)"  # locate existing venv
+cmd=$venv
+
+[[ -z "$venv" ]] && cmd="$(command -v python3 || command -v python || true)"
+
+# see if any sys dep and run
+if "$cmd" -c 'import PySide6, psutil, tomlkit' >/dev/null 2>&1; then
+    exec "$cmd" main.py "$@"
+else  # or prompt and try with venv
+    
+    if [ -z "$venv" ]; then
+        echo "recentchanges could not locate dependencies. install venv in $app_install [Y,n] ?"
+        read input
+        if [[ "$input" =~ ^[Yy]$ ]]; then
+            
+            if ! $cmd -m venv "$output"; then echo "Failed to create virtual environment. Exiting..." >&2 ; exit 1 ; fi
+            echo "Installing dependencies from requirements.txt for $output..."
+            "$output/bin/pip" install -r "$app_install/requirements.txt"  # first run
+            exec "$output/bin/python" main.py "$@"
+        else
+            echo "couldnt find python quitting" && exit 1
+        fi
+    else
+        echo "a previous venv with missing dependencies is present at $output. remove it and try again"
+    fi
+fi
+
