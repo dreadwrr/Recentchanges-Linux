@@ -1,4 +1,4 @@
-# 03/23/2026              Qt gui linux                 Developer buddy 5.0.7
+# 03/27/2026              Qt gui linux                 Developer buddy 5.0.9
 import glob
 import logging
 import multiprocessing
@@ -183,7 +183,7 @@ class MainWindow(QMainWindow):
         # QTimer.singleShot(5000, self.display_db)
 
         # Vars
-        self.app_version = "5.0.7"
+        self.app_version = "5.0.9"
         self.PWD = os.getcwd()
         self.home_dir = home_dir
         config_local = home_dir / ".config" / "recentchanges"
