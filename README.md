@@ -59,6 +59,9 @@ replace the following files from pyinstaller source: <br>
 PyInstaller<br>
 https://github.com/dreadwrr/Linux-Pyinstaller <br>
 to build a binary with all the packages and not needing any on the system <br><br>
+
+the filter is setup for nemesis 25.04 <br>
+porteus configured filter https://drive.google.com/file/d/11MjrAc4rgfH3GR1sFTUkf4WsV4amcBOy/view?usp=sharing <br>
 picture for graphic https://i.imgur.com/UoL7CHQ.jpeg<br><br>
 ui source file https://drive.google.com/file/d/1ndV65m31pbRN7oFnh1ut4z867GPm7rYr/view?usp=sharing<br>
 
