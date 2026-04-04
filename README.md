@@ -1,8 +1,9 @@
 ![Alt text](https://i.imgur.com/p1kuXYp.png) <br>
-New version 5.0.8! 03/27/26<br>
+5.0.9 Released with a menu icon and launcher script with automated setup <br>
+5.0.8<br>
 Added the changes from the repo for drive logic for spinner and dynamic config. <br>
 Move rnt symlink to not conflict with other modules <br><br>
-Released 5.0.7 added key optimizations and drive logic. Added environment variable to launcher. <br> One step py installer build if preferred <br><br>
+5.0.7 added key optimizations and drive logic. Added environment variable to launcher. <br> One step py installer build if preferred <br><br>
 
 Linux file search application with hybrid analysis <br><br>
 
