@@ -1,0 +1,17 @@
+[Desktop Entry]
+Categories=Network;
+Comment[en_US]=Recent changes Qt gui
+Comment=Recent changes Qt gui
+Exec=/usr/local/recentchanges/recentchanges
+GenericName[en_US]=Recent changes
+GenericName=Recent changes
+Icon=/usr/local/recentchanges/Resources/48.png
+MimeType=
+Name[en_US]=recentchanges
+Name=Save changes new
+StartupNotify=true
+Terminal=true
+TryExec=/usr/local/recentchanges/recentchanges
+Type=Application
+Version=1.0
+X-KDE-SubstituteUID=false
