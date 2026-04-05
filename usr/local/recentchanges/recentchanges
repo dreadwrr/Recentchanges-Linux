@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-app_install="/usr/local/recentchanges/"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+app_install=$SCRIPT_DIR
 output="$app_install"/.venv  # for app dependencies
 cd "$app_install" || exit
 
 test -f "$app_install"/main && { main ; exit ; }
 
-venv="$( find "$app_install" -maxdepth 3 -type l -path '*/bin/python' -print -quit 2>/dev/null)"  # locate existing venv
+venv="$( find "$app_install" -maxdepth 3 \( -type l -o -type f \) -path '*/bin/python' -print -quit 2>/dev/null)"  # locate existing venv
 cmd=$venv
 
 [[ -z "$venv" ]] && cmd="$(command -v python3 || command -v python || true)"
@@ -22,6 +23,7 @@ else  # or prompt and try with venv
             
             if ! $cmd -m venv "$output"; then echo "Failed to create virtual environment. Exiting..." >&2 ; exit 1 ; fi
             echo "Installing dependencies from requirements.txt for $output..."
+			"$output/bin/python" -m pip install --upgrade pip
             "$output/bin/pip" install -r "$app_install/requirements.txt"  # first run
             exec "$output/bin/python" main.py "$@"
         else
