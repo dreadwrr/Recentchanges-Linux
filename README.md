@@ -1,5 +1,6 @@
 ![Alt text](https://i.imgur.com/p1kuXYp.png) <br>
 5.0.9 Released with a menu icon and launcher script with automated setup <br>
+command recentchanges gui can launch Qt app or menu icon <br>
 5.0.8<br>
 Added the changes from the repo for drive logic for spinner and dynamic config. <br>
 Move rnt symlink to not conflict with other modules <br><br>
