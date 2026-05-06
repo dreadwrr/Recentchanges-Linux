@@ -1,8 +1,5 @@
-[backend]
 # database   binary database faster queries 1 gpg and python (easier ha)
-											# leave set
-backend = "database"
-
+[backend]
 # patterns to delete from db.
 cachermPATTERNS = [
     "%caches%",
@@ -26,11 +23,11 @@ name = "John e"
 
 [logs]
 # size to disable compression on pydbpst size
-				# default 200
+                # default 200
 compLVL = 200
 
-					# default ERROR
-					# DEBUG
+                    # default ERROR
+                    # DEBUG
 logLEVEL = "ERROR"
 userLOG = "errs.log"
 rootLOG = "errs2.log"
@@ -38,20 +35,25 @@ rootLOG = "errs2.log"
 [search]
 
 # Focus drive for the app search and or sys profile. 
-						# /
-						# /mnt/sdx
+                        # /
+                        # /mnt/sdx
 drive = "/"
 
 # used for determining areas of multicore. SSD is multicore and HDD is serial the script will try to auto detect. If its set to SSD it will run multicore if over a certain file threshold 
-					# ""  default
-					# SSD
-					# HDD
+                    # ""  default
+                    # SSD
+                    # HDD
 driveTYPE = ""
 
 # Directories to exclude from the searches. ie 
 # default directories that are left "/bin", "/etc", "/home", "/lib", "/lib64", "/opt", "/root", "/sbin", "/tmp", "/usr",  "/var"
 # prevent permission errors.  # eg var/cache, home/{{user}}/.cache or home/guest/somefolder
-EXCLDIRS = ["dev", ".cache", "media", "mnt", "proc", "run", "srv", "sys"]
+exclDIRS = ["dev", ".cache", "media", "mnt", "proc", "run", "srv", "sys"]
+
+# Use find. if true use alternative search Python instead of find
+                # default false
+python = false
+
 
 # find file default extensions. added here as well as in qt which are stored in database 
 extension = [
@@ -75,74 +77,75 @@ extension = [
 # run inotifywait for one hour to look for new files where ctime > mtime in /changes. this is for downloads or copies with preserved metadata pacman slackpkg ect.
 # It just dynamically bypasses a section of the script if tout result is already made. It is also inserted into the cache ctimecache.gpg.
 xRC = false              # false - default. if false the files will still show up
-							    # true - With this setting can bypass 1 of 2 search loops and reduce process overhead as the search is already there effectively increasing the overall speed
+                               # true - With this setting can bypass 1 of 2 search loops and reduce process overhead as the search is already there effectively increasing the overall speed
 
 
-						# How many old searches to save. These can be grabbed by `recentchanges search` and `recentchanges`
-						# for comparisons in diff file
+                        # How many old searches to save. These can be grabbed by `recentchanges search` and `recentchanges`
+                        # for comparisons in diff file
 archivesrh = 5
 
 
 [compress]
 
 # Find file feature compress. what program to use when making archive.
-						# zipfile
-						# zip
-						# tar
+                        # zipfile
+                        # zip
+                        # tar
 zipPROGRAM = "zipfile"
 
 
 # fallback incase cant find it in Path
-						#"" default
+                        #"" default
 zipPATH = ""
 
 
 # compression algorithm for zip.
-							# 1-2 ZIP_STORED no compression
-							# 3-4 ZIP_DEFLATED standard default
-							# 5-7 ZIP_BZIP 
-							# 8-9 ZIP_LZMA
+                            # 1-2 ZIP_STORED no compression
+                            # 3-4 ZIP_DEFLATED standard default
+                            # 5-7 ZIP_BZIP 
+                            # 8-9 ZIP_LZMA
 zipcmode = 3
 
 # file compress level 0-9 default 9
 ziplevel= 9
 
-						# tar
-						# gz
-						# bz2
-						# xz
-						# zstd
+# tar archive and compression algorithm
+                        # tar - no compression
+                        # gz
+                        # bz2
+                        # xz
+                        # zstd
 tarcmode = "gz"
 
 # tar compression program. if not zstd maximum 9. if 0 use above defaults
-						# default 0
-						# 0-22
+                        # default 0
+                        # 0-22
 tarclevel = 0
 
 # remove paths or absolute. if there is a duplicate filename the duplicate will retain path
-									# false - absolute default
-									# true - no paths
+                                    # false - absolute default
+                                    # true - no paths
 strip = true
 
 
 # path for archives from compress button search. Combobox output can be used to direct to /tmp or /home/user/Downloads.
- 												# "" default
-												# ie "/home/guest/Documents", "/mnt/sda3"
+                                    # "" default
+                                    # ie "/home/guest/Documents", "/mnt/sda3"
 downloads = ""
 
 
 [analytics]
-							# display more verbose output
-ANALYTICS = true
-							# provides more feedback
-							# total search time ect
-							# we dont want too much output on the terminal just a slight bit more
-							# others stats
-ANALYTICSECT = true
+                            # display more verbose output
+analytics = true
+                            # provides more feedback
+                            # total search time ect
+                            # we dont want too much output on the terminal just a slight bit more
+                            # others stats
+analyticSECT = true
 
 
 # include search output in terminal as well ie scrolling terminal look
-FEEDBACK = true
+feedback = true
 
 
 [display]
@@ -151,64 +154,61 @@ FEEDBACK = true
 pageIDX = 1
 
 # location to open explorer or terminal from settings button
-						# default ""
+                        # default ""
 popPATH = ""
 
 #launch text editor?
 # if using somethingelse specifying dspPATH is required
-						# xed  default 
-							# "false" or false
-							# ""
-							# featherpad
+                            # xed  default 
+                            # "false" or false
+                            # ""
+                            # featherpad
 dspEDITOR = "xed"
 
 
 # specify absolute directory as a fallback incase cant find it in Path. xed is fine but needed for other editors. recommended
 # if the value "" is used the app will check registry for dspEDITOR to see if its installed. featherpad and xed
 # else needs dspPATH specifcally for other editor or if xed featherpad are installed somewhere not in path
-													# ""
-													# "/usr/bin/xed"
-													# "/usr/bin/somebinary"
+                                        # ""
+                                        # "/usr/bin/xed"
+                                        # "/usr/bin/somebinary"
 dspPATH = ""
 
 
 # color for main term display 
-									# unix   default
-										# wb  white on black
-										# solar   solarize cyan
-										# monochrome   for grey
-                                        # modern
+                                # unix   default
+                                # wb  white on black
+                                # solar   solarize cyan
+                                # monochrome   for grey
+                                # modern
 hudCOLOR = "solar"
 
 								# default 12
 hudSZE = 12
 
 # to install more fonts install with package manger and run print(QFontDatabase().families()) to see if it lists it and then set here.
-						# default is Monospace
-						# DejaVu Sans
-						# DejaVu Sans Mono
-						# DejaVu Serif
-						# Monospace
-						# Sans Serif
-						# Serif
+                        # default is Monospace
+                        # DejaVu Sans
+                        # DejaVu Sans Mono
+                        # DejaVu Serif
+                        # Monospace
+                        # Sans Serif
+                        # Serif
 hudFNT = "Monospace"
 
 
 
 [diagnostics]
-
 # compare file checksums for slight changes
-						# slower useful if you want to check deeper level of stats
+                        # slower useful if you want to check deeper level of stats
 checkSUM = true
 
  # Include more info a file was changed but has the same checksum and filesize subtle edit  ie cache items or string was changed
-						# also check for hash collisions
+                        # also check for hash collisions
 cdiag = true
-
 
 # supress cache warnings on terminal from known browsers? Mozilla... ect list top of pyfunctions.py
 supbrw = true
-
 
 # terminal and hardlink suppression. note regex
 supbrwLIST = [
@@ -220,39 +220,35 @@ supbrwLIST = [
     # 'google-chrome',
 ]
 
-
 #        all cdiag output to terminal except critical events
 suppress = false
 
 
 # commandline use
-# Diagnostics. Create file doctrine. Runs post search operation that can only be done at this time as search is relevant
-                                    # more overhead so recommend off unless one off. output /Downloads
-                                    #
-                                    # if it is run again and a file is still there it will not run the POSTOP and the script will set POSTOP to false to itself
-POSTOP = false
+# Create file doctrine. Runs post search operation that can only be done at this time as search is relevant
+# more overhead so recommend off unless one off. output /Downloads
+                        # if it is run again and a file is still there it will not run the POSTOP and the script will set POSTOP to false to itself
+postop = false
 
-# commandline use
 # Scan  the sys profile. The profile is created automatically if proteusSHIELD is enabled. 
-									# Once run once the script will set scanIDX to false.
+                                    # Once run once the script will set scanIDX to false.
 scanIDX = false
+
 # keep scanIDX on after scanning index
 autoIDX = false
 
-# commandline use
 # Show symmetric differences in diff file for sys profile scan. For 
 showDIFF = true
 
 
 [shield]
-# commandline use
 # take initial hash of key system files to put in database for system protection
-									# builds a sys table in database of system files and is compared in hybrid analysis in addition to the logs table.
+                                    # builds a sys table in database of system files and is compared in hybrid analysis in addition to the logs table.
 proteusSHIELD = false
-
+# end commandline use
 
 # for porteus use the premade template instead and proteusEXTN and proteusPATH. Note: see XzmProfile class in xzmprofile.py
-								# false - default 
+                                # false - default 
 xzm = false
 
 
@@ -274,31 +270,29 @@ proteusEXTN = [
 
 # hash all in the following 
 proteusPATH = [
-	"etc/cron.d",
+    "etc/cron.d",
     "var/spool/cron"
 ]
 
 # appends to EXCLDIRS for profile builds. irrelevant folders
 # "tmp",
 nogo = [
-	"home/{{user}}/.cache",
-	"home/guest/.mozilla/firefox/94bktgy4.default-release"
+    "home/{{user}}/.cache",
+    "home/guest/.mozilla/firefox/94bktgy4.default-release"
 ]
 
 # no match file patterns removes noise.
 filterout = [
-	"home/{{user}}/.local/share/recently-used.xbel"
+    "home/{{user}}/.local/share/recently-used.xbel"
 ]
 
 
 [paths]
-
 # file label prefix for searches output txt file			# default rntfiles
-MODULENAME="rntfiles"
+moduleNAME="rntfiles"
 
 
 [src]
-
 # recentchanges SRC
 # if not porteus the SRC tag is bypassed
 autooutput = false
@@ -307,8 +301,8 @@ autooutput = false
 xzmname = ""
 
                    # default gzip. uses gzip compression level balanced. This is for recentchanges .xzm and SRC tag
-                                           # xz        best compression
-                                           # zstd     faster bootup
-                                            # lzo      faster bootup
+                               # xz        best compression
+                               # zstd     faster bootup
+                               # lzo      faster bootup
 cmode = "gzip"
 
