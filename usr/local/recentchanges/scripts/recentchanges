@@ -196,7 +196,15 @@ if [ -z "$k" ]; then
     r=$(find . -maxdepth 1 -type d -name '*rntfiles_MDY*' | wc -l) #Move
     if (( r == archivesrh )); then for folder in "/tmp"${MODULENAME}_MDY* ;  do rm -r $folder ; break ; done ; fi
     mkdir "/tmp"$moduledir && chown $USR "/tmp"$moduledir
-    mv $LCLMODULENAME"xSystemchanges"* "/tmp"$moduledir 2> /dev/null ; mv $LCLMODULENAME"xSystemDiffFromLastSearch"* "/tmp"$moduledir 2> /dev/null
+
+    files=(xSystemchanges xSystemDiffFromLastSearch xFltDiffFromLastSearch xFltchanges)
+
+    for file in "${files[@]}"; do
+        mv $LCLMODULENAME$file* "/tmp"$moduledir 2> /dev/null 
+    done
+
+    # mv $LCLMODULENAME"xSystemchanges"* "/tmp"$moduledir 2> /dev/null ; mv $LCLMODULENAME"xSystemDiffFromLastSearch"* "/tmp"$moduledir 2> /dev/null
+    # mv $LCLMODULENAME"xFltDiffFromLastSearch"* "/tmp"$moduledir 2> /dev/null ; mv $LCLMODULENAME"xFltchanges"* "/tmp"$moduledir 2> /dev/null
     h=$( find "/tmp$moduledir" -type f | wc -l) ; [[ "$h" -gt 0 ]] && smsg="true"
     test -e /tmp"$chxzm" && mv /tmp"$chxzm" "/tmp"$moduledir ; test -e "/tmp"$chxzmnm && mv "/tmp"$chxzmnm "/tmp"$moduledir; test -e "/tmp"$MODULENAME"Transferlog" && mv "/tmp"$MODULENAME"Transferlog" "/tmp"$moduledir
     
@@ -229,16 +237,15 @@ if [ "$validrlt" == "true" ] && [ "$validpdt" == "true" ] && [ "$goahead" == "tr
     imsg="Your module has been created. in /tmp"
     echo
     if [ "$SRCDIR" == "SRC" ]; then
-        cyan "${imsg} ${filename}.xzm"
+        cyan "$imsg $filename.xzm"
     else
-		imsg=$(cat <<EOF
+		imsg=$(cat<<EOF
 $imsg
-Total pull range: ${endtm} $chxzm including a file manifest
+Total pull range: $endtm $chxzm including a file manifest 
 EOF
 )
-		cyan "$imsg"
+		echo "$imsg"
     fi
-    
 fi
 if [ "$validrlt" == "true" ] && [ "$smsg" == "true" ]; then  # everything smooth and there is a previous search
     echo "prev" 
