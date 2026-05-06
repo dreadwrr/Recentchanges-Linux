@@ -1,4 +1,6 @@
-![Alt text](https://i.imgur.com/p1kuXYp.png) <br>
+
+![Alt text](https://i.imgur.com/VD0ZvNd.png) <br>
+
 5.0.9 Released with a menu icon and launcher script with automated setup <br>
 command recentchanges gui can launch Qt app or menu icon <br>
 
