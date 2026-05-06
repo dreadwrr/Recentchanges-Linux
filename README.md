@@ -1,5 +1,5 @@
 
-![Alt text](https://i.imgur.com/VD0ZvNd.png) <br>
+![Alt text](https://i.imgur.com/x7ULTPy.png) <br>
 
 5.0.9 Released with a menu icon and launcher script with automated setup <br>
 command recentchanges gui can launch Qt app or menu icon <br>
@@ -72,6 +72,7 @@ https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/
 Porteus forums
 https://forum.porteus.org/  <br><br>
 
+![Alt text](https://i.imgur.com/p1kuXYp.png) <br>
 ![Alt text](https://i.imgur.com/4jOp3Ry.png) ![Alt text](https://i.imgur.com/T1DpcDM.png) <br><br>
 
 
