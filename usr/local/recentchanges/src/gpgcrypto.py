@@ -8,33 +8,30 @@ import traceback
 from io import StringIO
 from typing import Any
 from .configfunctions import user_info
-from .rntchangesfunctions import change_perm
-from .rntchangesfunctions import cnc
-from .rntchangesfunctions import removefile
+from .pyfunctions import cnc
 
 
-def encr_cache(cfr, CACHE_F, user, uid, gid, email, compLVL):
+def encr_cache(cfr, cache_f, email, compLVL):
     data_to_write = dict_to_list(cfr)
     ctarget = dict_string(data_to_write)
 
-    nc = cnc(CACHE_F, compLVL)
+    nc = cnc(cache_f, compLVL)
 
     new_file = False
-    if not os.path.isfile(CACHE_F):
+    if not os.path.isfile(cache_f):
         new_file = True
 
-    rlt = encrm(ctarget, CACHE_F, email, no_compression=nc, armor=False)
+    rlt = encrm(ctarget, cache_f, email, no_compression=nc, armor=False)
     if not rlt:
         print("Reencryption failed cache not saved.")
 
-    if new_file:
-        change_perm(CACHE_F, uid, gid)
+    return new_file
 
 
-def encr_sys_cache(dir_data, CACHE_S, email, user=None):
+def encr_sys_cache(dir_data, cache_s, email, user=None):
     data_to_write = dict_to_list_sys(dir_data)
     ctarget = dict_string(data_to_write)
-    if encrm(ctarget, CACHE_S, email, user=user, no_compression=False, armor=False):
+    if encrm(ctarget, cache_s, email, user=user, no_compression=False, armor=False):
         return True
     return False
 
@@ -94,7 +91,7 @@ def encr(database, opt, email, user=None, no_compression=False, dcr=False):
         cmd.append(database)
         subprocess.run(cmd, capture_output=True, text=True, check=True)
         if not dcr:
-            removefile(database)
+            os.remove(database)
         return True
     except subprocess.CalledProcessError as e:
         print(f"[ERROR] Failed to encrypt:  {e} return_code: {e.returncode}")
@@ -119,21 +116,21 @@ def decr(src, opt, user=None):
     return False
 
 
-def decr_ctime(CACHE_F: str, user: str, iqt: bool) -> dict:
-    if not CACHE_F or not os.path.isfile(CACHE_F):
+def decr_ctime(cache_f: str, user: str, iqt: bool) -> dict:
+    if not cache_f or not os.path.isfile(cache_f):
         return {}
 
     if not iqt:
-        res = start_user_agent(CACHE_F, user)
+        res = start_user_agent(cache_f, user)
         if not res:
-            # print(f"there may be no key for {CACHE_F} delete the file to reset")
+            # print(f"there may be no key for {cache_f} delete the file to reset")
             sys.exit(1)
 
-    csv_path = decrm(CACHE_F, user)
+    csv_path = decrm(cache_f, user)
     if not csv_path:
         if csv_path is None:
             print("if having problems run recentchanges reset to clear .gpg files and keys")
-        print(f"Unable to retrieve cache file {CACHE_F}. cache file might be corrupt removing the file may resolve issue. quitting.")
+        print(f"Unable to retrieve cache file {cache_f}. cache file might be corrupt removing the file may resolve issue. quitting.")
         sys.exit(1)
 
     cfr_src = {}

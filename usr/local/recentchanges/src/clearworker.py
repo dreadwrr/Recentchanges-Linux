@@ -11,7 +11,7 @@ from .query import blank_count
 from .query import main as query_main
 from .qtclasses import Worker
 from .qtfunctions import clear_cache
-from .rntchangesfunctions import cnc
+from .pyfunctions import cnc
 from .rntchangesfunctions import removefile
 from .rntchangesfunctions import reset_csvliteral
 # import io
@@ -37,13 +37,13 @@ class ClearWorker(Worker):
 
         self.timer = None
 
-        self.CACHE_S = None  # set_task
+        self.cache_s = None  # set_task
         self.sys_tables = None
         self.cache_table = None
         self.systimeche = None
 
-    def set_task(self, CACHE_S, sys_tables, cache_table, systimeche):
-        self.CACHE_S = CACHE_S
+    def set_task(self, cache_s, sys_tables, cache_table, systimeche):
+        self.cache_s = cache_s
         self.sys_tables = sys_tables
         self.cache_table = cache_table
         self.systimeche = systimeche
@@ -127,7 +127,7 @@ class ClearWorker(Worker):
                             self.progress.emit(100)
                             self.no_compression.emit(nc)
                             if action == "sys":
-                                removefile(self.CACHE_S)
+                                removefile(self.cache_s)
                         else:
                             rlt = 1
                             msg = "could not clear cache files" if action == "cache" else "unable to clear sys profile"

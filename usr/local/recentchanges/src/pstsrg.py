@@ -19,16 +19,16 @@ from .pysql import insert_if_not_exists
 from .pysql import table_has_data
 from .qtdrivefunctions import get_idx_tables
 from .query import blank_count
-from .rntchangesfunctions import cnc
+from .pyfunctions import cnc
 from .rntchangesfunctions import removefile
 
 
-def main(dbopt, dbtarget, basedir, xdata, COMPLETE, rout, scr, cerr, CACHE_S, cachermPATTERNS, json_file, gnupg_home, user_setting, logging_values, dcr=False, iqt=False, strt=65, endp=90):
+def main(dbopt, dbtarget, basedir, xdata, complete, rout, scr, cerr, cache_s, cachermPATTERNS, json_file, gnupg_home, user_setting, logging_values, dcr=False, iqt=False, strt=65, endp=90):
 
-    user = user_setting['USR']
+    user = user_setting['usr']
     email = user_setting['email']
     model_type = user_setting['driveTYPE']
-    ANALYTICSECT = user_setting['ANALYTICSECT']
+    analyticSECT = user_setting['analyticSECT']
     checksum = user_setting['checksum']
     cdiag = user_setting['cdiag']
     ps = user_setting['ps']
@@ -36,7 +36,7 @@ def main(dbopt, dbtarget, basedir, xdata, COMPLETE, rout, scr, cerr, CACHE_S, ca
 
     # tempwork = logging_values[2]  # the script temp directory
 
-    sys_tables, _, _ = get_idx_tables(basedir, CACHE_S)
+    sys_tables, _, _ = get_idx_tables(basedir, cache_s)
 
     parsed = []
 
@@ -50,10 +50,10 @@ def main(dbopt, dbtarget, basedir, xdata, COMPLETE, rout, scr, cerr, CACHE_S, ca
     res = 0
 
     # original with a temp dir cant leave db to reencrypt if everything succeeds but only reencryption fails. so leave in app directory with proper perms
-    # TEMPDIR = tempfile.gettempdir()
-    # TEMPDIR = tempfile.mkdtemp()
-    # os.makedirs(TEMPDIR, exist_ok=True)
-    # with tempfile.TemporaryDirectory(dir=TEMPDIR) as tempwork:
+    # tempdir = tempfile.gettempdir()
+    # tempdir = tempfile.mkdtemp()
+    # os.makedirs(tempdir, exist_ok=True)
+    # with tempfile.TemporaryDirectory(dir=tempdir) as tempwork:
     # dbopt = name_of(dbtarget, 'db')   # generic output database
     # with tempfile.TemporaryDirectory(dir='/tmp') as tempdir:
     #     dbopt = os.path.join(tempdir, dbopt)
@@ -104,12 +104,11 @@ def main(dbopt, dbtarget, basedir, xdata, COMPLETE, rout, scr, cerr, CACHE_S, ca
 
                 new_profile = True
 
-                if not gnupg_home:
-                    gnupg_home = find_gnupg_home(json_file)
+                gnupg_home = find_gnupg_home(json_file, gnupg_home)
 
                 print('Generating system profile.')
                 appdata_local = logging_values[2]
-                res = index_system(appdata_local, dbopt, dbtarget, basedir, user, CACHE_S, email, ANALYTICSECT, False, gnupg_home, compLVL, iqt, strt, endp)
+                res = index_system(appdata_local, dbopt, dbtarget, basedir, user, cache_s, email, analyticSECT, False, gnupg_home, compLVL, iqt, strt, endp)
                 if res != 0:
                     print("index_system from dirwalker failed to hash in pstsrg")
 
@@ -125,14 +124,14 @@ def main(dbopt, dbtarget, basedir, xdata, COMPLETE, rout, scr, cerr, CACHE_S, ca
                     if iqt:
                         print(f"Progress: {strt}", flush=True)
 
-                    csum = hanly_parallel(model_type, rout, scr, cerr, xdata, cachermPATTERNS, ANALYTICSECT, checksum, cdiag, dbopt, is_ps, user, logging_values, sys_tables, iqt, strt, endp)
+                    csum = hanly_parallel(model_type, rout, scr, cerr, xdata, cachermPATTERNS, analyticSECT, checksum, cdiag, dbopt, is_ps, user, logging_values, sys_tables, iqt, strt, endp)
 
                 except Exception as e:
                     print(f"hanlydb failed to process : {type(e).__name__} : {e} \n{traceback.format_exc().strip()}", file=sys.stderr)
 
             parsed = []
             for record in xdata:
-                parsed.append(record[:16])  # trim escf_path from end SORTCOMPLETE
+                parsed.append(record[:16])  # trim escf_path from end sortcomplete
 
         if parsed:
             try:
@@ -160,8 +159,8 @@ def main(dbopt, dbtarget, basedir, xdata, COMPLETE, rout, scr, cerr, CACHE_S, ca
         # Stats
         if rout:
 
-            if COMPLETE:  # store no such files
-                rout.extend(" ".join(map(str, item)) for item in COMPLETE)
+            if complete:  # store no such files
+                rout.extend(" ".join(map(str, item)) for item in complete)
 
             try:
                 for record in rout:

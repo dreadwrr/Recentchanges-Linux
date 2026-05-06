@@ -1,4 +1,4 @@
-# developer buddy v5.0 core                     03/23/2026
+# developer buddy v5.0 core                     05/05/2026
 import csv
 import glob
 import importlib.util
@@ -14,8 +14,10 @@ from datetime import datetime
 from pathlib import Path
 from .config import update_toml_values
 from .configfunctions import find_install
+from .dirwalkerfunctions import files_search
 from .fsearch import process_line
 from .fsearchparallel import process_lines
+from .fsearchscan import process_scan
 from .pyfunctions import cprint
 from .pyfunctions import suppress_list
 from .pyfunctions import unescf_py
@@ -108,29 +110,31 @@ def check_installed_app(cmd_name):
 
 
 # inclusions from this script. temp_dir is the temp_dir for the qt app
-def get_runtime_exclude_list(USRDIR, MODULENAME, user, file_out, flth, dbtarget, CACHE_F, CACHE_S, log_path, dbopt=None, temp_dir=None):
+def get_runtime_exclude_list(usrDIR, moduleNAME, user, file_out, flth, dbtarget, cache_f, cache_s, gnupg_home, log_path, dbopt=None, temp_dir=None):
 
-    # dir_pth = os.path.join("/tmp", f"{MODULENAME}_MDY_*")
+    # dir_pth = os.path.join("/tmp", f"{moduleNAME}_MDY_*")
     # folders = glob.glob(dir_pth)
-    # old_searches = [os.path.join(fld, MODULENAME) for fld in folders]
+    # old_searches = [os.path.join(fld, moduleNAME) for fld in folders]
 
-    # ad_results = os.path.join("/tmp", f'{MODULENAME}x')
-    download_results = os.path.join(USRDIR, f'{MODULENAME}x')
-    gnupg_one = f"/home/{user}/.gnupg/random_seed"
-    gnupg_two = "/root/.gnupg/random_seed"
+    # ad_results = os.path.join("/tmp", f'{moduleNAME}x')
+    download_results = os.path.join(usrDIR, f'{moduleNAME}x')
+
+    if not gnupg_home:
+        gnupg_home = os.environ.get("GNUPGHOME")
+    # gnupg_one = f"/home/{user}/.gnupg/random_seed"
+    # gnupg_two = "/root/.gnupg/random_seed"
 
     excluded_list = [
         download_results,
-        gnupg_one,
-        gnupg_two,
         file_out,
         flth,
         dbtarget,
-        CACHE_F,
-        CACHE_S,
+        cache_f,
+        cache_s,
         log_path
     ]
-
+    if gnupg_home:
+        excluded_list += [str(gnupg_home)]
     # for entry in old_searches:
     #     excluded_list.append(entry)
 
@@ -142,23 +146,6 @@ def get_runtime_exclude_list(USRDIR, MODULENAME, user, file_out, flth, dbtarget,
     return [e.lower() for e in excluded_list if e]
 
 
-# Initialize check no compression
-def cnc(target_file, compLVL):
-    CSZE = 1024*1024
-    if os.path.isfile(target_file):
-        _, ext = os.path.splitext(target_file)
-        try:
-            file_size = os.stat(target_file).st_size
-            size = file_size
-            if ext == ".gpg":
-                size = file_size // 2
-
-            return size // CSZE >= compLVL
-        except Exception as e:
-            print(f"Error setting compression of {target_file}: {e}")
-    return False
-
-
 def check_stop(stopf):
     if stopf:
         print("Exit on ctrl-c", flush=True)
@@ -166,7 +153,7 @@ def check_stop(stopf):
 
 
 # term output
-def logic(syschg, nodiff, diffrlt, validrlt, THETIME, argone, argf, result_output, filename, flsrh, method):
+def logic(syschg, nodiff, diffrlt, validrlt, thetime, argone, argf, result_output, filename, flsrh, method):
 
     if syschg:
         # if validrlt == "prev":
@@ -178,7 +165,7 @@ def logic(syschg, nodiff, diffrlt, validrlt, THETIME, argone, argf, result_outpu
                 cprint.cyan('There were no files to grab.')
                 print()
 
-            if THETIME != "noarguser":
+            if thetime != "noarguser":
                 cprint.cyan(f'All system files in the last {argone} seconds are included')
 
             else:
@@ -348,9 +335,38 @@ def porteus_linux_check():
     return None
 
 
+def find_scan(recent, complete, init, cfr, search_start_dt, user_setting, logging_values, end, cstart, exclDIRS, iqt=False, strt=20, endp=60, logger=None):
+
+    records = []
+
+    basedir = user_setting['basedir']
+    feedback = user_setting['feedback']
+
+    # normal execution
+    records, _ = files_search(basedir, search_start_dt, feedback, exclDIRS, logger, iqt=iqt, strt=strt, endp=endp)
+    strt += 15
+    end = time.time()
+
+    if records is None:
+        return None, [], end, cstart
+    endp += 30
+
+    if init and user_setting['checksum']:
+        out_text = "Running checksum."
+        if user_setting['feedback']:
+            out_text = "\n" + out_text
+        cprint.cyan(out_text)
+        cstart = time.time()
+
+    file_type = None
+    recent, complete = process_lines(process_scan, records, file_type, search_start_dt, 'FSEARCH', user_setting, logging_values, cfr, iqt, strt, endp)
+
+    return recent, complete, end, cstart
+
+
 # One search ctime > mtime for downloaded, copied or preserved metadata files. cmin. Main search for mtime newer than mmin.
 
-def find_files(find_command, search_paths, file_type, RECENT, COMPLETE, RECENTNUL, init, cfr, search_start_dt, user_setting, logging_values, end, cstart, iqt=False, strt=20, endp=60, logger=None):
+def find_files(find_command, search_paths, file_type, recent, complete, recentnul, init, cfr, search_start_dt, user_setting, logging_values, end, cstart, iqt=False, strt=20, endp=60, logger=None):
     records = []
 
     if search_paths:
@@ -384,8 +400,8 @@ def find_files(find_command, search_paths, file_type, RECENT, COMPLETE, RECENTNU
                     if len(fields) >= 11:
                         if file_type == "main":
                             file_path = fields[10]
-                            RECENTNUL += (file_path.encode() + b'\0')  # copy file list `recentchanges` null byte
-                            if user_setting['FEEDBACK']:  # scrolling terminal look       alternative output
+                            recentnul += (file_path.encode() + b'\0')  # copy file list `recentchanges` null byte
+                            if user_setting['feedback']:  # scrolling terminal look       alternative output
                                 print(fields[10], flush=True)
                         # escaped_entry = " ".join(fields)
                         records.append(fields)
@@ -440,8 +456,8 @@ def find_files(find_command, search_paths, file_type, RECENT, COMPLETE, RECENTNU
     #     if len(fields) >= 11:
     #         if file_type == "main":
     #             file_path = fields[10]
-    #             RECENTNUL += (file_path.encode() + b'\0')  # copy file list `recentchanges` null byte
-    #             if user_setting['FEEDBACK']:  # scrolling terminal look       alternative output
+    #             recentnul += (file_path.encode() + b'\0')  # copy file list `recentchanges` null byte
+    #             if user_setting['feedback']:  # scrolling terminal look       alternative output
     #                 print(fields[10], flush=True)
 
     #         # escaped_entry = " ".join(fields)
@@ -454,14 +470,14 @@ def find_files(find_command, search_paths, file_type, RECENT, COMPLETE, RECENTNU
     if init and user_setting['checksum']:
         cstart = time.time()
         cprint.cyan("Running checksum")
-    RECENT, COMPLETE = process_lines(process_line, records, file_type, search_start_dt, 'FSEARCH', user_setting, logging_values, cfr, iqt, strt, endp)
-    return RECENT, COMPLETE, RECENTNUL, end, cstart
+    recent, complete = process_lines(process_line, records, file_type, search_start_dt, 'FSEARCH', user_setting, logging_values, cfr, iqt, strt, endp)
+    return recent, complete, recentnul, end, cstart
 
 
 # recentchanges search
 # after checking for a previous search it is required to remove all old searches to keep the workspace clean and avoid write problems later.
 #  Also copy the old search to the MDY folder in /tmpfor later diff retention
-def clear_logs(USRDIR, DIRSRC, method, appdata_local, MODULENAME, archivesrh):
+def clear_logs(dirSRC, method, appdata_local, moduleNAME, archivesrh):
 
     FLBRAND = datetime.now().strftime("MDY_%m-%d-%y-TIME_%H_%M_%S")  # %y-%m-%d better sorting?
     validrlt = ""
@@ -469,17 +485,19 @@ def clear_logs(USRDIR, DIRSRC, method, appdata_local, MODULENAME, archivesrh):
     # Archive last search to /tmp
     keep = [
         "xSystemchanges",
-        "xSystemDiffFromLastSearch"
+        "xSystemDiffFromLastSearch",
+        "xFltDiffFromLastSearch",
+        "xFltchanges",
     ]
 
     new_folder = None
     for suffix in keep:
-        pattern = os.path.join(DIRSRC, f"{MODULENAME}{suffix}*")
+        pattern = os.path.join(dirSRC, f"{moduleNAME}{suffix}*")
         matches = glob.glob(pattern)
         for fp in matches:
             if not new_folder:
                 validrlt = "prev"  # mark as not first time search
-                new_folder = os.path.join(appdata_local, f"{MODULENAME}_{FLBRAND}")
+                new_folder = os.path.join(appdata_local, f"{moduleNAME}_{FLBRAND}")
                 Path(new_folder).mkdir(parents=True, exist_ok=True)
             try:
                 shutil.move(fp, new_folder)
@@ -488,7 +506,7 @@ def clear_logs(USRDIR, DIRSRC, method, appdata_local, MODULENAME, archivesrh):
 
     if validrlt == "prev":
         # Delete oldest dir
-        pattern = os.path.join(appdata_local, f"{MODULENAME}_MDY_*")
+        pattern = os.path.join(appdata_local, f"{moduleNAME}_MDY_*")
 
         dirs = glob.glob(pattern)
         dirs = [d for d in dirs if os.path.isdir(d)]
@@ -502,28 +520,31 @@ def clear_logs(USRDIR, DIRSRC, method, appdata_local, MODULENAME, archivesrh):
                 print(f"Error deleting {oldest}: {e}")
         # End Delete
 
+    suffixes = [
+        "xSystemDiffFromLastSearch",
+        "xFltDiffFromLastSearch",
+        "xFltchanges",
+        "xFltTmp",
+        "xSystemchanges",
+        "xSystemTmp",
+    ]
+
     if method != 'rnt':
-        suffixes = [
-            "xSystemDiffFromLastSearch",
-            "xFltDiffFromLastSearch",
-            "xFltchanges",
-            "xFltTmp",
-            "xSystemchanges",
-            "xSystemTmp",
+        suffixes += [
             "xNewerThan",
             "xDiffFromLast"
         ]
 
-        for suffix in suffixes:
+    for suffix in suffixes:
 
-            pattern = os.path.join(USRDIR, f"{MODULENAME}{suffix}*")
+        pattern = os.path.join(dirSRC, f"{moduleNAME}{suffix}*")
 
-            for filepath in glob.glob(pattern):
-                try:
-                    os.remove(filepath)
+        for filepath in glob.glob(pattern):
+            try:
+                os.remove(filepath)
 
-                except FileNotFoundError:
-                    pass
+            except FileNotFoundError:
+                pass
     return validrlt
 
 
@@ -585,14 +606,14 @@ def time_convert(quot, divis, decm):
     return tmn
 
 
-def get_diff_file(USRDIR, MODULENAME):
+def get_diff_file(usrDIR, moduleNAME):
 
-    default_diff = os.path.join('/tmp', f"{MODULENAME}xDiffFromLastSearch300.txt")
+    default_diff = os.path.join('/tmp', f"{moduleNAME}xDiffFromLastSearch300.txt")
 
     # Try to find a difference file
     patterns = [
-        os.path.join('/tmp', f"{MODULENAME}*DiffFromLast*"),
-        os.path.join(USRDIR, f"{MODULENAME}*DiffFromLast*")
+        os.path.join('/tmp', f"{moduleNAME}*DiffFromLast*"),
+        os.path.join(usrDIR, f"{moduleNAME}*DiffFromLast*")
     ]
 
     diff_file = None
@@ -628,32 +649,35 @@ def line_included(line, patterns):
 
 
 # prev search?
-def hsearch(OLDSORT, MODULENAME, argone):
+def hsearch(oldsort, appdata, moduleNAME, flnm):
 
-    folders = sorted(glob.glob(f'/tmp/{MODULENAME}_MDY_*'), reverse=True)
+    dir_pth = os.path.join(appdata, f"{moduleNAME}_MDY_*")
+    folders = sorted(glob.glob(dir_pth), reverse=True)
+
+    # glob changes based on flnm
 
     for folder in folders:
-        pattern = os.path.join(folder, f"{MODULENAME}xSystemchanges{argone}*")
+        pattern = os.path.join(folder, f"{moduleNAME}{flnm}*")  # pattern = os.path.join(folder, f"{moduleNAME}xSystemchanges{argone}*")
         matching_files = sorted(glob.glob(pattern), reverse=True)
 
         for file in matching_files:
             if os.path.isfile(file):
                 with open(file, 'r') as f:
-                    OLDSORT.clear()
-                    OLDSORT.extend(f.readlines())
+                    oldsort.clear()
+                    oldsort.extend(f.readlines())
                 break
 
-        if OLDSORT:
+        if oldsort:
             break
 
 
 # recentchanges
-def copy_files(RECENT, RECENTNUL, TMPOPT, argone, THETIME, argtwo, USR, TEMPDIR, archivesrh, autooutput, xzmname, cmode, fmt, script_dir=None):
+def copy_files(recent, recentnul, tmpopt, argone, thetime, argtwo, usr, tempdir, archivesrh, autooutput, xzmname, cmode, fmt, script_dir=None):
 
-    # RECENTNUL isnt used holds all filepaths from main search in \0 delimited for file transfers
+    # recentnul isnt used holds all filepaths from main search in \0 delimited for file transfers
     # appname = ''
     tmpopt_out = 'tmp_holding'                           # filtered list
-    # tout_out = 'toutput.tmp'                                 # tout temp file would hold the \0 delimited file names from RECENTNUL
+    # tout_out = 'toutput.tmp'                                 # tout temp file would hold the \0 delimited file names from recentnul
     sortcomplete_out = 'list_complete_sorted.txt'  # unfiltered used for times only
 
     if not xzmname:
@@ -670,7 +694,7 @@ def copy_files(RECENT, RECENTNUL, TMPOPT, argone, THETIME, argtwo, USR, TEMPDIR,
 
     with open('/tmp/' + tmpopt_out, 'w') as f1:  # open('/tmp/' + tout_out, 'wb') as f2:
 
-        for record in TMPOPT:
+        for record in tmpopt:
             if len(record) >= 2:
 
                 date = record[0].strftime(fmt)
@@ -678,11 +702,11 @@ def copy_files(RECENT, RECENTNUL, TMPOPT, argone, THETIME, argtwo, USR, TEMPDIR,
                 f1.write(date + " " + field + '\n')
 
         # \0 delim filenames
-        # f2.write(RECENTNUL)
+        # f2.write(recentnul)
 
     # for times only
     with open('/tmp/' + sortcomplete_out, 'w') as f3:
-        for record in RECENT:
+        for record in recent:
 
             date = record[0].strftime(fmt)
             field = record[1]
@@ -700,11 +724,11 @@ def copy_files(RECENT, RECENTNUL, TMPOPT, argone, THETIME, argtwo, USR, TEMPDIR,
                 [
                     script_path,
                     str(argone),
-                    str(THETIME),
+                    str(thetime),
                     str(argtwo),
-                    USR,
+                    usr,
                     xzmname,
-                    TEMPDIR,
+                    tempdir,
                     tmpopt_out,
                     sortcomplete_out,
                     str(archivesrh),
@@ -727,7 +751,7 @@ def copy_files(RECENT, RECENTNUL, TMPOPT, argone, THETIME, argtwo, USR, TEMPDIR,
 
             try:
                 for line in stdout:
-
+                    # cprint.cyan(last_line)
                     print(last_line)
                     all_output.append(line)
                     last_line = line.strip()
@@ -786,11 +810,11 @@ def tsv_sort_by(row, is_link=False):
 # time from the download or copy which could be from 2021 for example. Also by checking the database a copy
 # can also be detected by having the same checksum and a diffrent filename or inode. Sorted by above.
 #
-def build_tsv(SORTCOMPLETE, TMPOPT, logf, rout, escaped_user, outpath, method, fmt):
+def build_tsv(sortcomplete, tmpopt, logf, rout, escaped_user, outpath, method, fmt):
 
     if method != "rnt":
-        if logf is TMPOPT:
-            SORTCOMPLETE = filter_lines_from_list(SORTCOMPLETE, escaped_user)
+        if logf is tmpopt:
+            sortcomplete = filter_lines_from_list(sortcomplete, escaped_user)
 
     tsv_files = []
 
@@ -809,10 +833,10 @@ def build_tsv(SORTCOMPLETE, TMPOPT, logf, rout, escaped_user, outpath, method, f
                     full_path = ' '.join(parts[5:])
                     copy_paths.add(full_path)
 
-        is_link = any(len(row) > 7 and row[7] == 'y' for row in SORTCOMPLETE)
+        is_link = any(len(row) > 7 and row[7] == 'y' for row in sortcomplete)
         header = "Datetime\tFile\tSize(kb)\tType\tSymlink" + ("\tTarget" if is_link else "") + "\tChanged\tcam\tAccessed\tOwner\tStatable\tCopy"
 
-        for entry in SORTCOMPLETE:
+        for entry in sortcomplete:
             if len(entry) < 13:
                 continue
 
@@ -885,7 +909,7 @@ def build_tsv(SORTCOMPLETE, TMPOPT, logf, rout, escaped_user, outpath, method, f
     return True
 
 
-def postop(all_data, USRDIR, toml, lclhome=None):
+def postop(all_data, usrDIR, toml, lclhome=None):
 
     log = '/tmp/log.log'
 
@@ -902,7 +926,7 @@ def postop(all_data, USRDIR, toml, lclhome=None):
     cmd = [
         script_path,
         log,
-        USRDIR,
+        usrDIR,
         str(toml)
     ]
     script_dir = os.path.dirname(script_path)
@@ -914,11 +938,11 @@ def postop(all_data, USRDIR, toml, lclhome=None):
         return 1
 
 
-def run_doctrine(appdata_local, USRDIR, SORTCOMPLETE, TMPOPT, logf, rout, toml_file, escaped_user, method, fmt):
+def run_doctrine(appdata_local, usrDIR, sortcomplete, tmpopt, logf, rout, toml_file, escaped_user, method, fmt):
 
     if method != "rnt":
-        if logf is TMPOPT:
-            SORTCOMPLETE = filter_lines_from_list(SORTCOMPLETE, escaped_user)
+        if logf is tmpopt:
+            sortcomplete = filter_lines_from_list(sortcomplete, escaped_user)
 
     # Check if it was a copy
     copy_paths = set()
@@ -935,7 +959,7 @@ def run_doctrine(appdata_local, USRDIR, SORTCOMPLETE, TMPOPT, logf, rout, toml_f
                 copy_paths.add(full_path)
 
     all_data = []
-    for record in SORTCOMPLETE:
+    for record in sortcomplete:
 
         if len(record) < 17:
             logging.debug("An entry for POSTOP was short less than 17. record: %s", record)
@@ -959,4 +983,4 @@ def run_doctrine(appdata_local, USRDIR, SORTCOMPLETE, TMPOPT, logf, rout, toml_f
         # usec_zero = record[15]
         all_data.append((mtime, changetime, atime, filesize, sym, user, group, cam, lastmodified, is_copy, file_path))
 
-    postop(all_data, USRDIR, toml_file, appdata_local)
+    postop(all_data, usrDIR, toml_file, appdata_local)

@@ -1,3 +1,6 @@
+import grp
+import pwd
+from .logs import emit_log
 # 03/15/2026
 
 
@@ -65,3 +68,19 @@ def normalize_timestamp(mod_time: str) -> int:
         frac = "0"
     frac = (frac + "000000")[:6]
     return int(sec) * 1_000_000 + int(frac)
+
+
+def file_owner(file_path, st, log_q=None, logger=None):
+
+    try:
+        owner = pwd.getpwuid(st.st_uid).pw_name
+    except KeyError:
+        emit_log("DEBUG", f"file_owner failed to convert uid to user name for file: {file_path}", log_q, logger=logger)
+        owner = str(st.st_uid)
+    try:
+        group = grp.getgrgid(st.st_gid).gr_name
+    except KeyError:
+        emit_log("DEBUG", f"file_owner failed to convert gid to group name for file: {file_path}", log_q, logger=logger)
+        group = str(st.st_gid)
+
+    return owner, group

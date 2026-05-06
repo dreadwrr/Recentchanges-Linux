@@ -1,4 +1,5 @@
 import fnmatch
+import os
 import re
 import traceback
 from collections import defaultdict
@@ -56,6 +57,23 @@ def matches_any_pattern(s, patterns):
         pat = pat.replace('%', '*')
         if fnmatch.fnmatch(s, pat):
             return True
+    return False
+
+
+# Initialize check no compression
+def cnc(target_file, compLVL):
+    CSZE = 1024*1024
+    if os.path.isfile(target_file):
+        _, ext = os.path.splitext(target_file)
+        try:
+            file_size = os.stat(target_file).st_size
+            size = file_size
+            if ext == ".gpg":
+                size = file_size // 2
+
+            return size // CSZE >= compLVL
+        except Exception as e:
+            print(f"Error setting compression of {target_file}: {e}")
     return False
 
 

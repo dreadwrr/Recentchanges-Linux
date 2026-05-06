@@ -1,4 +1,4 @@
-# Get metadata hash of files and return array                       03/23/2026
+# Get metadata hash of files and return array                       05/04/2026
 import os
 from datetime import datetime
 from .logs import emit_log
@@ -7,14 +7,14 @@ from .fileops import calculate_checksum
 from .fileops import find_link_target
 from .fileops import set_stat
 from .fsearchfunctions import get_cached
-from .fsearchfunctions import normalize_timestamp
+# from .fsearchfunctions import normalize_timestamp
 from .pyfunctions import epoch_to_date
 from .pyfunctions import escf_py
 
 # Find Parallel sortcomplete search and  ctime hashing
 
 
-def process_line(line, checksum, file_type, search_start_dt, cache_f, logger=None):
+def process_scan(line, checksum, file_type, search_start_dt, cache_f, logger=None):
 
     label = "Sortcomplete"
     fmt = "%Y-%m-%d %H:%M:%S"
@@ -23,15 +23,15 @@ def process_line(line, checksum, file_type, search_start_dt, cache_f, logger=Non
     log_entries = []
 
     checks = cam = lastmodified = None
+    target = None
     cached = status = None
-    target = hardlink = None
     file_st = None
 
     if len(line) < 11:
         emit_log("DEBUG", f"process_line record length less than required 11. skipping: {line}", logs.WORKER_LOG_Q, logger=logger)
         return None, log_entries
 
-    mod_time, access_time, change_time, inode, symlink, hardlink, size, user, group, mode, file_path = line
+    mod_time, mtime_us, access_time, change_time, inode, symlink, hardlink, size, user, group, mode, file_path = line
 
     escf_path = escf_py(file_path)
     if not os.path.exists(file_path):
@@ -47,26 +47,8 @@ def process_line(line, checksum, file_type, search_start_dt, cache_f, logger=Non
     if mtime is None:
         return None, log_entries
 
-    if not ctime and file_type == "ctime":
-        return None, log_entries
+    sym = "y" if symlink else None
 
-    if not (file_type == "ctime" and ctime is not None and ctime > mtime) and file_type != "main":
-        return None, log_entries
-
-    try:
-        inode = int(inode)
-    except (TypeError, ValueError) as e:
-        emit_log("ERROR", f"process_ine from find  {e} {type(e).__name__} inode: {size} line:{line}", logs.WORKER_LOG_Q, logger=logger)
-        return None, log_entries
-    try:
-        size = int(size)
-    except (TypeError, ValueError) as e:
-        emit_log("ERROR", f"process_line from find  {e} {type(e).__name__} size: {size} line:{line}", logs.WORKER_LOG_Q, logger=logger)
-        return None, log_entries
-
-    sym = "y" if isinstance(symlink, str) and symlink.startswith("l") else None
-
-    mtime_us = normalize_timestamp(mod_time)
     if sym != "y" and size and checksum:
 
         if size > CSZE:
@@ -105,12 +87,12 @@ def process_line(line, checksum, file_type, search_start_dt, cache_f, logger=Non
         emit_log("DEBUG", f"process line no mtime from calculate checksum: {file_path} mtime={mtime}", logs.WORKER_LOG_Q, logger=logger)
         return None, log_entries
 
-    if file_type == "ctime":
-        if ctime is None or ctime <= mtime:
-            return None, log_entries
+    if ctime and ctime > mtime:
         lastmodified = mtime
         mtime = ctime
         cam = "y"
+    elif not ctime:
+        emit_log("DEBUG", f"creation time was None at casmod check: {file_path} : {line}", logs.WORKER_LOG_Q, logger=logger)
     if mtime < search_start_dt:
         emit_log("DEBUG", f"Warning system cache conflict: {file_path} mtime={mtime} < cutoff={search_start_dt}", logs.WORKER_LOG_Q, logger=logger)
         return None, log_entries

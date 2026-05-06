@@ -7,6 +7,7 @@ from collections import defaultdict
 from .dirwalkerfunctions import flatten_dict
 from .gpgcrypto import encr
 from .gpgcrypto import encr_sys_cache
+from .pyfunctions import cnc
 from .pysql import clear_conn
 from .pysql import clear_table
 from .pysql import create_sys_table
@@ -19,7 +20,7 @@ from .pysql import table_has_data
 from .pysql import update_cache
 from .qtdrivefunctions import get_idx_tables
 from .qtdrivefunctions import parse_systimeche
-from .rntchangesfunctions import cnc
+
 # 03/14/2026
 
 
@@ -114,9 +115,9 @@ def hardlinks(basedir, database, target, conn, cur, email, user, compLVL, logger
 # insert changes into sys2 or sys2_sda table. sys or sys_sda table have originals.
 # ie for / sys2, sys
 # for /mnt/nvme0n1p1 sys2_nvme0n1p1, sys_nvme0n1p1
-def sync_db(dbopt, basedir, CACHE_S, parsedsys, parsedidx, sys_records, keys=None, from_idx=False):
+def sync_db(dbopt, basedir, cache_s, parsedsys, parsedidx, sys_records, keys=None, from_idx=False):
 
-    systimeche, suffix = parse_systimeche(basedir, CACHE_S)
+    systimeche, suffix = parse_systimeche(basedir, cache_s)
 
     sys_tables, cache_table, _ = get_idx_tables(basedir, None, suffix)
 
@@ -218,21 +219,21 @@ def sync_db(dbopt, basedir, CACHE_S, parsedsys, parsedidx, sys_records, keys=Non
     return False
 
 
-def create_new_index(dbopt, dbtarget, basedir, CACHE_S, email, user, parsedsys, dir_data, idx_drive=False, compLVL=200, dcr=True, error_message=None):
+def create_new_index(dbopt, dbtarget, basedir, cache_s, email, user, parsedsys, dir_data, idx_drive=False, compLVL=200, dcr=True, error_message=None):
 
     if dir_data:
         parsedidx = flatten_dict(dir_data)
 
         # encrypt the cache and then save in database
-        return index_drive(dbopt, dbtarget, basedir, CACHE_S, email, user, parsedsys, parsedidx, dir_data, idx_drive, compLVL, dcr, error_message)
+        return index_drive(dbopt, dbtarget, basedir, cache_s, email, user, parsedsys, parsedidx, dir_data, idx_drive, compLVL, dcr, error_message)
     else:
         print("No directories to cache. the cache file was empty")
 
     return 1
 
 
-def save_db(dbopt, dbtarget, basedir, CACHE_S, email, user, parsedsys, parsedidx, sys_records, keys=None, idx_drive=False, compLVL=200, dcr=True):
-    if sync_db(dbopt, basedir, CACHE_S, parsedsys, parsedidx, sys_records, keys, idx_drive):
+def save_db(dbopt, dbtarget, basedir, cache_s, email, user, parsedsys, parsedidx, sys_records, keys=None, idx_drive=False, compLVL=200, dcr=True):
+    if sync_db(dbopt, basedir, cache_s, parsedsys, parsedidx, sys_records, keys, idx_drive):
 
         nc = cnc(dbopt, compLVL)
         if encr(dbopt, dbtarget, email, user=user, no_compression=nc, dcr=dcr):
@@ -242,12 +243,12 @@ def save_db(dbopt, dbtarget, basedir, CACHE_S, email, user, parsedsys, parsedidx
     return False
 
 
-def index_drive(dbopt, dbtarget, basedir, CACHE_S, email, user, parsedsys, parsedidx, dir_data, idx_drive, compLVL, dcr, error_message):
+def index_drive(dbopt, dbtarget, basedir, cache_s, email, user, parsedsys, parsedidx, dir_data, idx_drive, compLVL, dcr, error_message):
 
-    if save_db(dbopt, dbtarget, basedir, CACHE_S, email, user, parsedsys, parsedidx, None, None, idx_drive, compLVL, dcr):
+    if save_db(dbopt, dbtarget, basedir, cache_s, email, user, parsedsys, parsedidx, None, None, idx_drive, compLVL, dcr):
         if dir_data:
 
-            if encr_sys_cache(dir_data, CACHE_S, email, user=user):
+            if encr_sys_cache(dir_data, cache_s, email, user=user):
                 return 0
             else:
                 print(error_message)

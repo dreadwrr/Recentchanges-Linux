@@ -58,7 +58,7 @@ class ProcessHandler(QObject):
         self.dspPATH = None
         self.temp_dir = None
 
-        self.ANALYTICSECT = None  # process duration display
+        self.analyticSECT = None  # process duration display
         self.st_time = 0  # .
         self.result_path = None  # result path from stdout
         self._stdout_buffer = ""
@@ -155,7 +155,7 @@ class ProcessHandler(QObject):
         self.process.start(cmd, args)
         self.pid = int(self.process.processId())
 
-    def start_pyprocess(self, script, args=None, database=None, dbtarget=None, user=None, email=None, status_message=None, is_search=False, is_postop=False, is_scanIDX=False, ANALYTICSECT=None, parent=None):
+    def start_pyprocess(self, script, args=None, database=None, dbtarget=None, user=None, email=None, status_message=None, is_search=False, is_postop=False, is_scanIDX=False, analyticSECT=None, parent=None):
 
         self.script = script
         self.script_list = [script]
@@ -166,9 +166,9 @@ class ProcessHandler(QObject):
         self.is_postop = is_postop
         self.is_scanIDX = is_scanIDX
 
-        if ANALYTICSECT:
+        if analyticSECT:
             self.st_time = time.time()
-            self.ANALYTICSECT = True
+            self.analyticSECT = True
 
         # args = list(args) if args else []  # args = [str(a) for a in args if a is not None]
 
@@ -219,7 +219,7 @@ class ProcessHandler(QObject):
 
                 display(self.dspEDITOR, self.result_path, True, self.dspPATH)  # open text editor?
 
-            if self.ANALYTICSECT:  # powershell scripts
+            if self.analyticSECT:  # powershell scripts
                 el = time.time() - self.st_time
                 self.log.emit(f'Search took {el:.3f} seconds')
 

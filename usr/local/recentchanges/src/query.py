@@ -95,8 +95,8 @@ def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, d
     pst_data = Path(home_dir) / ".local" / "share" / "recentchanges"
     flth = pst_data / "flth.csv"
     dbtarget = pst_data / "recent.gpg"
-    CACHE_F = pst_data / "ctimecache.gpg"
-    CACHE_S = pst_data / "systimeche.gpg"
+    cache_f = pst_data / "ctimecache.gpg"
+    cache_s = pst_data / "systimeche.gpg"
 
     output = name_of(dbtarget, '.db')
     flth = str(flth)
@@ -106,7 +106,7 @@ def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, d
 
     if reset:
 
-        return delete_gpg_keys(user, email, dbtarget, CACHE_F, CACHE_S, flth)
+        return delete_gpg_keys(user, email, dbtarget, cache_f, cache_s, flth)
 
     try:
 
@@ -266,7 +266,7 @@ def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, d
             # User has no key
             elif not database and result is None:
 
-                ctime_path = CACHE_F.name
+                ctime_path = cache_f.name
                 log_fn(f"No key for {dbtarget} or {ctime_path}. if unable to fix delete to reset")
 
             else:

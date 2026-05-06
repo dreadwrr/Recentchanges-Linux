@@ -107,7 +107,7 @@ def import_key(argv):
         return 1
 
 
-def find_gnupg_home(json_file, j_settings=None, iqt=False):
+def find_gnupg_home(json_file, gpg_home=None, j_settings=None, iqt=False):
     """ try to find gnupg home for exclusion purposes in build index """
     if not j_settings and j_settings is not None:
         print("find_gnupg_home warning json file was empty")
@@ -118,12 +118,16 @@ def find_gnupg_home(json_file, j_settings=None, iqt=False):
 
         gnupg_home = j_settings.get("gnupghome")
         if gnupg_home:
-            gpg_home = os.environ.get("GNUPGHOME")
+
+            if not gpg_home:
+                gpg_home = os.environ.get("GNUPGHOME")
+
             if gpg_home and gpg_home != gnupg_home:
                 j_settings["gnupghome"] = gpg_home
                 gnupg_home = gpg_home
                 if not iqt:
                     dump_j_settings(j_settings, json_file)
+
         else:
             result = subprocess.run(["gpgconf", "--list-dirs", "homedir"], capture_output=True, text=True)
             if result.returncode == 0:
@@ -139,7 +143,7 @@ def find_gnupg_home(json_file, j_settings=None, iqt=False):
 
 
 # same as bash rntchangesfunctions. setup keypair for user and root
-def genkey(appdata_local, USR, email, name, dbtarget, CACHE_F, CACHE_S, flth, TEMPD, is_polkit, passphrase=None):
+def genkey(appdata_local, usr, email, name, dbtarget, cache_f, cache_s, flth, tempd, is_polkit, passphrase=None):
 
     if not passphrase:
         passphrase = getpass.getpass("Enter passphrase for new GPG key: ")
@@ -161,7 +165,7 @@ def genkey(appdata_local, USR, email, name, dbtarget, CACHE_F, CACHE_S, flth, TE
         "%echo done",
     ]
     params = "\n".join(param_lines) + "\n"
-    with tempfile.TemporaryDirectory(dir=TEMPD) as kp:
+    with tempfile.TemporaryDirectory(dir=tempd) as kp:
 
         ftarget = os.path.join(kp, 'keyparams.conf')
 
@@ -199,7 +203,7 @@ def genkey(appdata_local, USR, email, name, dbtarget, CACHE_F, CACHE_S, flth, TE
             return False
         finally:
             removefile(ftarget)
-        if USR != 'root':
+        if usr != 'root':
             keyfile = os.path.join(kp, "key.asc")
             try:
                 try:
@@ -264,7 +268,7 @@ def genkey(appdata_local, USR, email, name, dbtarget, CACHE_F, CACHE_S, flth, TE
                 return False
             finally:
                 removefile(keyfile)
-        clear_gpg(USR, dbtarget, CACHE_F, CACHE_S, flth)
+        clear_gpg(usr, dbtarget, cache_f, cache_s, flth)
         print(f"GPG key generated for {email}.")
         return True
 
@@ -285,13 +289,13 @@ def get_key_fingerprint(email, root_target=None):
     return None
 
 
-def clear_gpg(usr, dbtarget, CACHE_F, CACHE_S, flth):
+def clear_gpg(usr, dbtarget, cache_f, cache_s, flth):
     """ delete ctimecache & db .gpg & profile .gpgs """
-    systimeche = name_of(CACHE_S)
+    systimeche = name_of(cache_s)
     dbopt = name_of(dbtarget, '.db')
-    file_path = os.path.dirname(CACHE_S)
+    file_path = os.path.dirname(cache_s)
     pattern = os.path.join(file_path, f"{systimeche}*")
-    for r in (CACHE_F, dbopt, dbtarget, flth, *glob.glob(pattern)):
+    for r in (cache_f, dbopt, dbtarget, flth, *glob.glob(pattern)):
         p = Path(r)
         try:
             is_root_owned = p.exists() and p.stat().st_uid == 0
@@ -303,7 +307,7 @@ def clear_gpg(usr, dbtarget, CACHE_F, CACHE_S, flth):
             pass
 
 
-def delete_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S, flth):
+def delete_gpg_keys(usr, email, dbtarget, cache_f, cache_s, flth):
 
     def instruct_out():
         print("To import the key for one to the other to attempt to repair it, try the following. If it doesn't work delete the key pair and start over.")
@@ -353,7 +357,7 @@ def delete_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S, flth):
                         result = True
                         exec_delete_keys(usr, email, fingerprint)
 
-                clear_gpg(usr, dbtarget, CACHE_F, CACHE_S, flth)
+                clear_gpg(usr, dbtarget, cache_f, cache_s, flth)
                 if result:
                     # print(f"\nDelete {dbtarget} if it exists as it uses the old key pair.")
                     return 0
@@ -371,10 +375,10 @@ def delete_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S, flth):
             print("Invalid input, please enter 'Y' or 'N'.")
 
 
-def reset_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S, flth, agnostic_check, no_key=False):
+def reset_gpg_keys(usr, email, dbtarget, cache_f, cache_s, flth, agnostic_check, no_key=False):
     if agnostic_check is False and no_key is True:
         print("only root has key\n")
     elif agnostic_check is True and no_key is False:
         print("only user has key. Select n and manually import the key for root to fix it. or delete the key pair to reset state.\n")
     print("A problem was detected with key pair. ")
-    return delete_gpg_keys(usr, email, dbtarget, CACHE_F, CACHE_S, flth)
+    return delete_gpg_keys(usr, email, dbtarget, cache_f, cache_s, flth)

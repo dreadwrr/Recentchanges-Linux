@@ -11,8 +11,8 @@ from .config import update_dict
 from .config import update_toml_values
 from .gpgcrypto import decr
 from .gpgcrypto import encr
+from .pyfunctions import cnc
 from .pysql import table_exists
-from .rntchangesfunctions import cnc
 from .rntchangesfunctions import name_of
 from .rntchangesfunctions import removefile
 
@@ -39,10 +39,10 @@ def parse_key(basedir, cache_file=None, idx_suffix=None):
     return device_name_of_mount(basedir)
 
 
-def parse_systimeche(basedir, CACHE_S):
-    """ systimeche table from CACHE_S """
+def parse_systimeche(basedir, cache_s):
+    """ systimeche table from cache_s """
     # get the key from actual cache file
-    systimeche = name_of(CACHE_S)
+    systimeche = name_of(cache_s)
     key = basedir
     if basedir != "/":
         if "_" not in systimeche:
@@ -53,20 +53,20 @@ def parse_systimeche(basedir, CACHE_S):
 
 def get_cache_s(basedir, cache_file, idx_suffix=None):
     """ initial setup """
-    # / has systimeche.gpg for CACHE_S and systimeche for cache table
-    # other systimeche_sdx.gpg for CACHE_S and systimeche_sdx table for cache table
+    # / has systimeche.gpg for cache_s and systimeche for cache table
+    # other systimeche_sdx.gpg for cache_s and systimeche_sdx table for cache table
 
     prefix = name_of(cache_file)
-    CACHE_S = cache_file
+    cache_s = cache_file
     systimeche = prefix
     key = basedir
     if basedir != "/":
         key = parse_key(basedir, cache_file, idx_suffix)
-        CACHE_S = prefix + f"_{key}.gpg"
+        cache_s = prefix + f"_{key}.gpg"
         app_path = os.path.dirname(cache_file)
-        CACHE_S = os.path.join(app_path, CACHE_S)
+        cache_s = os.path.join(app_path, cache_s)
         systimeche = prefix + f"_{key}"
-    return CACHE_S, systimeche, key
+    return cache_s, systimeche, key
 
 
 def get_idx_tables(basedir, cache_file, idx_suffix=None):
@@ -163,8 +163,8 @@ def parent_of_device(device: str) -> str:
     return parent_name
 
 
-def get_drive_type(basedir, driveTYPE, CACHE_S, json_file):
-    _, suffix = parse_systimeche(basedir, CACHE_S)
+def get_drive_type(basedir, driveTYPE, cache_s, json_file):
+    _, suffix = parse_systimeche(basedir, cache_s)
     di = get_json_settings(None, suffix, json_file) or {}
     dtype = di.get("drive_type")
     if dtype in ("HDD", "SSD"):
@@ -326,7 +326,7 @@ def setup_drive_settings(basedir, key, driveTYPE, toml_file, user_json=None, j_s
     return drive_type
 
 
-def get_cache_files(basedir, dbopt, dbtarget, CACHE_S, json_file, user, email, compLVL, j_settings=None, partuuid=None, iqt=False):
+def get_cache_files(basedir, dbopt, dbtarget, cache_s, json_file, user, email, compLVL, j_settings=None, partuuid=None, iqt=False):
 
     suffix = basedir
     cache_file = None
@@ -383,7 +383,7 @@ def get_cache_files(basedir, dbopt, dbtarget, CACHE_S, json_file, user, email, c
 
             if suffix:
 
-                cache_file, systimeche, _ = get_cache_s(basedir, CACHE_S, suffix)
+                cache_file, systimeche, _ = get_cache_s(basedir, cache_s, suffix)
 
                 # if the mountpoint changed for the uuid update json, move cache file and db tables
                 #
@@ -394,7 +394,7 @@ def get_cache_files(basedir, dbopt, dbtarget, CACHE_S, json_file, user, email, c
 
                     # new
                     drive_suffix = ('x' * x) + drive_suffix
-                    new_cache_s, new_systimeche, _ = get_cache_s(basedir, CACHE_S, drive_suffix)
+                    new_cache_s, new_systimeche, _ = get_cache_s(basedir, cache_s, drive_suffix)
 
                     # rename any cache file. after database query
 
@@ -477,18 +477,18 @@ def get_cache_files(basedir, dbopt, dbtarget, CACHE_S, json_file, user, email, c
             return None, None, None
 
     if not cache_file:
-        cache_file, systimeche, _ = get_cache_s(basedir, CACHE_S, suffix)
+        cache_file, systimeche, _ = get_cache_s(basedir, cache_s, suffix)
 
     return cache_file, systimeche, suffix
 
 
-def setup_drive_cache(basedir, appdata_local, dbopt, dbtarget, json_file, toml_file, CACHE_S, driveTYPE, USR, email, compLVL, j_settings=None, partuuid=None, iqt=False):
+def setup_drive_cache(basedir, appdata_local, dbopt, dbtarget, json_file, toml_file, cache_s, driveTYPE, usr, email, compLVL, j_settings=None, partuuid=None, iqt=False):
 
     if driveTYPE and driveTYPE.lower() not in ('hdd', 'ssd'):
         print(f"Incorrect setting driveTYPE: {driveTYPE} in config: {toml_file}")
         return None, None, None, None
 
-    CACHE_S, systimeche, suffix = get_cache_files(basedir, dbopt, dbtarget, CACHE_S, json_file, USR, email, compLVL, j_settings, partuuid, iqt)  # confirm the uuid and build the CACHE_S and suffix
+    cache_s, systimeche, suffix = get_cache_files(basedir, dbopt, dbtarget, cache_s, json_file, usr, email, compLVL, j_settings, partuuid, iqt)  # confirm the uuid and build the cache_s and suffix
     if not suffix:
         return None, None, None, None
 
@@ -501,7 +501,7 @@ def setup_drive_cache(basedir, appdata_local, dbopt, dbtarget, json_file, toml_f
     if driveTYPE in ("HDD", "SSD"):
         if saved_dt and saved_dt != driveTYPE:
             print("saved drive type doesnt match config.toml. using", driveTYPE, "update config.toml if this doesnt match the drive")
-        return CACHE_S, systimeche, suffix, driveTYPE
+        return cache_s, systimeche, suffix, driveTYPE
 
     driveTYPE = setup_drive_settings(basedir, suffix, driveTYPE, toml_file, json_file, j_settings, False, appdata_local)
     if driveTYPE is None:
@@ -511,4 +511,4 @@ def setup_drive_cache(basedir, appdata_local, dbopt, dbtarget, json_file, toml_f
         print(f"Incorrect setting driveTYPE: {driveTYPE} in config: {toml_file}")
         return None, None, None, None
 
-    return CACHE_S, systimeche, suffix, driveTYPE
+    return cache_s, systimeche, suffix, driveTYPE

@@ -12,10 +12,10 @@ from .logs import emit_log
 from .logs import init_process_worker
 from .logs import logs_to_queue
 from .logs import logging_worker
-# Get metadata hash of files and return array 03/17/2026
+# Get metadata hash of files and return array 03/27/2026
 
 
-def process_line_worker(search_fn, chunk, checksum, file_type, search_start_dt, CACHE_F, show_progress=False, logger=None, strt=20, endp=60):
+def process_line_worker(search_fn, chunk, checksum, file_type, search_start_dt, cache_f, show_progress=False, logger=None, strt=20, endp=60):
 
     results = []
     log_entries = []
@@ -36,7 +36,7 @@ def process_line_worker(search_fn, chunk, checksum, file_type, search_start_dt, 
     for i, line in enumerate(chunk):
         try:
 
-            result, log_ = search_fn(line, checksum, file_type, search_start_dt, CACHE_F, logger)
+            result, log_ = search_fn(line, checksum, file_type, search_start_dt, cache_f, logger)
 
             if result is not None:
                 results.append(result)
@@ -74,7 +74,7 @@ def process_line_worker(search_fn, chunk, checksum, file_type, search_start_dt, 
     return results, log_entries, r
 
 
-def process_lines(search_fn, lines, file_type, search_start_dt, process_label, user_setting, logging_values, CACHE_F, iqt=False, strt=20, endp=60):
+def process_lines(search_fn, lines, file_type, search_start_dt, process_label, user_setting, logging_values, cache_f, iqt=False, strt=20, endp=60):
 
     drive_type = user_setting['driveTYPE']
     checksum = user_setting['checksum']
@@ -102,7 +102,7 @@ def process_lines(search_fn, lines, file_type, search_start_dt, process_label, u
             # tlog = threading.Thread(target=logging_worker, args=(log_q, len_lines, strt, endp, show_progress, logger), daemon=True)
             # tlog.start()
             init_process_worker(None)
-            ck_results, _, _ = process_line_worker(search_fn, lines, checksum, file_type, search_start_dt, CACHE_F, show_progress, logger, strt, endp)
+            ck_results, _, _ = process_line_worker(search_fn, lines, checksum, file_type, search_start_dt, cache_f, show_progress, logger, strt, endp)
             # if log_entries:
             #     logs_to_queue(log_entries, log_q)
         except Exception as e:
@@ -136,7 +136,7 @@ def process_lines(search_fn, lines, file_type, search_start_dt, process_label, u
             ) as executor:
                 futures = [
                     executor.submit(
-                        process_line_worker, search_fn, chunk, checksum, file_type, search_start_dt, CACHE_F, show_progress
+                        process_line_worker, search_fn, chunk, checksum, file_type, search_start_dt, cache_f, show_progress
 
                     )
                     for idx, chunk in enumerate(chunks)
@@ -170,10 +170,10 @@ def process_lines(search_fn, lines, file_type, search_start_dt, process_label, u
 
     results = [item for item in ck_results if item is not None]  # results = [item for sublist in ck_results if sublist is not None for item in sublist]  # flatten the list
 
-    return process_results(results, CACHE_F) if results else ([], [])
+    return process_results(results, cache_f) if results else ([], [])
 
 
-def process_results(results, CACHE_F):
+def process_results(results, cache_f):
 
     logger = logging.getLogger("PROCESSRESULTS")
     sortcomplete = []
@@ -204,7 +204,7 @@ def process_results(results, CACHE_F):
                 # group = res[9]
                 mtime_epoch = res[15]
                 epath = res[16]
-                upt_cache(CACHE_F, checks, file_size, time_stamp, mtime_epoch, epath)
+                upt_cache(cache_f, checks, file_size, time_stamp, mtime_epoch, epath)
 
     except Exception as e:
         msg = f'Error updating cache: {type(e).__name__}: {e}'

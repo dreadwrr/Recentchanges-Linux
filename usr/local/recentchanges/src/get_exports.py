@@ -20,7 +20,7 @@ def get_exports():
     appdata_local = find_install()  # software install aka workdir
 
     toml_file, json_file, home_dir, xdg_config, xdg_runtime, user, uid, gid = get_config(appdata_local, user, platform="Linux")
-    # XDG_STATE_HOME look into this
+
     log_dir = home_dir / ".local" / "state" / "recentchanges" / "logs"
 
     with open(toml_file, "rb") as f:

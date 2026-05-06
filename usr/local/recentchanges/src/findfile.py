@@ -7,10 +7,13 @@ import threading
 import traceback
 import zipfile
 from pathlib import Path
+from datetime import datetime, timedelta
 from collections import Counter
 from .config import load_toml
 from .configfunctions import get_config
+from .dirwalkerfunctions import files_search
 from .findfileparser import build_parser
+from .logs import setup_logger
 from .pyfunctions import cprint
 from .pyfunctions import escf_py
 from .pyfunctions import unescf_py
@@ -18,8 +21,7 @@ from .pyfunctions import user_path
 from .rntchangesfunctions import filter_lines_from_list
 from .rntchangesfunctions import get_runtime_exclude_list
 from .rntchangesfunctions import removefile
-
-# 03/14/2026
+# 05/05/2026
 
 
 def archive_failure_blk(result, file_list):
@@ -70,19 +72,19 @@ def has_content(recent_files):
 
 # apply filter.py, filter out inclusions and decode any newline characters
 # windows would add " " quotes to the paths for 7zip winrar
-def encase_line(target_files, temp_dir, arch_exclude, USR, MODULENAME):
+def encase_line(target_files, temp_dir, arch_exclude, usr, moduleNAME):
     results = []
     newline_char = False
 
     # exclude any search results from this app using fn match
-    search_files = f"*{MODULENAME}*.txt"
+    search_files = f"*{moduleNAME}*.txt"
 
     try:
 
         # apply user filter
         rows = [(p,) for p in target_files]
 
-        escaped_user = re.escape(USR)
+        escaped_user = re.escape(usr)
         n_line = filter_lines_from_list(rows, escaped_user, idx=0)
         if n_line is None:
             return None
@@ -113,7 +115,7 @@ def encase_line(target_files, temp_dir, arch_exclude, USR, MODULENAME):
         return None, False
 
 
-def comp_archive(target_files, archive, temp_dir, downloads, arch_exclude, USR, MODULENAME, zipPROGRAM, zipPATH, tarcmode, tarclevel, zipcmode, ziplevel, strip):
+def comp_archive(target_files, archive, temp_dir, downloads, arch_exclude, usr, moduleNAME, zipPROGRAM, zipPATH, tarcmode, tarclevel, zipcmode, ziplevel, strip):
 
     archflnm = archive + ".zip"
     if zipPROGRAM == "zip":
@@ -150,7 +152,7 @@ def comp_archive(target_files, archive, temp_dir, downloads, arch_exclude, USR, 
         print("Unrecognized zip program skipping archive.")
         return 1
 
-    xdata, newline_char = encase_line(target_files, temp_dir, arch_exclude, USR, MODULENAME)
+    xdata, newline_char = encase_line(target_files, temp_dir, arch_exclude, usr, moduleNAME)
     if xdata is None:
         return 1
     elif not xdata:
@@ -297,26 +299,34 @@ def comp_archive(target_files, archive, temp_dir, downloads, arch_exclude, USR, 
     return res
 
 
-def main(localappdata, filename, extension, basedir, USR, dspEDITOR, dspPATH, temp_dir, log_path, cutoffTIME=None, zipPROGRAM=None, zipPATH=None, USRDIR=None, downloads=None):
+def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dspPATH, temp_dir, log_path, cutoffTIME=None, zipPROGRAM=None, zipPATH=None, usrDIR=None, downloads=None):
 
     if not (filename or extension):
         print("Invalid input. exiting.")
         return 1
 
+    current_time = datetime.now()
+
     localappdata = Path(localappdata)
-    toml, json_file, home_dir, xdg_config, xdg_runtime, USR, uid, gid = get_config(localappdata, USR, platform="Linux")
+
+    toml, json_file, home_dir, xdg_config, xdg_runtime, usr, uid, gid = get_config(localappdata, usr, platform="Linux")
     config = load_toml(toml)
     if not config:
         return 1
-    EXCLDIRS = user_path(config['search']['EXCLDIRS'], USR)
-    MODULENAME = config['paths']['MODULENAME']
+    exclDIRS = user_path(config['search']['exclDIRS'], usr)
+    moduleNAME = config['paths']['moduleNAME']
+    ll_level = config['logs']['logLEVEL']
+    root_log_file = config['logs']['rootLOG']
+    log_file = config['logs']['userLOG'] if usr != "root" else root_log_file
     tarcmode = config['compress']['tarcmode']
     tarclevel = config['compress']['tarclevel']
     zipcmode = config['compress']['zipcmode']
     ziplevel = config['compress']['ziplevel']
     strip = config['compress']['strip']
 
-    archive = MODULENAME
+    log_file = home_dir / ".local" / "state" / "recentchanges" / "logs" / log_file
+
+    archive = moduleNAME
     tgt_file = archive + 'xfindfiles.txt'
 
     recent_files = os.path.join(temp_dir, tgt_file)  # result output
@@ -329,172 +339,212 @@ def main(localappdata, filename, extension, basedir, USR, dspEDITOR, dspPATH, te
 
     try:
 
-        arge = []
+        if action == "find":
+            arge = []
 
-        F = ["find", basedir]
+            F = ["find", basedir]
 
-        PRUNE = ["("]
-        for i, d in enumerate(EXCLDIRS):
-            PRUNE += ["-path", os.path.join(basedir, d.replace('$', '\\$'))]
-            if i < len(EXCLDIRS) - 1:
-                PRUNE.append("-o")
-        PRUNE += [")", "-prune", "-o"]
+            PRUNE = ["("]
+            for i, d in enumerate(exclDIRS):
+                PRUNE += ["-path", os.path.join(basedir, d.replace('$', '\\$'))]
+                if i < len(exclDIRS) - 1:
+                    PRUNE.append("-o")
+            PRUNE += [")", "-prune", "-o"]
 
-        TAIL = ["-not", "-type", "d"]
+            TAIL = ["-not", "-type", "d"]
 
-        find_command = F + PRUNE
+            find_command = F + PRUNE
 
-        # zero means compress all results
-        if cutoffTIME is not None:
-            if cutoffTIME != '0':
-                find_command += ["-mmin", f"-{tmn}"]
+            # zero means compress all results
+            if cutoffTIME is not None:
+                if cutoffTIME != '0':
+                    find_command += ["-mmin", f"-{tmn}"]
 
-        if filename and not extension:
-            arge = ["-iname", filename + "*", "-print0"]
-        elif not filename and extension:
-            arge = ["-name", f"*{extension}", "-print0"]
-        elif filename and extension:
-            has_ext = bool(os.path.splitext(filename)[1])
-            if has_ext:
-                print(f"Searching for {filename}{extension}\n")
-            arge = ["-iname", f"{filename}*{extension}", "-print0"]
+            if filename and not extension:
+                arge = ["-iname", filename + "*", "-print0"]
+            elif not filename and extension:
+                arge = ["-name", f"*{extension}", "-print0"]
+            elif filename and extension:
+                has_ext = bool(os.path.splitext(filename)[1])
+                if has_ext:
+                    print(f"Searching for {filename}{extension}\n")
+                arge = ["-iname", f"{filename}*{extension}", "-print0"]
 
-        find_command += TAIL
-        find_command += arge
+            find_command += TAIL
+            find_command += arge
 
-        result_inclusion = ".txt" in filename or ".txt" in extension
+            result_inclusion = ".txt" in filename or ".txt" in extension
 
-        is_progress = True
-        base_folder_paths = []
-        try:
-            for item in os.listdir(basedir):
-                b_path = os.path.join(basedir, item)
-                if os.path.isdir(b_path):
-                    base_folder_paths.append(b_path)
-        except (OSError, PermissionError):
-            is_progress = False
-
-        y = len(base_folder_paths)
-        is_progress = y > 0
-
-        print('Running command:', ' '.join(find_command), flush=True)
-        print()
-
-        stderr_thread = None
-        stderr_output = []
-        proc = subprocess.Popen(find_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-        def process_stderr(stderr_pipe, sink):
+            is_progress = True
+            base_folder_paths = []
             try:
-                for raw in iter(stderr_pipe.readline, b''):
-                    text = raw.decode("utf-8", errors="replace").strip()
-                    if text:
-                        sink.append(text)
-            finally:
-                stderr_pipe.close()
+                for item in os.listdir(basedir):
+                    b_path = os.path.join(basedir, item)
+                    if os.path.isdir(b_path):
+                        base_folder_paths.append(b_path)
+            except (OSError, PermissionError):
+                is_progress = False
 
-        if proc.stderr is not None:
-            stderr_thread = threading.Thread(target=process_stderr, args=(proc.stderr, stderr_output), daemon=True)
-            stderr_thread.start()
+            y = len(base_folder_paths)
+            is_progress = y > 0
 
-        buffer = b''
+            print('Running command:', ' '.join(find_command), flush=True)
+            print()
 
-        emitted = set()
-        with open(recent_files, "w", encoding="utf-8") as f1:
-            while True:
-                if proc.stdout is None:
-                    break
-                chunk = proc.stdout.read(8192)
-                if not chunk:
-                    break
-                buffer += chunk
-                while b'\0' in buffer:
-                    part, buffer = buffer.split(b'\0', 1)
-                    if part.strip():
+            stderr_thread = None
+            stderr_output = []
+            proc = subprocess.Popen(find_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-                        otline = part.decode("utf-8", errors="replace")
-                        if otline:
-                            for i, prefix in enumerate(base_folder_paths, start=1):
-                                if otline.startswith(prefix):
-                                    if is_progress and i not in emitted:
-                                        print(f"Progress: {round((i / y) * 100, 2)}", flush=True)
-                                        emitted.add(i)
-                                    break
-
-                            if not (result_inclusion and otline == recent_files):
-
-                                if downloads is not None:
-                                    cline = escf_py(otline.rstrip('\n'))
-                                    target_files.append(cline)
-                                f1.write(otline + '\n')
-                                print(otline, flush=True)
-
-            if buffer.strip():
+            def process_stderr(stderr_pipe, sink):
                 try:
-                    otline = buffer.decode('utf-8', errors='replace')
-                    if os.path.isfile(otline):
-                        if downloads is not None:
-                            cline = escf_py(otline.rstrip('\n'))
-                            target_files.append(cline)
-                        print(otline)
-                except Exception as e:
-                    print(f"fault in trailing buffer ignored. {type(e).__name__} {e}")
-                    pass
+                    for raw in iter(stderr_pipe.readline, b''):
+                        text = raw.decode("utf-8", errors="replace").strip()
+                        if text:
+                            sink.append(text)
+                finally:
+                    stderr_pipe.close()
 
-        if proc.stdout is not None:
-            proc.stdout.close()
-        proc.wait()
-        if stderr_thread is not None:
-            stderr_thread.join()
+            if proc.stderr is not None:
+                stderr_thread = threading.Thread(target=process_stderr, args=(proc.stderr, stderr_output), daemon=True)
+                stderr_thread.start()
 
-        if proc.returncode not in (0, 1):
-            errors = "\n".join(stderr_output)
-            if errors:
-                print(errors)
+            buffer = b''
+
+            emitted = set()
+            with open(recent_files, "w", encoding="utf-8") as f1:
+                while True:
+                    if proc.stdout is None:
+                        break
+                    chunk = proc.stdout.read(8192)
+                    if not chunk:
+                        break
+                    buffer += chunk
+                    while b'\0' in buffer:
+                        part, buffer = buffer.split(b'\0', 1)
+                        if part.strip():
+
+                            otline = part.decode("utf-8", errors="replace")
+                            if otline:
+                                for i, prefix in enumerate(base_folder_paths, start=1):
+                                    if otline.startswith(prefix):
+                                        if is_progress and i not in emitted:
+                                            print(f"Progress: {round((i / y) * 100, 2)}", flush=True)
+                                            emitted.add(i)
+                                        break
+
+                                if not (result_inclusion and otline == recent_files):
+
+                                    if downloads is not None:
+                                        cline = escf_py(otline.rstrip('\n'))
+                                        target_files.append(cline)
+                                    f1.write(otline + '\n')
+                                    print(otline, flush=True)
+
+                if buffer.strip():
+                    try:
+                        otline = buffer.decode('utf-8', errors='replace')
+                        if os.path.isfile(otline):
+                            if downloads is not None:
+                                cline = escf_py(otline.rstrip('\n'))
+                                target_files.append(cline)
+                            print(otline)
+                    except Exception as e:
+                        print(f"fault in trailing buffer ignored. {type(e).__name__} {e}")
+                        pass
+
+            if proc.stdout is not None:
+                proc.stdout.close()
+            proc.wait()
+            if stderr_thread is not None:
+                stderr_thread.join()
+
+            if proc.returncode not in (0, 1):
+                errors = "\n".join(stderr_output)
+                if errors:
+                    print(errors)
+                print()
+                print("Find failed unable to continue. quitting")
+                return proc.returncode
+
+        elif action == "python":
+
+            out_text = ""
+
+            logging_values = (localappdata, ll_level)
+            logger = setup_logger(log_file, logging_values[1], "FINDFILE")
+
+            search_start_dt = None
+            if cutoffTIME is not None:
+                if cutoffTIME != '0':
+                    search_start_dt = (current_time - timedelta(minutes=tmn))  # if zero is specified means to compress all results dont filter by time if zero
+
+            if filename and not extension:
+                mode = 1
+                out_text = f"filename: {filename}"
+            elif not filename and extension:
+                mode = 2
+                out_text = f"extn: {extension}"
+            if filename and extension:
+                out_text = filename + extension
+                has_ext = bool(os.path.splitext(filename)[1])
+                if has_ext:
+                    print(f"Searching for {out_text}\n")
+                mode = 3
+            print(f'Running os.scandir for {out_text}', flush=True)
+            feedback = True
+            iqt = True
+
+            target_files, _ = files_search(basedir, search_start_dt, feedback, exclDIRS, logger, filename, extension, mode, iqt, strt=0, endp=100)
+
+            if target_files:
+                with open(recent_files, "w", encoding="utf-8") as f1:
+                    for otline in target_files:
+                        print(otline, file=f1)
+
+        if target_files is None:
+            return 1
+        elif target_files and os.path.isfile(recent_files) and os.path.getsize(recent_files) != 0:
             print()
-            print("Find failed unable to continue. quitting")
-            return proc.returncode
 
-        res = 0
+            if cutoffTIME is not None and downloads:
 
-        if res == 0 and os.path.isfile(recent_files) and os.path.getsize(recent_files) != 0:
-            print()
-            if target_files and downloads is not None:
                 pst_data = home_dir / ".local" / "share" / "recentchanges"
                 flth_frm = pst_data / "flth.csv"  # filter hits
                 dbtarget_frm = pst_data / "recent.gpg"
-                CACHE_F_frm = pst_data / "ctimecache.gpg"
-                CACHE_S_frm = pst_data / "systimeche.gpg"
+                cache_f_frm = pst_data / "ctimecache.gpg"
+                cache_s_frm = pst_data / "systimeche.gpg"
                 file_out = xdg_runtime / "file_output"
                 flth = str(flth_frm)
                 dbtarget = str(dbtarget_frm)
-                CACHE_F = str(CACHE_F_frm)
-                CACHE_S = str(CACHE_S_frm)
-                CACHE_S, _ = os.path.splitext(CACHE_S)  # to match all profiles and index drives
+                cache_f = str(cache_f_frm)
+                cache_s = str(cache_s_frm)
+                cache_s, _ = os.path.splitext(cache_s)  # to match all profiles and index drives
 
+                gnupg_home = None
                 # exclude certain files from .rar/.zip. app inclusions and temp work area
 
                 arch_exclude = get_runtime_exclude_list(
-                    USRDIR, MODULENAME, USR, str(file_out), flth, dbtarget,
-                    CACHE_F,  CACHE_S, str(log_path), recent_files)
+                    usrDIR, moduleNAME, usr, str(file_out), flth, dbtarget, cache_f,
+                    cache_s, gnupg_home, str(log_path), recent_files
+                )
 
                 res = comp_archive(
-                    target_files, archive, temp_dir, downloads, arch_exclude, USR,
-                    MODULENAME, zipPROGRAM, zipPATH, tarcmode, tarclevel,
+                    target_files, archive, temp_dir, downloads, arch_exclude, usr,
+                    moduleNAME, zipPROGRAM, zipPATH, tarcmode, tarclevel,
                     zipcmode, ziplevel, strip
                 )
 
-            elif downloads and cutoffTIME is not None:
-                res = 1
-                print(f"no archive path list: {target_files} couldnt compress")
+            # elif downloads and cutoffTIME is not None:
+            #     res = 1
+            #     print(f"no archive path list: {target_files} couldnt compress")
 
             print(f"RESULT: {recent_files}")
-
             # display(dspEDITOR, recent_files, True, dspPATH)  # cant open as root for compatibility and security *
-
-        if res == 0:
-            print("Progress: 100%")
-        return res
+            if res != 0:
+                pass
+                # return 1
+        print("Progress: 100%")
+        return 0
 
     except Exception as e:
         print(f'An error occurred in findfile: {type(e).__name__} err: {e} \n {traceback.format_exc()}')
@@ -507,6 +557,7 @@ def main_entry(argv):
 
     calling_args = [
         args.appdata,
+        args.action,
         args.filename,
         args.extension,
         args.basedir,
@@ -518,7 +569,7 @@ def main_entry(argv):
         args.cutoffTIME,
         args.zipPROGRAM,
         args.zipPATH,
-        args.USRDIR,
+        args.usrDIR,
         args.downloads
     ]
     result = main(*calling_args)
