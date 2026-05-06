@@ -40,10 +40,6 @@ _filter = [
         r'\.local/state',
         r'\.xsession',
 
-        # Inclusions from script
-        # r'/home/{{user}}/\.local/share/recentchanges/recent\.gpg',
-        # r'/home/{{user}}/\.local/share/recentchanges/flth\.csv',
-
         r'/root/\.auth',
         r'/root/\.config',
         r'/root/\.lesshst',
@@ -82,3 +78,4 @@ _filterhitRESET = [
     r'\.local/share'
 
 ]
+
