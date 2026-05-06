@@ -53,7 +53,7 @@ replace the following files from pyinstaller source: <br>
 /usr/local/bin/recentchanges <br>
 /usr/local/recentchanges/scripts/rntchangesfunctions <br>
 /usr/share/polkit-1/actions/org.freedesktop.set-recentchanges.policy <br><br>
-<p> also chown root:root /usr/local/recentchanges as a last step </p>
+<p> also chown root:root /usr/local/recentchanges as a last step </p> <br><br>
 PyInstaller<br>
 https://github.com/dreadwrr/Linux-Pyinstaller <br>
 to build a binary with all the packages and not needing any on the system <br><br>
