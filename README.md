@@ -1,4 +1,4 @@
-While I could distribute the app with a binary I believe this way is the better way. You can use it with just python
+While I could distribute the app with a binary I believe this way is the better. You can use it with just python
 or build it into a binary with pyinstaller. All that has to be changed is a few scripts so you can use the pyinstaller release
 or copy the applicable files from there.
 
