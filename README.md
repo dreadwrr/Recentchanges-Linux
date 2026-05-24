@@ -2,7 +2,7 @@ While I could distribute the app with a binary I believe this way is the better.
 or build it into a binary with pyinstaller. All that has to be changed is a few scripts so you can use the pyinstaller release
 or copy the applicable files from there.
 
-I am now focusing on linux and researching how I can reshape and retool recentchanges to be more responsive and adapt to
+I am now focusing on just linux and researching how I can reshape and retool recentchanges to be more responsive and adapt to
 modern approaches at gui distribution. This project has helped me learn python and about linux. The primary focus is always
 minimal requirements and custom logic. So check in from time to time as I come up with new features and enhance recent changes.
 
