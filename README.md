@@ -4,8 +4,7 @@ copied from the pyinstaller release. Or just build from the pyinstaller release
 or copy the applicable files from there.
 
 I am now focusing on just linux and researching how I can reshape and retool recentchanges to be more responsive and adapt to
-modern approaches at gui distribution. This project has helped me learn python and about linux. The primary focus is always
-minimal requirements and custom logic. So check in from time to time as I come up with new features and enhance recent changes.
+modern approaches at gui distribution. 
 
 
 ![Alt text](https://i.imgur.com/gqbO4HB.png) <br>
