@@ -1,5 +1,5 @@
 Version 6.0.0 posted to this repo and pyinstaller repo <br>
-Have to test on always before release. also test the pyinstaller
+Have to test on always fresh before release. also test the pyinstaller
 
 
 While I could distribute just a binary I believe this is the better way. It can be used with just python
