@@ -1,5 +1,5 @@
 Version 6.0.0 posted to repos and tested working. 
-Currently testing on always fresh and then pyinstaller test before release.
+Have to testing on always fresh and then pyinstaller before release.
 
 
 While I could distribute just a binary I believe this is the better way. It can be used with just python
