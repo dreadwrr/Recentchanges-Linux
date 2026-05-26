@@ -1,4 +1,4 @@
-Version 6.0.0 posted to this repo and pyinstaller repo
+Version 6.0.0 posted to this repo and pyinstaller repo <br>
 Have to test on always before release. also test the pyinstaller
 
 
