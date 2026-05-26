@@ -5,12 +5,13 @@ gpg --gen-key
 4096
 0
 y
-John r
-john.r@email.com     <---------   has to match recentchanges  email at top of config file
+John e
+john.doe@email.com     <---------   has to match recentchanges  email at top of config file
 na
 O
 
-gpg --export-secret-keys --armor john.r@email.com > key.asc
+Import key to root
+gpg --export-secret-keys --armor john.doe@email.com > key.asc
 sudo su
 gpg --import key.asc
 gpg --edit-key john.r@email.com
