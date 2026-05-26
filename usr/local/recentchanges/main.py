@@ -1,4 +1,4 @@
-# 05/05/2026              Qt gui linux                 Developer buddy 5.0.9
+# 05/26/2026              Qt gui linux                 Developer buddy 6.0.0
 import glob
 import logging
 import multiprocessing
@@ -24,6 +24,7 @@ from src.configfunctions import get_config
 from src.dbworkerstream import DbWorkerIncremental
 from src.gpgcrypto import decr
 from src.gpgcrypto import encr
+from src.gpgcrypto import GPGStatus
 from src.gpgcrypto import parse_gpg_agent_conf
 from src.gpgcrypto import test_gpg_agent
 from src.gpgkeymanagement import find_gnupg_home
@@ -184,7 +185,7 @@ class MainWindow(QMainWindow):
         # QTimer.singleShot(5000, self.display_db)
 
         # Vars
-        self.app_version = "5.1.0"
+        self.app_version = "6.0.0"
         self.pwd = os.getcwd()
         self.home_dir = home_dir
         config_local = home_dir / ".config" / "recentchanges"
@@ -396,7 +397,7 @@ class MainWindow(QMainWindow):
         self.ui.actionDiag1.triggered.connect(self.show_status)
         self.ui.actionLogging.triggered.connect(lambda: display(self.dspEDITOR, self.log_path, True, self.dspPATH))
 
-        self.ui.actionAbout.triggered.connect(lambda: help_about(self.lclhome, self.ui.hudt))
+        self.ui.actionAbout.triggered.connect(lambda: help_about(self.lclhome, self.ui.hudt, self.app_version))
         self.ui.actionResource.triggered.connect(self.open_resource)
         self.ui.actionHelp.triggered.connect(lambda: get_help(self.lclscripts, self.resources, self.ui.hudt))
         # end Menu bar
@@ -1590,11 +1591,16 @@ class MainWindow(QMainWindow):
         self.exit_result = exit_status
 
         if exit_code != 0:  # and not exit_status != QProcess.NormalExit:
-            exit_str = str(exit_status)
-            if exit_code == 7:
-                self.ui.hudt.appendPlainText(f"QProcess replied to exit request Exit status: {exit_str}")
+            if exit_code == GPGStatus.NO_PINENTRY:
+                self.ui.hudt.appendPlainText(f"No pinentry Exit status: {exit_status}")
+            if exit_code == GPGStatus.NO_KEY:
+                self.ui.hudt.appendPlainText(f"No gpg key found Exit status: {exit_status}")
+            if exit_code == GPGStatus.BAD_PASSPHRASE:
+                self.ui.hudt.appendPlainText(f"Bad passphrase: {exit_status}")
+            elif exit_code == 7:
+                self.ui.hudt.appendPlainText(f"QProcess replied to exit request Exit status: {exit_status}")
             else:
-                self.ui.hudt.appendPlainText(f"Exit code: {exit_code}, Exit status: {exit_str}")
+                self.ui.hudt.appendPlainText(f"Exit code: {exit_code} Exit status: {exit_status}")
         self.ui.resetButton.setEnabled(True)
 
     def proc_timeout(self):
@@ -2905,6 +2911,9 @@ def start_main_window():
 
             is_key, err = iskey(email)
             if is_key is False:
+                if os.path.isfile(dbtarget):
+                    QMessageBox.critical(None, "Error", f"No key for file: {dbtarget}. remove it or use recentchanges reset")
+                    return 1
 
                 is_polkit = polkit_check()
                 if not is_polkit:
@@ -2959,12 +2968,9 @@ def start_main_window():
             dbopt = os.path.join(tempdir, output + '.db')
 
             if os.path.isfile(dbtarget):
-                res = decr(dbtarget, dbopt)
+                res, err = decr(dbtarget, dbopt)
                 if not res:
-                    if res is None:
-                        QMessageBox.critical(None, "Error", f"There is no key for {dbtarget}.")
-                    else:
-                        QMessageBox.critical(None, "Error", "Decryption failed .gpg could be corrupt. exitting.")
+                    QMessageBox.critical(None, "Error", err)
                     return 1
 
             # if drive is not "/" resolve partuuid. store info in json under suffix ie sda3
