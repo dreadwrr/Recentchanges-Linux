@@ -1,4 +1,4 @@
-While I could distribute just a binary I believe this is the better way. It can  be used with just python
+While I could distribute just a binary I believe this is the better way. It can be used with just python
 or build it into a binary with pyinstaller from the same release. All that has to be changed is a few scripts
 copied from the pyinstaller release. Or just build from the pyinstaller release
 
