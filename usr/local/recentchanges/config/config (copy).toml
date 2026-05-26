@@ -183,17 +183,17 @@ dspPATH = ""
                                 # modern
 hudCOLOR = "solar"
 
-								# default 12
+                                # default 12
 hudSZE = 12
 
 # to install more fonts install with package manger and run print(QFontDatabase().families()) to see if it lists it and then set here.
-                        # default is Monospace
-                        # DejaVu Sans
-                        # DejaVu Sans Mono
-                        # DejaVu Serif
-                        # Monospace
-                        # Sans Serif
-                        # Serif
+                                    # default is Monospace
+                                    # DejaVu Sans
+                                    # DejaVu Sans Mono
+                                    # DejaVu Serif
+                                    # Monospace
+                                    # Sans Serif
+                                    # Serif
 hudFNT = "Monospace"
 
 
@@ -254,11 +254,11 @@ xzm = false
 
 # if false include all files found. otherwise only target executables. with this on there would be less results or a narrower profile.
 # for .so files the header is checked
-exec = false				# false - default
+exec = false       # false - default
 
 
 # include symlinks in xzm, proteusEXTN and proteusPATH. symlinks are still mapped in dir cache for early exit in recursion and avoid tranversing in find downloads.
-sym = true		# true - default
+sym = true        # true - default
 
 
 # files to include in the index. "" would means to include files with no extensions
@@ -288,7 +288,7 @@ filterout = [
 
 
 [paths]
-# file label prefix for searches output txt file			# default rntfiles
+# file label prefix for searches output txt file          # default rntfiles
 moduleNAME="rntfiles"
 
 
