@@ -1,5 +1,5 @@
-Version 6.0.0 posted to repos and tested working. 
-Have to testing on always fresh and then pyinstaller before release.
+Version 6.0.0 posted to repos tested working. 
+Have to testing on always fresh and pyinstaller before release.
 
 
 While I could distribute just a binary I believe this is the better way. It can be used with just python
