@@ -63,8 +63,9 @@ def main(dbopt, dbtarget, basedir, xdata, complete, rout, scr, cerr, cache_s, ca
 
     if not iqt:
         if os.path.isfile(dbtarget):
-            if not decr(dbtarget, dbopt, user):
-                print(f'Find out why db not decrypting or delete: {dbtarget} and make a new one')
+            result, err = decr(dbtarget, dbopt, user)
+            if not result:
+                print(err)
                 return None, None
         else:
             try:
@@ -215,4 +216,6 @@ def main(dbopt, dbtarget, basedir, xdata, complete, rout, scr, cerr, cache_s, ca
         return "encr_error", csum
     elif res == 4:
         return "db_error", csum
+    print("e")
+    print(res)
     return None, csum

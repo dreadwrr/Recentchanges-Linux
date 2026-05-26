@@ -291,16 +291,16 @@ def find_created(appdata_local, dbopt, dbtarget, basedir, user, dtype, tempdir, 
                     # del_keys is to remove db entries for deleted folders if wanting to maintain but no need
                     if sync_db(dbopt, basedir, cache_s, None, None, None, key_upt, from_idx=True):
                         nc = cnc(dbopt, compLVL)
-                        if encr(dbopt, dbtarget, email, no_compression=nc, dcr=True):
+                        if encr(dbopt, dbtarget, email, user=user, no_compression=nc, dcr=True):
                             nc = cnc(cache_s, compLVL)
-                            if encrm(ctarget, cache_s, email, no_compression=nc):
+                            if encrm(ctarget, cache_s, email, user=user, no_compression=nc):
 
                                 print(f"Progress: {prog_v:.2f}%", flush=True)
                             else:
                                 rlt = 1
                                 print(f"Cache reencryption failed {cache_s} find_created dirwalker.py")
-                            change_perm(dbtarget, uid, gid, 0o644)
-                            change_perm(cache_s, uid, gid, 0o644)
+                                # change_perm(dbtarget, uid, gid, 0o644)
+                                # change_perm(cache_s, uid, gid, 0o644)
                         else:
                             rlt = 1
                     else:
@@ -586,8 +586,8 @@ def index_system(appdata_local, dbopt, dbtarget, basedir, user, cache_s, email, 
         if iqt:
             print(f"Progress: {prog_v:.2f}%")
         if res == 0:
-            change_perm(dbtarget, uid, gid, 0o644)
-            change_perm(cache_s, uid, gid, 0o644)
+            # change_perm(dbtarget, uid, gid, 0o644)
+            # change_perm(cache_s, uid, gid, 0o644)
             print(f'{"Drive index" if idx_drive else "System profile"} complete')
             if iqt:
                 print("Progress: 100%", flush=True)
@@ -740,8 +740,8 @@ def index_system(appdata_local, dbopt, dbtarget, basedir, user, cache_s, email, 
             print("Index failed to build. no results from multiprocessing.")
 
         # its encrypted as the user with this script run as root. change perm to user anyway incase any problem happened so not creating another problem.
-        change_perm(dbtarget, uid, gid, 0o644)
-        change_perm(cache_s, uid, gid, 0o644)  # cache_idx could be false
+        # change_perm(dbtarget, uid, gid, 0o644)
+        # change_perm(cache_s, uid, gid, 0o644)  # cache_idx could be false
 
     gc.collect()
     return rlt
@@ -925,7 +925,7 @@ def scan_system(appdata_local, dbopt, dbtarget, basedir, user, difffile, cache_s
 
         # output terminal
         if all_sys:
-
+            all_sys.sort(key=lambda x: x[0])
             # symmetric differences
             # show sylinks that have new targets
             # show the files that no longer exist from the miss rate
@@ -935,11 +935,11 @@ def scan_system(appdata_local, dbopt, dbtarget, basedir, user, difffile, cache_s
 
             # Insert changes
 
-            if save_db(dbopt, dbtarget, basedir, cache_s, email, user, None, None, all_sys, keys=None, idx_drive=False, compLVL=compLVL, dcr=dcr):
-                change_perm(dbtarget, uid, gid, 0o644)
-            else:
+            if not save_db(dbopt, dbtarget, basedir, cache_s, email, user, None, None, all_sys, keys=None, idx_drive=False, compLVL=compLVL, dcr=dcr):
+
                 rlt = 1
                 print(f"Failed to insert profile changes into {sys_tables[1]} table in scan_system")
+            # change_perm(dbtarget, uid, gid, 0o644)
         else:
             print(f'No results found for sys index scan system{' multiprocessing' if driveTYPE.lower() == "ssd" else ''}.')
     else:
@@ -1063,7 +1063,7 @@ def set_hardlinks(appdata_local, dbopt, dbtarget, basedir, user, uid, gid, tempd
             if sts:
                 print("Progress: 100.00%", flush=True)
                 rlt = 0
-            change_perm(dbtarget, uid, gid, 0o644)
+            # change_perm(dbtarget, uid, gid, 0o644)
 
     else:
         print("dirwalker.py could not find dbopt: ", dbopt)

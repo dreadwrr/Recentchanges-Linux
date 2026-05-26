@@ -103,6 +103,7 @@ def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, d
     dbtarget = str(dbtarget)
 
     result = False
+    error_msg = None
 
     if reset:
 
@@ -122,7 +123,7 @@ def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, d
                 if not gpg_can_decrypt(user, dbtarget):
                     return 1
                 dbopt = os.path.join(tempdir, output)
-                result = decr(dbtarget, dbopt, user)
+                result, error_msg = decr(dbtarget, dbopt, user)
 
                 # can easily break if trying to automate fixing keys. let the user do it if wanted.
 
@@ -263,14 +264,9 @@ def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, d
                     # no recent.db file permission error abort so sql doesnt make an empty database
                     log_fn(f"Unable to locate database: {dbopt}")
 
-            # User has no key
-            elif not database and result is None:
-
-                ctime_path = cache_f.name
-                log_fn(f"No key for {dbtarget} or {ctime_path}. if unable to fix delete to reset")
-
             else:
-
+                if error_msg:
+                    log_fn(error_msg)
                 if os.path.isfile(dbtarget):
                     log_fn(f'Find out why not decrypting. If unable to fix call: recentchanges reset  . unable to decrypt file: {dbtarget}')
 

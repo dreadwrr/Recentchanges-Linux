@@ -6,9 +6,12 @@ import sys
 from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from src.logs import check_log_perms
-from src.configfunctions import get_config
 from src.configfunctions import find_install
+from src.configfunctions import get_config
+from src.gpgcrypto import start_user_agent
+from src.gpgcrypto import GPGStatus
+from src.gpgkeymanagement import iskey
+from src.logs import check_log_perms
 
 
 def get_exports():
@@ -69,8 +72,40 @@ def get_exports():
         if value is not None:
             print(f"export {name}={shlex.quote(str(value))}")
 
-    return 0
+    # Warm the user gpg agent for root
+    email = config['backend']['email']
+    is_key = iskey(email)
+    if is_key:
+
+        pst_data = Path(home_dir) / ".local" / "share" / "save-changesnew"
+        cache_f_frm = pst_data / "ctimecache.gpg"
+        dbtarget = pst_data / "recent.gpg"
+
+        cache_f = None
+        if cache_f_frm.is_file():
+            cache_f = str(cache_f_frm)
+        elif dbtarget.is_file():
+            cache_f = str(dbtarget)
+
+        res = start_user_agent(user, email, cache_f, str(toml_file))  # pass the config as a temp file as input
+        if res != GPGStatus.ERR_OK:
+            if res == GPGStatus.DECRYPT_FAIL:
+                sys.exit(1)
+            elif res == GPGStatus.NO_KEY:
+                sys.exit(3)
+            elif res == GPGStatus.NO_PINENTRY:
+                # or inappropriate ioctl for device
+                sys.exit(4)
+            elif res == GPGStatus.BAD_PASSPHRASE:
+                sys.exit(7)
+            else:
+                sys.exit(res)
 
 
 if __name__ == "__main__":
     sys.exit(get_exports())
+
+# Notes and drafting:
+# using an app specific gpupg home cluttered the folder and proved to be more difficult than just using the users homedir
+# gnupg_home = appdata_local / "gnupg"
+# print(f'export GNUPGHOME={shlex.quote(str(gnupg_home))}')

@@ -299,7 +299,6 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
     syschg = False
     flsrh = False
     filtered = False
-    is_porteus = True
 
     dcr = False  # means to remove after encrypting.
 
@@ -532,8 +531,8 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
 
         check_stop(stopf)
         if cfr and (recent or tout):
-            if encr_cache(cfr, cache_f, email, compLVL):
-                change_perm(cache_f, uid, gid)
+            encr_cache(cfr, cache_f, email, usr, compLVL)
+            # change_perm(cache_f, uid, gid)
 
         if not recent:
             if not tout:
@@ -650,14 +649,16 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
             # Copy files `recentchanges` and move old searches. if it is not porteus and some how enters bash script it just moves old files.
             if method == 'rnt':
                 check_stop(stopf)
-                if not iqt:
+
+                if not iqt and argtwo == "SRC":
                     res = porteus_linux_check()
                     if res:
                         validrlt = copy_files(recent, recentnul, tmpopt, argone, thetime, argtwo, usr, tempwork, archivesrh, autooutput, xzmname, cmode, fmt, script_dir)
                     elif res is not None:
-                        is_porteus = False
-                    else:
-                        validrlt = copy_files(recent, recentnul, tmpopt, argone, thetime, argtwo, usr, tempwork, archivesrh, autooutput, xzmname, cmode, fmt, script_dir)
+                        print("SRC skipped.")
+                        # is_porteus = False
+                        # else:
+                        # validrlt = copy_files(recent, recentnul, tmpopt, argone, thetime, argtwo, usr, tempwork, archivesrh, autooutput, xzmname, cmode, fmt, appdata_local)
 
             oldsort = []
             if flsrh:
@@ -672,9 +673,6 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
 
             if method == "rnt":
                 dirSRC = "/tmp"  # recentchanges
-
-                if iqt or not is_porteus:  # if it wasnt porteus from above move old searches.
-                    validrlt = clear_logs(dirSRC, 'rnt', '/tmp', moduleNAME, archivesrh)
             else:
                 dirSRC = usrDIR  # recentchanges search
 
@@ -697,15 +695,17 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
                 if not oldsort:
                     hsearch(oldsort, '/tmp', moduleNAME, flnm)
 
+            # Reset. move old searches
+            validrlt = clear_logs(dirSRC, method, '/tmp', moduleNAME, archivesrh)
+
             target_path = None
             # output /tmp file results
             if method != "rnt":
-                # Reset. move old searches
-                validrlt = clear_logs(dirSRC, method, '/tmp', moduleNAME, archivesrh)
                 # send Temp results to user
                 if tmpoutput:
                     # b_argone = '' if parseflnm.endswith('.txt') else str(argone)
                     target_filename = f"{moduleNAME}xSystemTmpfiles{parseflnm}{argone}"
+
                     target_path = os.path.join(usrDIR, target_filename)
                     with open(target_path, 'w') as dst:
                         for entry in tmpoutput:

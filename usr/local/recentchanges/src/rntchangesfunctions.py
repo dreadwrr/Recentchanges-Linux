@@ -672,7 +672,7 @@ def hsearch(oldsort, appdata, moduleNAME, flnm):
 
 
 # recentchanges
-def copy_files(recent, recentnul, tmpopt, argone, thetime, argtwo, usr, tempdir, archivesrh, autooutput, xzmname, cmode, fmt, script_dir=None):
+def copy_files(recent, recentnul, tmpopt, argone, thetime, argtwo, usr, tempdir, archivesrh, autooutput, xzmname, cmode, fmt, lclhome=None):
 
     # recentnul isnt used holds all filepaths from main search in \0 delimited for file transfers
     # appname = ''
@@ -682,15 +682,6 @@ def copy_files(recent, recentnul, tmpopt, argone, thetime, argtwo, usr, tempdir,
 
     if not xzmname:
         xzmname = f"Application{os.getpid()}"
-
-    # if not autooutput and argtwo == "SRC":
-    #     while True:
-    #         uinpt = input("Press enter for default filename: ").strip()
-    #         if uinpt:
-    #             appname = uinpt
-    #             break
-    #         else:
-    #             break
 
     with open('/tmp/' + tmpopt_out, 'w') as f1:  # open('/tmp/' + tout_out, 'wb') as f2:
 
@@ -714,9 +705,9 @@ def copy_files(recent, recentnul, tmpopt, argone, thetime, argtwo, usr, tempdir,
 
     if os.path.isfile('/tmp/' + tmpopt_out) and os.path.getsize('/tmp/' + tmpopt_out) > 0:
 
-        script_path = "/usr/local/recentchanges/scripts/recentchanges"
-        if script_dir:
-            script_path = os.path.join(script_dir, 'recentchanges')
+        script_path = "/usr/local/save-changesnew/recentchanges"
+        if lclhome:
+            script_path = os.path.join(lclhome, 'recentchanges')
         try:
             script_dir = os.path.dirname(script_path)
             auto_output = str(autooutput).lower()
@@ -751,16 +742,19 @@ def copy_files(recent, recentnul, tmpopt, argone, thetime, argtwo, usr, tempdir,
 
             try:
                 for line in stdout:
-                    # cprint.cyan(last_line)
+
                     print(last_line)
-                    all_output.append(line)
+
                     last_line = line.strip()
                     if "Filename or Selection" in line:
+                        print("Filename or Selection")
                         uinpt = input().strip()
                         if uinpt:
                             if proc.stdin is not None:
                                 proc.stdin.write(uinpt + '\n')
                                 proc.stdin.flush()
+                    else:
+                        all_output.append(line)
 
             except KeyboardInterrupt:
                 proc.terminate()
@@ -771,7 +765,6 @@ def copy_files(recent, recentnul, tmpopt, argone, thetime, argtwo, usr, tempdir,
             output = ''.join(all_output)
 
             if return_code != 0:
-                print(f'/rntfiles.xzm failed unable to make xzm. errcode:{return_code}')
                 print("ERROR:", output)
                 return
 
@@ -780,7 +773,7 @@ def copy_files(recent, recentnul, tmpopt, argone, thetime, argtwo, usr, tempdir,
             else:
                 result = last_line
 
-            if "prev" not in last_line and "nofiles" not in last_line:
+            if "nofiles" not in last_line:
                 print(last_line)
 
             return result

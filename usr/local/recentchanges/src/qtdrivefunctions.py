@@ -401,12 +401,9 @@ def get_cache_files(basedir, dbopt, dbtarget, cache_s, json_file, user, email, c
                     # if from cmd line get db
                     if not os.path.isfile(dbopt):
                         if os.path.isfile(dbtarget):
-                            res = decr(dbtarget, dbopt)
+                            res, err = decr(dbtarget, dbopt)
                             if not res:
-                                if res is None:
-                                    print(f"There is no key for {dbtarget}.")
-                                else:
-                                    print("Decryption failed.")
+                                print(err)
 
                     # rename any database tables
                     if os.path.isfile(dbopt):

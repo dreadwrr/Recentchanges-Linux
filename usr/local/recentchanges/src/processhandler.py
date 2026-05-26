@@ -3,6 +3,7 @@ import time
 from PySide6.QtCore import QObject, Signal, QProcess, QTimer, QThread, Slot
 from .rntchangesfunctions import display
 from .gpgcrypto import start_gpg_agent
+from .gpgcrypto import GPGStatus
 from .qtclasses import GpgPromptWorker
 
 
@@ -50,7 +51,7 @@ class ProcessHandler(QObject):
         self.rangeVALUE = None  # set_compress  findfile wsl/pwsh
         self.zipPROGRAM = None
         self.zipPATH = None
-        self.USRDIR = None
+        self.usrDIR = None
         self.downloads = None
 
         self.tgt_file = None  # set_task for, popup text editor
@@ -65,11 +66,11 @@ class ProcessHandler(QObject):
         self.gpg_thread = None
         self.gpg_worker = None
 
-    def set_compress(self, zipPROGRAM, zipPATH, USRDIR, downloads):  # For compress button. pass ins
+    def set_compress(self, zipPROGRAM, zipPATH, usrDIR, downloads):  # For compress button. pass ins
         self.is_compress = True
         self.zipPROGRAM = zipPROGRAM
         self.zipPATH = zipPATH
-        self.USRDIR = USRDIR
+        self.usrDIR = usrDIR
         self.downloads = downloads
 
     def set_task(self, tgt_file, dspEDITOR, dspPATH, tmp_dir):  # Opening results in text editor. pass ins
@@ -84,9 +85,9 @@ class ProcessHandler(QObject):
     def set_range(self, rangeVALUE):
         self.rangeVALUE = rangeVALUE
 
-    @Slot(bool)
-    def _on_gpg_prompt_finished(self, ok):
-        if ok:
+    @Slot(int)
+    def _on_gpg_prompt_finished(self, exit_code):
+        if exit_code == GPGStatus.ERR_OK:
             if self.is_prompt_timer:
                 # if self.prompt_timer.isActive():
                 self.prompt_timer.stop()
@@ -96,7 +97,7 @@ class ProcessHandler(QObject):
             self.status.emit(self.dblabel_text)
             self._start_dispatch_process()
         else:
-            self.complete.emit(7, QProcess.ExitStatus.NormalExit.value)
+            self.complete.emit(exit_code, QProcess.ExitStatus.NormalExit.value)
 
     @Slot()
     def _cleanup_gpg_thread(self):
@@ -176,7 +177,7 @@ class ProcessHandler(QObject):
             if self.rangeVALUE is not None:
                 args += [self.rangeVALUE]
             if self.is_compress:
-                args += [self.zipPROGRAM, self.zipPATH, self.USRDIR, self.downloads]
+                args += [self.zipPROGRAM, self.zipPATH, self.usrDIR, self.downloads]
         args = [str(a) for a in args if a is not None]  # list(args) if args else []
         self.args = args
 
@@ -191,7 +192,7 @@ class ProcessHandler(QObject):
         rlt = start_gpg_agent(email)  # refresh the passphrase.
         if rlt is False:  # if the passphrase has expired
             self.gpg_thread = QThread(self)
-            self.gpg_worker = GpgPromptWorker(dbtarget, user)
+            self.gpg_worker = GpgPromptWorker(self.lclhome, dbtarget, user, email)
             self.gpg_worker.moveToThread(self.gpg_thread)
             self.gpg_thread.started.connect(self.gpg_worker.run)
             self.gpg_worker.finished.connect(self._on_gpg_prompt_finished)

@@ -279,16 +279,22 @@ class BasedirProfiles:
 
 class GpgPromptWorker(QObject):
 
-    finished = Signal(bool)
+    finished = Signal(int)
 
-    def __init__(self, dbtarget, user):
+    def __init__(self, appdata_local, dbtarget, user, email):
         super().__init__()
+        self.lclhome = appdata_local
         self.dbtarget = dbtarget
         self.user = user
+        self.email = email
 
     @Slot()
     def run(self):
-        self.finished.emit(start_user_agent(self.dbtarget, self.user))
+        input_file = os.path.join(self.lclhome, "config", "config (copy).toml")
+        if os.path.isfile(self.dbtarget):
+            self.finished.emit(start_user_agent(self.user, self.email, self.dbtarget))
+        else:
+            self.finished.emit(start_user_agent(self.user, self.email, input_source=input_file))
 
 
 class PassphraseDialog(QDialog):

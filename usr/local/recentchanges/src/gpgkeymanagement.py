@@ -1,6 +1,5 @@
 import getpass
 import glob
-import logging
 import os
 import subprocess
 import tempfile
@@ -203,74 +202,75 @@ def genkey(appdata_local, usr, email, name, dbtarget, cache_f, cache_s, flth, te
             return False
         finally:
             removefile(ftarget)
-        if usr != 'root':
-            keyfile = os.path.join(kp, "key.asc")
-            try:
-                try:
+    # for shared keys with user and root 05/26/2026
+    # if usr != 'root':
+    #     keyfile = os.path.join(kp, "key.asc")
+    #     try:
+    #         try:
 
-                    with open(keyfile, "wb") as f:
-                        subprocess.run(
-                            [
-                                "gpg",
-                                "--batch",
-                                "--yes",
-                                "--pinentry-mode", "loopback",
-                                "--passphrase-fd", "0",
-                                "--export-secret-keys",
-                                "--armor",
-                                email
-                            ],
-                            input=p.encode(),
-                            stdout=f,
-                            check=True
-                        )
+    #             with open(keyfile, "wb") as f:
+    #                 subprocess.run(
+    #                     [
+    #                         "gpg",
+    #                         "--batch",
+    #                         "--yes",
+    #                         "--pinentry-mode", "loopback",
+    #                         "--passphrase-fd", "0",
+    #                         "--export-secret-keys",
+    #                         "--armor",
+    #                         email
+    #                     ],
+    #                     input=p.encode(),
+    #                     stdout=f,
+    #                     check=True
+    #                 )
 
-                    script_path = appdata_local / "set_recent_helper"
-                    script_dir = os.path.dirname(script_path)
+    #             script_path = appdata_local / "set_recent_helper"
+    #             script_dir = os.path.dirname(script_path)
 
-                    cmd = "pkexec" if is_polkit else "sudo"
-                    result = subprocess.run(
-                        [
-                            cmd,
-                            str(script_path),
-                            "import",
-                            str(keyfile),
-                            str(email),
-                            "--passphrase-fd", "0"
-                        ],
-                        input=p.encode(),
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        cwd=script_dir,
-                    )
-                    stdout = result.stdout.decode(errors="replace")
-                    stderr = result.stderr.decode(errors="replace")
-                    stdout = "STDOUT:\n" + stdout  # print any debug
-                    stderr = "STDERR:\n" + stderr  # gpg prints to stderr
-                    print(stdout)
-                    print(stderr)
-                    if result.returncode != 0:
-                        return False
+    #             cmd = "pkexec" if is_polkit else "sudo"
+    #             result = subprocess.run(
+    #                 [
+    #                     cmd,
+    #                     str(script_path),
+    #                     "import",
+    #                     str(keyfile),
+    #                     str(email),
+    #                     "--passphrase-fd", "0"
+    #                 ],
+    #                 input=p.encode(),
+    #                 stdout=subprocess.PIPE,
+    #                 stderr=subprocess.PIPE,
+    #                 cwd=script_dir,
+    #             )
+    #             stdout = result.stdout.decode(errors="replace")
+    #             stderr = result.stderr.decode(errors="replace")
+    #             stdout = "STDOUT:\n" + stdout  # print any debug
+    #             stderr = "STDERR:\n" + stderr  # gpg prints to stderr
+    #             print(stdout)
+    #             print(stderr)
+    #             if result.returncode != 0:
+    #                 return False
 
-                except subprocess.CalledProcessError as e:
-                    print(f"genkey failed to export keyfile: {keyfile} err: {e}")
-                    combined = "\n".join(filter(None, [
-                        e.stdout.decode(errors="replace") if e.stdout else "",
-                        e.stderr.decode(errors="replace") if e.stderr else "",
-                    ]))
-                    if combined:
-                        print("[OUTPUT]\n" + combined)
-                    return False
-            except Exception as e:
-                msg = f"failed to import keyfile {keyfile} error: {e}, {type(e).__name__}"
-                print(msg)
-                logging.error(msg, exc_info=True)
-                return False
-            finally:
-                removefile(keyfile)
-        clear_gpg(usr, dbtarget, cache_f, cache_s, flth)
-        print(f"GPG key generated for {email}.")
-        return True
+    #         except subprocess.CalledProcessError as e:
+    #             print(f"genkey failed to export keyfile: {keyfile} err: {e}")
+    #             combined = "\n".join(filter(None, [
+    #                 e.stdout.decode(errors="replace") if e.stdout else "",
+    #                 e.stderr.decode(errors="replace") if e.stderr else "",
+    #             ]))
+    #             if combined:
+    #                 print("[OUTPUT]\n" + combined)
+    #             return False
+    #     except Exception as e:
+    #         msg = f"failed to import keyfile {keyfile} error: {e}, {type(e).__name__}"
+    #         print(msg)
+    #         logging.error(msg, exc_info=True)
+    #         return False
+    #     finally:
+    #         removefile(keyfile)
+    clear_gpg(usr, dbtarget, cache_f, cache_s, flth)
+    print(f"GPG key generated for {email}.")
+    return True
 
 
 # required for batch deleting keys
@@ -310,17 +310,7 @@ def clear_gpg(usr, dbtarget, cache_f, cache_s, flth):
 def delete_gpg_keys(usr, email, dbtarget, cache_f, cache_s, flth):
 
     def instruct_out():
-        print("To import the key for one to the other to attempt to repair it, try the following. If it doesn't work delete the key pair and start over.")
-        print("\nAs user or root:")
-        print(f"gpg --batch --yes --pinentry-mode loopback --export-secret-keys --armor {email} > key.asc")
-        print("user or root")
-        print("gpg --batch --yes --pinentry-mode loopback --import key.asc")
-        print("rm key.asc")
-        print(f"gpg --edit-key {email}")
-        print("trust")
-        print("5")
-        print("y")
-        print("quit")
+        print()
 
     def exec_delete_keys(usr, email, fingerprint):
         silent: dict[str, Any] = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
@@ -333,6 +323,7 @@ def delete_gpg_keys(usr, email, dbtarget, cache_f, cache_s, flth):
             subprocess.run(["gpg", "--batch", "--yes", "--delete-keys", fingerprint], **silent)
             subprocess.run(["sudo", "gpg", "--batch", "--yes", "--delete-secret-keys", fingerprint], **silent)
             subprocess.run(["sudo", "gpg", "--batch", "--yes", "--delete-keys", fingerprint], **silent)
+
         print("Keys cleared for", email, " fingerprint: ", fingerprint)
 
     while True:
@@ -351,11 +342,11 @@ def delete_gpg_keys(usr, email, dbtarget, cache_f, cache_s, flth):
                     exec_delete_keys(usr, email, fingerprint)
 
                 # look for key in user
-                if usr != "root":
-                    fingerprint = get_key_fingerprint(email, root_target=True)
-                    if fingerprint:
-                        result = True
-                        exec_delete_keys(usr, email, fingerprint)
+                # if usr != "root":
+                #     fingerprint = get_key_fingerprint(email, root_target=True)
+                #     if fingerprint:
+                #         result = True
+                #         exec_delete_keys(usr, email, fingerprint)
 
                 clear_gpg(usr, dbtarget, cache_f, cache_s, flth)
                 if result:

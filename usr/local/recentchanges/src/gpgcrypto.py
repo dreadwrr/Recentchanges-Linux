@@ -5,13 +5,22 @@ import shlex
 import subprocess
 import sys
 import traceback
+from enum import IntEnum
 from io import StringIO
 from typing import Any
 from .configfunctions import user_info
 from .pyfunctions import cnc
 
 
-def encr_cache(cfr, cache_f, email, compLVL):
+class GPGStatus(IntEnum):
+    ERR_OK = 0
+    DECRYPT_FAIL = 1001
+    NO_KEY = 1002
+    NO_PINENTRY = 1003
+    BAD_PASSPHRASE = 1004
+
+
+def encr_cache(cfr, cache_f, email, user, compLVL):
     data_to_write = dict_to_list(cfr)
     ctarget = dict_string(data_to_write)
 
@@ -21,7 +30,7 @@ def encr_cache(cfr, cache_f, email, compLVL):
     if not os.path.isfile(cache_f):
         new_file = True
 
-    rlt = encrm(ctarget, cache_f, email, no_compression=nc, armor=False)
+    rlt = encrm(ctarget, cache_f, email, user=user, no_compression=nc, armor=False)
     if not rlt:
         print("Reencryption failed cache not saved.")
 
@@ -46,6 +55,7 @@ def set_cmd(user):
 
 # enc mem
 def encrm(c_data: str, opt: str, r_email: str, user=None, no_compression=False, armor=False) -> bool:
+    # user = None  # force root gpg agent
     try:
         cmd = set_cmd(user)
         cmd += ["gpg", "--batch", "--yes", "--encrypt", "-r", r_email, "-o", opt]
@@ -73,7 +83,7 @@ def encrm(c_data: str, opt: str, r_email: str, user=None, no_compression=False, 
 
 # dec mem
 def decrm(src: str, user=None) -> str | None:
-
+    # user = None
     cmd = set_cmd(user)
     cmd += ["gpg", "--decrypt", src]
     ret = subprocess.run(cmd, stdout=subprocess.PIPE)
@@ -84,6 +94,7 @@ def decrm(src: str, user=None) -> str | None:
 
 def encr(database, opt, email, user=None, no_compression=False, dcr=False):
     try:
+        # user = None
         cmd = set_cmd(user)
         cmd += ["gpg", "--yes", "--encrypt", "-r", email, "-o", opt,]
         if no_compression:
@@ -107,24 +118,24 @@ def encr(database, opt, email, user=None, no_compression=False, dcr=False):
 
 def decr(src, opt, user=None):
     if os.path.isfile(src):
+        # user = None
         cmd = set_cmd(user)
         cmd += ["gpg", "--yes", "--decrypt", "-o", opt, src]
-        result = subprocess.run(cmd)  # capture_output=True, text=True
-        return result.returncode == 0
-    else:
-        print(f"[ERROR] File {src} not found. Ensure the .gpg file exists.")
-    return False
+        result = subprocess.run(cmd, capture_output=True, text=True)  #
+        return result.returncode == 0, result.stderr
+
+    return False, f"[ERROR] File {src} not found. Ensure the .gpg file exists."
 
 
 def decr_ctime(cache_f: str, user: str, iqt: bool) -> dict:
     if not cache_f or not os.path.isfile(cache_f):
         return {}
 
-    if not iqt:
-        res = start_user_agent(cache_f, user)
-        if not res:
-            # print(f"there may be no key for {cache_f} delete the file to reset")
-            sys.exit(1)
+    # if not iqt:
+    #   res = start_user_agent(user, cache_f)
+    #   if res != GPGStatus.ERR_OK:
+    #       print(f"there may be no key for {cache_f} delete the file to reset")
+    #       sys.exit(res)
 
     csv_path = decrm(cache_f, user)
     if not csv_path:
@@ -165,18 +176,31 @@ def decr_ctime(cache_f: str, user: str, iqt: bool) -> dict:
 
 # commandline start the users gpg agent before decrypting the cache file above ***
 # also used for processhandler.py to start the gpg agent before QProcess
-def start_user_agent(gpg_file, user=None):
+def start_user_agent(user, email, gpg_file=None, input_source=None):
+
+    # user = None  # force root gpg agent
     cmd = set_cmd(user)
-    cmd += ["gpg", "--decrypt", "--dry-run", gpg_file]
+    if gpg_file:
+        cmd += ["gpg", "--decrypt", "--dry-run", gpg_file]
+    elif input_source:
+        cmd += ["gpg", "--local-user", email, "--output", "/dev/null", "--sign", input_source]
+    else:
+        print("start user agent no input")
+        return GPGStatus.DECRYPT_FAIL
     result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    if result.returncode == 0:
+        return GPGStatus.ERR_OK
     stderr = result.stderr
     if stderr:
         for line in stderr.splitlines():
-            if "no secret key" in line.lower():
-                print(line)
-                print(f"No key for {gpg_file} delete the file to reset")
-                return False
-    return result.returncode == 0
+            ln = line.lower()
+            if "no secret key" in ln:
+                return GPGStatus.NO_KEY
+            elif "ioctl" or "no pinentry" in ln:
+                return GPGStatus.NO_PINENTRY
+            elif "bad passphrase" in ln:
+                return GPGStatus.BAD_PASSPHRASE
+    return GPGStatus.DECRYPT_FAIL
 
 
 # Qt precache or refresh gpg passphrase.
@@ -185,6 +209,8 @@ def start_user_agent(gpg_file, user=None):
 def start_gpg_agent(email):
     """ purpose to know when passphrase has expired then prompt with Qt dialog """
     result = subprocess.run(["gpg", "--default-key", email, "--pinentry-mode", "loopback", "--passphrase", "phraseunkown", "-s"], input=b"", capture_output=True)
+    if result.returncode == 0:
+        return True
     for line in result.stderr.split(b'\n'):
         # print(line.decode('utf-8', errors='ignore'))
         # if b"ioctl" in line.lower():  # wont show up with loopback
@@ -198,9 +224,8 @@ def start_gpg_agent(email):
         if b"bad passphrase" in line.lower():
             # print(line)
             return False
-    if result.returncode != 0:
-        return None
-    return True
+
+    return None
 
 
 # probe the gpg agent for pin-entry program
@@ -293,15 +318,6 @@ def gpg_can_decrypt(usr, dbtarget):
             else:
                 print("Invalid input, please enter 'Y' or 'N'.")
     return True
-    # else:
-    #     cmd += ["sudo"]
-    # cmd += ["gpg", "--decrypt", "--dry-run", dbtarget]
-    # result = subprocess.run(
-    #     cmd,
-    #     stdout=subprocess.DEVNULL,
-    #     stderr=subprocess.DEVNULL
-    # )
-    # return result.returncode == 0
 
 
 # prepare for file output
@@ -343,10 +359,8 @@ def dict_string(data: list[dict]) -> str:
 
 
 def encrypt_to_text(notes: str, email: str) -> str | None:  # , user=None
-    # cmd = []
-    # if user and user != "root":
-    #     cmd += ["sudo", "-u", user]
 
+    # cmd = set_cmd(user)
     cmd = ["gpg", "--batch", "--yes", "--armor", "--encrypt", "-r", email]
 
     res = subprocess.run(

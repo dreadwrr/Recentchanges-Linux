@@ -358,10 +358,10 @@ def clear_cache(conn, cur, cachermPATTERNS, log_fn=print):
 
 def load_gpg(dbopt, dbtarget, user, logger):
     if os.path.isfile(dbtarget):
-        if decr(dbtarget, dbopt):
+        res, err = decr(dbtarget, dbopt)
+        if res:
             return True
-        else:
-            print("Database failed to decrypt")
+        print(err)
     else:
         logger.setText("No database to load")
     return False
@@ -520,7 +520,7 @@ def show_licensing(lclhome, hudt):
         hudt.appendPlainText("\n")
 
 
-def help_about(lclhome, hudt):
+def help_about(lclhome, hudt, version_no):
     dlg = QDialog()
     dlg.setWindowTitle("About Recent Changes")
 
@@ -528,7 +528,7 @@ def help_about(lclhome, hudt):
     # layout.setSpacing(15)
     # layout.setContentsMargins(20, 20, 20, 20)
 
-    label = QLabel("v5.0.9\n\nCreated by Colby Saigeon\nh&k enterprisez\n\nFind recent files using powershell.")
+    label = QLabel(f"{version_no}\n\nCreated by Colby Saigeon\nh&k enterprisez\n\nFind recent files using find or python.")
     # label.setWordWrap(True)
     layout.addWidget(label)
 
