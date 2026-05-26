@@ -67,7 +67,7 @@ replace the following files from pyinstaller source: <br>
 /usr/local/bin/recentchanges <br>
 /usr/local/recentchanges/scripts/rntchangesfunctions <br>
 /usr/share/polkit-1/actions/org.freedesktop.set-recentchanges.policy <br><br>
-<p> then chown root:root /usr/local/recentchanges as a last step. guest:users is owner of folder so pyinstaller can build  </p>
+<p> then chown root:root /usr/local/recentchanges as a last step. default is guest:users for owner for pyinstaller build step  </p>
 
 PyInstaller<br>
 https://github.com/dreadwrr/Linux-Pyinstaller <br>
