@@ -33,6 +33,8 @@ recentchanges gui <br>
 recentchanges query <br>
 recentchanges reset <br><br>
 
+Can be run from a venv or system
+
 ## Installation
 install pip with package manager <br>
 cd /usr/local/recentchanges <br>
