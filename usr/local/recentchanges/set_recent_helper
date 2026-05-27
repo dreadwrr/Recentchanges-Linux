@@ -1,8 +1,11 @@
-#!/usr/bin/env python3
-# run set tasks for recentchanges qt gui
-import sys
-from src.qtparser import dispatch_internal as dispatcher
-# 03/14/2026
+#!/usr/bin/env bash
+# run set tasks for recentchanges qt gui. takes target python verify at least two args. then verify target is application
+if [[ $# -lt 2 ]]; then echo "recent helper required no of args: 2" ; exit 1 ; fi
+script_path="$( dirname "$0")"
+SCRIPT="$script_path/main.py"
+if [[ "$SCRIPT" != "$2" ]]; then echo "allowed script $SCRIPT" ; exit 1 ; fi
 
-if __name__ == "__main__":
-    dispatcher(sys.argv)
+PY_EXE="$1"
+
+exec "$PY_EXE" "$2" "${@:3}"
+

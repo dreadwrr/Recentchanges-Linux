@@ -199,10 +199,8 @@ class MainWindow(QMainWindow):
         self.filter_file = appdata_local / "filter.py"
         flth_frm = pst_data / "flth.csv"
         self.flth = str(flth_frm)
-        self.dispatch = appdata_local / "set_recent_helper"
-        if getattr(sys, "frozen", False):
-            self.dispatch = Path(sys.executable).resolve()
-
+        self.dispatch = appdata_local / "set_recent_helper"  # normal python use see ln 251 for pyinstaller detect
+        self.app = str(appdata_local / "main.py")
         self.jpgdir = appdata_local / "Documents"  # str(Path.home() / "Documents")   /home/guest/.config/icons/
         self.crestdir = self.jpgdir / "crests"
         self.jpgdefault = "background.png"  # default png
@@ -247,6 +245,10 @@ class MainWindow(QMainWindow):
         sys_tables, self.cache_table, _ = get_idx_tables(self.basedir, self.cache_s_str, suffix)
         self.sys_a, self.sys_b = sys_tables
 
+        self.is_pyinstall = False
+        if getattr(sys, "frozen", False):
+            self.is_pyinstall = True
+            self.dispatch = Path(sys.executable).resolve()  # set internal python 
         self.is_polkit = False
         self.isexec = False
 
@@ -1648,6 +1650,7 @@ class MainWindow(QMainWindow):
             self.proc.complete.connect(lambda code, _: self.update_ui_sn.emit(code, "search"))
 
         # s_path = os.path.join(self.lclhome, "recentchangessearch.py")
+               
         args = [
             'recentchangessearch.py',
             str(argone),
@@ -1666,6 +1669,9 @@ class MainWindow(QMainWindow):
             str(showDIFF),
             str(self.gnupg_home)
         ]
+
+        if not self.is_pyinstall:
+            args = [sys.executable, self.app] + args
 
         is_search = False  # True if powershell for script time
         self.proc.start_pyprocess(str(self.dispatch), args, dbtarget=self.dbtarget, user=self.usr, email=self.email, is_search=is_search, is_postop=postop, is_scanIDX=scanidx, parent=self)
@@ -1787,7 +1793,8 @@ class MainWindow(QMainWindow):
         ]
         # cmd = os.path.join(self.lclhome, "findfile.py")  # this example would be run python on findfile.py if not using polkit  # Note: "src",  # find script source if meipath ect. qt doesnt run as root and uses polkit helper\wrapper.
         # using polkit set_recent_helper
-
+        if not self.is_pyinstall:
+            args = [sys.executable, self.app] + args
         self.proc.start_pyprocess(str(self.dispatch), args, dbtarget=self.dbtarget, user=self.usr, email=self.email)
 
     # compress
@@ -1891,6 +1898,9 @@ class MainWindow(QMainWindow):
             self.email,
             str(self.compLVL)
         ]
+
+        if not self.is_pyinstall:
+            args = [sys.executable, self.app] + args
         # print(args)
         # self.isexec = False
         # return
@@ -1943,6 +1953,8 @@ class MainWindow(QMainWindow):
             'True',
             'True'
         ]
+        if not self.is_pyinstall:
+            args = [sys.executable, self.app] + args
         self.ui.dbmainlabel.setText("Scanning idx")
         self.proc.start_pyprocess(str(self.dispatch), args, database=self.dbopt, dbtarget=self.dbtarget, user=self.usr, email=self.email, status_message="Index scan")
 
@@ -1985,6 +1997,8 @@ class MainWindow(QMainWindow):
             str(self.compLVL),
             'True'
         ]
+        if not self.is_pyinstall:
+            args = [sys.executable, self.app] + args
         self.proc.start_pyprocess(str(self.dispatch), args, database=self.dbopt, dbtarget=self.dbtarget, user=self.usr, email=self.email, status_message=stsmsg)
 
     # fork build button pg2
@@ -2174,7 +2188,8 @@ class MainWindow(QMainWindow):
             str(self.analyticSECT),
             str(self.compLVL)
         ]
-
+        if not self.is_pyinstall:
+            args = [sys.executable, self.app] + args
         self.proc.start_pyprocess(str(self.dispatch), args, database=self.dbopt, dbtarget=self.dbtarget, user=self.usr, email=self.email)
         #
         # End Main db task
@@ -2919,7 +2934,7 @@ def start_main_window():
                 if not is_polkit:
                     fstr = (
                         "org.freedesktop.set_recent_helper policy not found. Ensure policy file is in right location to use polkit.\n"
-                        "commands will be run as sudo and prompted in terminal"
+                        "commands will be sudo and prompt in terminal"
                     )
                     QMessageBox.warning(None, "polkit check", fstr)
 
