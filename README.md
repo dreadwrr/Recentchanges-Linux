@@ -27,6 +27,13 @@ Features system profile by .xzm for porteus linux <br>
 </p><br>
 requirements: find 4.8.0 gnupg 2 and pinentry  <br>
 
+Commands:
+recentchanges
+recentchanges search
+recentchanges gui
+recentchanges query
+recentchanges reset
+
 ## Installation
 install pip with package manager <br>
 cd /usr/local/recentchanges <br>
