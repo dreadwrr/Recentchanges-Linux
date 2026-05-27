@@ -16,7 +16,7 @@ Linux file search application with hybrid analysis <br><br>
 
 
 <p>
-Checks for hash collisions <br>
+Check for hash collisions <br>
 Save encrypted notes <br>
 Quick commands displays saved commands for easy reference <br>
 Create a custom crest with a .png image file max size 255 x 333 <br>
