@@ -74,7 +74,8 @@ replace the following files from pyinstaller source: <br>
 /usr/local/recentchanges/scripts/rntchangesfunctions <br>
 /usr/share/polkit-1/actions/org.freedesktop.set-recentchanges.policy <br><br>
 
-or use pyinstaller version with changes made <br>
+or <br>
+use pyinstaller version with changes made <br>
 
 <p> remember to chown root:root /usr/local/recentchanges as a last step. default is guest:users for owner for pyinstaller build </p>
 
