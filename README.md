@@ -1,6 +1,6 @@
-Version 6.0.0 posted to this repo tested working. posted to pyinstaller repo <br>
-Have to test on always fresh and the pyinstaller before release
-
+Version 6.0.0 released <br>
+added new change of only needing user pinentry configured
+new bash launch and helper script and ensured proper operation. tested that proper python is used venv or system
 
 While I could distribute just a binary I believe this is the better way. It can be used with just python
 or build it into a binary with pyinstaller from the same release. All that has to be changed is a few scripts
