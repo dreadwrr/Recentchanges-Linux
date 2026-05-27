@@ -28,11 +28,11 @@ Features system profile by .xzm for porteus linux <br>
 requirements: find 4.8.0 gnupg 2 and pinentry  <br>
 
 Commands:
-recentchanges
-recentchanges search
-recentchanges gui
-recentchanges query
-recentchanges reset
+recentchanges <br>
+recentchanges search <br>
+recentchanges gui <br>
+recentchanges query <br>
+recentchanges reset <br><br>
 
 ## Installation
 install pip with package manager <br>
