@@ -57,12 +57,17 @@ then in /usr/local/recentchanges/scripts/rntchangesfunctions ln121 to "$app_inst
 and<br>
 /usr/share/polkit-1/actions/org.freedesktop.set-recentchanges.policy   ln14 <br>
 change to /usr/local/recentchanges/main <br><br>
-or use pyinstaller version with changes made <br>
+
+or
+
 replace the following files from pyinstaller source: <br>
 /usr/local/bin/recentchanges <br>
 /usr/local/recentchanges/scripts/rntchangesfunctions <br>
 /usr/share/polkit-1/actions/org.freedesktop.set-recentchanges.policy <br><br>
-<p> then chown root:root /usr/local/recentchanges as a last step. default is guest:users for owner for pyinstaller build step  </p>
+
+or use pyinstaller version with changes made <br>
+
+<p> remember to chown root:root /usr/local/recentchanges as a last step. default is guest:users for owner for pyinstaller build </p>
 
 PyInstaller<br>
 https://github.com/dreadwrr/Linux-Pyinstaller <br>
