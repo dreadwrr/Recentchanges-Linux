@@ -25,9 +25,9 @@ Full commandline support with recentchanges being in path<br>
 Build a system profile to compare during hybrid analysis as well as a system index scan <br>
 Features system profile by .xzm for porteus linux <br>
 </p><br>
-requirements: find 4.8.0 gnupg 2 and pinentry  <br>
+requirements: find 4.8.0 gnupg 2 and pinentry  <br><br>
 
-Commands:
+Commands: <br>
 recentchanges <br>
 recentchanges search <br>
 recentchanges gui <br>
