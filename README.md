@@ -20,14 +20,13 @@ Check for hash collisions during search <br>
 Save encrypted notes <br>
 Quick commands displays saved commands for easy reference <br>
 Create a custom crest with a .png image file max size 255 x 333 <br>
-Full commandline support with recentchanges being in path<br>
 
 Build a system profile to compare during hybrid analysis as well as a system index scan <br>
 Features system profile by .xzm for porteus linux <br>
 </p><br>
 requirements: find 4.8.0 gnupg 2 and pinentry  <br><br>
 
-Commands: <br>
+Full commandline support with recentchanges being in path<br>
 recentchanges <br>
 recentchanges search <br>
 recentchanges gui <br>
