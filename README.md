@@ -1,5 +1,5 @@
 Version 6.0.0 released! <br>
-added new change of only needing user pinentry configured <br>
+updated to work with only user pinentry configured <br>
 new bash launch and helper script and ensured proper operation. tested that proper python is used venv or system <br><br>
 
 While I could distribute just a binary I believe this is the better way. It can be used with just python
