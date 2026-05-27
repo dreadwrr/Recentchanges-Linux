@@ -47,11 +47,7 @@ as user <br>
 echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br>
 gpgconf --kill gpg-agent <br>
 then as root <br>
-sudo su <br>
-cd /root <br>
-mkdir .gnupg <br>
-echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br>
-gpgconf --kill gpg-agent<br><br>
+
 see [gpg setup](https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0#bookmark=id.kotw1gextu63) for troubleshooting <br><br>
 things to do after installation: chown root:root /usr/local/recentchanges <br>
 the reason it is owned by guest:users is so pyinstaller has permission to build <br><br>
