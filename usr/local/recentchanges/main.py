@@ -27,7 +27,6 @@ from src.gpgcrypto import encr
 from src.gpgcrypto import GPGStatus
 from src.gpgcrypto import parse_gpg_agent_conf
 from src.gpgcrypto import test_gpg_agent
-from src.gpgkeymanagement import find_gnupg_home
 from src.gpgkeymanagement import genkey
 from src.gpgkeymanagement import iskey
 from src.imageraster import raised_image
@@ -65,6 +64,7 @@ from src.qtfunctions import available_fonts
 from src.qtfunctions import check_for_updates
 from src.qtfunctions import commit_note
 from src.qtfunctions import fill_extensions
+from src.qtfunctions import find_gnupg_home
 from src.qtfunctions import get_conn
 from src.qtfunctions import get_help
 from src.qtfunctions import has_log_data
