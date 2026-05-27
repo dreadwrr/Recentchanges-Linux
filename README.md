@@ -48,7 +48,7 @@ pip install pillow <br>
 pip install pyudev <br>
 python main.py <br><br>
 adjust if missing any<br>
-optionally can install the required packages in system using package manager<br><br>
+optionally can install the required packages in system using package manager. nemesis may require xcb-util-cursor xcb-util-keysyms xcb-util-wm<br><br>
 
 requires gpg setup as user <br>
 While testing nemesis the follow step wasnt needed but may be needed to get pinentry working <br>
