@@ -6,10 +6,6 @@ import tempfile
 import traceback
 from pathlib import Path
 from typing import Any
-from .config import dump_j_settings
-from .config import get_json_settings
-from .rntchangesfunctions import name_of
-from .rntchangesfunctions import removefile
 
 
 def iskey(email):
@@ -106,41 +102,6 @@ def import_key(argv):
         return 1
 
 
-def find_gnupg_home(json_file, gpg_home=None, j_settings=None, iqt=False):
-    """ try to find gnupg home for exclusion purposes in build index """
-    if not j_settings and j_settings is not None:
-        print("find_gnupg_home warning json file was empty")
-    gnupg_home = None
-    try:
-        if not j_settings:
-            j_settings = get_json_settings(None, None, json_file)
-
-        gnupg_home = j_settings.get("gnupghome")
-        if gnupg_home:
-
-            if not gpg_home:
-                gpg_home = os.environ.get("GNUPGHOME")
-
-            if gpg_home and gpg_home != gnupg_home:
-                j_settings["gnupghome"] = gpg_home
-                gnupg_home = gpg_home
-                if not iqt:
-                    dump_j_settings(j_settings, json_file)
-
-        else:
-            result = subprocess.run(["gpgconf", "--list-dirs", "homedir"], capture_output=True, text=True)
-            if result.returncode == 0:
-                gpg_home = result.stdout.strip()
-                if gpg_home:
-                    gnupg_home = gpg_home
-                    j_settings["gnupghome"] = gpg_home
-                    dump_j_settings(j_settings, json_file)
-        return gnupg_home
-    except OSError as e:
-        print(f"Couldnt get gnupg_home for exclusion file: {json_file} {type(e).__name__} err: {e}")
-        return None
-
-
 # same as bash rntchangesfunctions. setup keypair for user and root
 def genkey(appdata_local, usr, email, name, dbtarget, cache_f, cache_s, flth, tempd, is_polkit, passphrase=None):
 
@@ -200,8 +161,10 @@ def genkey(appdata_local, usr, email, name, dbtarget, cache_f, cache_s, flth, te
         except Exception as e:
             print(f'Unable to make GPG key: {type(e).__name__} {e} {traceback.format_exc()}')
             return False
+
         finally:
-            removefile(ftarget)
+            if os.path.isfile():
+                os.remove(fpath)
     # for shared keys with user and root 05/26/2026
     # if usr != 'root':
     #     keyfile = os.path.join(kp, "key.asc")
@@ -291,6 +254,8 @@ def get_key_fingerprint(email, root_target=None):
 
 def clear_gpg(usr, dbtarget, cache_f, cache_s, flth):
     """ delete ctimecache & db .gpg & profile .gpgs """
+    from .rntchangesfunctions import name_of
+
     systimeche = name_of(cache_s)
     dbopt = name_of(dbtarget, '.db')
     file_path = os.path.dirname(cache_s)

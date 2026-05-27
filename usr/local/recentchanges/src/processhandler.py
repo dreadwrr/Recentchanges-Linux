@@ -1,6 +1,6 @@
 import subprocess
 import time
-from PySide6.QtCore import QObject, Signal, QProcess, QTimer, QThread, Slot
+from PySide6.QtCore import QObject, Signal, QProcess, QTimer, QThread, Slot, QProcessEnvironment
 from .rntchangesfunctions import display
 from .gpgcrypto import start_gpg_agent
 from .gpgcrypto import GPGStatus
@@ -159,7 +159,7 @@ class ProcessHandler(QObject):
     def start_pyprocess(self, script, args=None, database=None, dbtarget=None, user=None, email=None, status_message=None, is_search=False, is_postop=False, is_scanIDX=False, analyticSECT=None, parent=None):
 
         self.script = script
-        self.script_list = [script]
+        self.script_list = [script]  #  self.lclhome
         self.database = database
         self.dbtarget = dbtarget
         self.statusmsg = status_message
@@ -182,11 +182,11 @@ class ProcessHandler(QObject):
         self.args = args
 
         if self.is_polkit:
-            self.comm = "pkexec"
+            self.comm = "pkexec"  #  env PATH=/usr/sbin:/usr/bin:/sbin:/bin:/root/bin:/usr/local/recentchanges/.venv/bin
         else:
             # hudt prompt to use terminal if polkit isnt installed
             self.comm = "sudo"
-            self.script_list = ["env", f"XDG_RUNTIME_DIR={self.xdg_runtime}", script]
+            # self.script_list = [script]  # "env", f"XDG_RUNTIME_DIR={self.xdg_runtime}", "PATH=/usr/sbin:/usr/bin:/sbin:/bin:/root/bin:/usr/local/recentchanges/.venv/bin",
 
         # qt prompt
         rlt = start_gpg_agent(email)  # refresh the passphrase.

@@ -4,10 +4,10 @@ import os
 import sqlite3
 import sys
 import traceback
+from .qtfunctions import find_gnupg_home
 from .dirwalker import index_system
 from .gpgcrypto import encr
 from .gpgcrypto import decr
-from .gpgkeymanagement import find_gnupg_home
 from .hanlyparallel import hanly_parallel
 from .pyfunctions import cprint
 from .pyfunctions import unescf_py

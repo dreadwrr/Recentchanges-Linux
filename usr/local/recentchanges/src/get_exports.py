@@ -90,7 +90,7 @@ def get_exports():
         res = start_user_agent(user, email, cache_f, str(toml_file))  # pass the config as a temp file as input
         if res != GPGStatus.ERR_OK:
             if res == GPGStatus.DECRYPT_FAIL:
-                sys.exit(1)
+                sys.exit(2)
             elif res == GPGStatus.NO_KEY:
                 sys.exit(3)
             elif res == GPGStatus.NO_PINENTRY:
