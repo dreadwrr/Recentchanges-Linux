@@ -42,8 +42,8 @@ python main.py <br><br>
 adjust if missing any<br>
 optionally can install the required packages in system using package manager<br><br>
 
+requires gpg setup as user <br>
 While testing nemesis the follow step wasnt needed but may be needed to get pinentry working <br>
-gpg setup as user <br>
 echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br>
 gpgconf --kill gpg-agent <br>
 then as root <br>
