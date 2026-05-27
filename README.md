@@ -1,4 +1,4 @@
-Version 6.0.0 released <br>
+Version 6.0.0 released! <br>
 added new change of only needing user pinentry configured
 new bash launch and helper script and ensured proper operation. tested that proper python is used venv or system
 
