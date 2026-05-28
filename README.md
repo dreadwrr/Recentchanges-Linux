@@ -35,7 +35,7 @@ recentchanges reset <br><br>
 
 1. note the following step wasnt needed for nemesis but is for porteus <br><br>
 requires gpg setup as user <br>
-mkdir ~/.gnupg <br>
+mkdir ~/.gnupg && chmod 700 ~/.gnupg <br>
 echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br>
 gpgconf --kill gpg-agent
 
