@@ -1,4 +1,4 @@
-While I could distribute just a binary I believe this is the better way. It can be used with just python
+While could just distribute a binary itt can be used with just python
 or build it into a binary with pyinstaller from the same release. 
 
 now focusing on just linux and researching how I can reshape and retool recentchanges to be more responsive and adapt to
