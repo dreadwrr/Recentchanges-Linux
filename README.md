@@ -53,20 +53,20 @@ This will cover the installation for nemesis. [porteus install instructions](htt
 
 cd /usr/local/recentchanges <br>
 
-use pman -Sw for the packages
-pyside6
-python-pyudev
-python-psutil
-python-magic
-python-pillow
-python-tomlkit
+use pman -Sw for the packages <br>
+pyside6 <br>
+python-pyudev <br>
+python-psutil <br>
+python-magic <br>
+python-pillow <br>
+python-tomlkit <br><br>
 
-tested on nemesis and xcb-util was needed for qt 
-pman -Sw xcb-util-cursor
-pman -Sw xcb-util-keysyms
-pman -Sw xcb-util-wm
+tested on nemesis and xcb-util was needed for qt <br>
+pman -Sw xcb-util-cursor <br>
+pman -Sw xcb-util-keysyms <br>
+pman -Sw xcb-util-wm <br><br>
 
-may require packaging and requests package see requirements.txt if needing to adjust
+may require packaging and requests package see requirements.txt if needing to adjust <br>
 
 
 
