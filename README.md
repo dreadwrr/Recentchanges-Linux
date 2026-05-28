@@ -81,7 +81,12 @@ see [gpg setup](https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYl
 things to do after installation: chown root:root /usr/local/recentchanges <br>
 the reason it is owned by guest:users is so pyinstaller has permission to build <br><br>
 ## Pyinstaller <br>
-This version can be built with pyinstaller with main.spec. if building the launcher script /usr/local/bin/recentchanges and polkit have to be changed. <br><br>
+This version can be built with pyinstaller with main.spec. to build a binary with all the packages and not needing any on the system <br><br>
+PyInstaller build at repo<br>
+https://github.com/dreadwrr/Linux-Pyinstaller <br><br>
+
+
+then launcher script /usr/local/bin/recentchanges and polkit have to be changed. <br><br>
 in /usr/local/bin/recentchanges change python3 "$app_install"/src/rntchanges.py to "$app_install"/main in the two areas <br><br>
 then in /usr/local/recentchanges/scripts/rntchangesfunctions ln119 to "$app_install"/main and line below <br><br>
 and<br>
@@ -100,10 +105,6 @@ or
 use pyinstaller version with changes made <br>
 
 <p> remember to chown root:root /usr/local/recentchanges as a last step. default is guest:users for owner for pyinstaller build </p>
-
-PyInstaller<br>
-https://github.com/dreadwrr/Linux-Pyinstaller <br>
-to build a binary with all the packages and not needing any on the system <br><br>
 
 ##
 picture for graphic https://i.imgur.com/UoL7CHQ.jpeg<br><br>
