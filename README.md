@@ -72,6 +72,7 @@ python-magic <br>
 python-pillow <br>
 python-tomlkit <br><br>
 
+python main.py <br><br>
 tested on nemesis and xcb-util was needed for qt <br>
 pman -Sw xcb-util-cursor <br>
 pman -Sw xcb-util-keysyms <br>
