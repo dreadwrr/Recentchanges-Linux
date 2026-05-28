@@ -35,7 +35,7 @@ recentchanges reset <br><br>
 
 ## Installation instructions
 
-from menu icon or recentchanges gui
+setup a virtual environment from menu icon or command recentchanges gui 
 
 or
 
