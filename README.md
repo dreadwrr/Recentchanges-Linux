@@ -35,7 +35,7 @@ recentchanges reset <br><br>
 
 ## Installation instructions
 
-note while testing nemesis the follow step wasnt needed but might be needed at some point. this is needed for poteus <br><br>
+note the following step wasnt needed for nemesis but is for poteus <br><br>
 requires gpg setup as user <br>
 echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br>
 gpgconf --kill gpg-agent <br>
