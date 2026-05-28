@@ -35,11 +35,11 @@ recentchanges reset <br><br>
 
 ### virtual environment
 
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-python main.py
+python -m venv .venv <br>
+source .venv/bin/activate <br>
+python -m pip install --upgrade pip <br>
+pip install -r requirements.txt <br>
+python main.py <br><br>
 
 ### System Install
 install pip with package manager <br>
