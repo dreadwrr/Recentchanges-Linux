@@ -73,7 +73,7 @@ pman -Sw xcb-util-wm <br><br>
 
 may require packaging and requests package see requirements.txt if needing to adjust <br>
 
-optional try running and if needing pinentry setup gpg for user <br>
+optional try running and if needing pinentry setup for user <br>
 echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br>
 gpgconf --kill gpg-agent <br>
 
