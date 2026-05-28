@@ -83,7 +83,7 @@ things to do after installation: chown root:root /usr/local/recentchanges <br>
 the reason it is owned by guest:users is so pyinstaller has permission to build <br><br>
 ## Pyinstaller <br>
 This version can be built with pyinstaller with main.spec. to build a binary with all the packages and not needing any on the system <br><br>
-PyInstaller build at repo<br>
+build from steps at PyInstaller repo<br>
 https://github.com/dreadwrr/Linux-Pyinstaller <br><br>
 
 
