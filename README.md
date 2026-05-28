@@ -35,9 +35,11 @@ recentchanges reset <br><br>
 
 1. note the following step wasnt needed for nemesis but is for porteus <br><br>
 requires gpg setup as user <br>
-mkdir ~/.gnupg && chmod 700 ~/.gnupg <br>
-echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br>
+```
+mkdir ~/.gnupg && chmod 700 ~/.gnupg \
+echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf \
 gpgconf --kill gpg-agent
+```
 
 2. setup a virtual environment from menu icon or command recentchanges gui 
 
