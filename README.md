@@ -109,7 +109,6 @@ to build a binary with all the packages and not needing any on the system <br><b
 
 picture for graphic https://i.imgur.com/UoL7CHQ.jpeg<br><br>
 ui source file https://drive.google.com/file/d/1ndV65m31pbRN7oFnh1ut4z867GPm7rYr/view?usp=sharing<br>
-
 <br>
 Manual
 https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0  
