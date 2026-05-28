@@ -60,7 +60,7 @@ chown root:root /usr/local/recentchanges if not later using pyinstaller <br><br>
 Another method to install is by packages on system
 
 This will cover the installation for nemesis. [porteus install instructions](https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0#bookmark=id.4bfen5md1n9x) here. or with [pip installation](https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0#bookmark=id.alk9y51grswe)<br><br>
-optional step first try running and if needing pinentry setup for user <br>
+This step is optional first try running and come back if needing pinentry setup <br>
 echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br>
 gpgconf --kill gpg-agent <br>
 cd /usr/local/recentchanges <br>
