@@ -33,7 +33,7 @@ recentchanges gui <br>
 recentchanges query <br>
 recentchanges reset <br><br>
 
-### virtual environment
+can be run from venv or system install
 
 python -m venv .venv <br>
 source .venv/bin/activate <br>
