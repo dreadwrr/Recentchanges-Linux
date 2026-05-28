@@ -13,7 +13,6 @@ modern approaches at gui distribution.
 ![Alt text](https://i.imgur.com/gqbO4HB.png) <br>
 
 Linux file search application with hybrid analysis <br>
-requirements: find 4.8.0 gnupg 2 and pinentry  <br><br>
 
 <p>
 Check for hash collisions during search <br>
@@ -25,6 +24,7 @@ Build a system profile to compare during hybrid analysis as well as a system ind
 Features system profile by .xzm for porteus linux <br>
 </p><br>
 
+requirements: find 4.8.0 gnupg 2 and pinentry  <br><br>
 
 Full commandline support with recentchanges being in path<br>
 recentchanges <br>
@@ -33,7 +33,11 @@ recentchanges gui <br>
 recentchanges query <br>
 recentchanges reset <br><br>
 
-can be run from venv or system install
+## Installation instructions
+
+from menu icon or recentchanges gui
+
+or
 
 python -m venv .venv <br>
 source .venv/bin/activate <br>
@@ -42,6 +46,9 @@ pip install -r requirements.txt <br>
 python main.py <br><br>
 
 ## System Install
+
+Another method to install by installing packages on system
+
 install pip with package manager <br>
 cd /usr/local/recentchanges <br>
 pip install PySide6 <br>
