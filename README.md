@@ -109,7 +109,7 @@ or
 use pyinstaller version with changes made <br><br>
 
 
-<p> remember to chown root:root /usr/local/recentchanges as a last step. default is guest:users for owner for pyinstaller build </p>
+<p> chown root:root /usr/local/recentchanges </p>
 
 ##
 picture for graphic https://i.imgur.com/UoL7CHQ.jpeg<br><br>
