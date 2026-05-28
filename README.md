@@ -32,15 +32,13 @@ recentchanges query <br>
 recentchanges reset <br><br>
 
 ## Installation instructions
-1.
-note the following step wasnt needed for nemesis but is for porteus <br><br>
+
+1. note the following step wasnt needed for nemesis but is for porteus <br><br>
 requires gpg setup as user <br>
 echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br>
 gpgconf --kill gpg-agent
 
-1.
-
-setup a virtual environment from menu icon or command recentchanges gui 
+2. setup a virtual environment from menu icon or command recentchanges gui 
 
 or
 
