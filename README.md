@@ -33,7 +33,7 @@ recentchanges reset <br><br>
 
 ## Installation instructions
 
-to add polkit policies and not need to reboot
+to add polkit policies and not need reboot <br>
 pkill polkitd
 
 1. note the following step wasnt needed for nemesis but is for porteus <br><br>
