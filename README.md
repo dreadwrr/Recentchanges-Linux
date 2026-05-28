@@ -41,7 +41,7 @@ python -m pip install --upgrade pip <br>
 pip install -r requirements.txt <br>
 python main.py <br><br>
 
-### System Install
+## System Install
 install pip with package manager <br>
 cd /usr/local/recentchanges <br>
 pip install PySide6 <br>
