@@ -22,7 +22,9 @@ Features system profile by .xzm for porteus linux <br>
 
 requirements: find 4.8.0 gnupg 2 and pinentry  <br><br>
 
-Full commandline support with recentchanges being in path<br>
+Full commandline support with recentchanges being in path<br><br>
+
+commands:
 recentchanges <br>
 recentchanges search <br>
 recentchanges gui <br>
