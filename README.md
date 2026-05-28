@@ -53,7 +53,7 @@ see [gpg setup](https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYl
 
 ## System Install
 
-Another method to install by installing packages on system
+Another method to install is by packages on system
 
 This will cover the installation for nemesis. [porteus install instructions](https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0#bookmark=id.4bfen5md1n9x) here <br>
 
