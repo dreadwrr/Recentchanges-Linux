@@ -71,17 +71,12 @@ python-psutil <br>
 python-magic <br>
 python-pillow <br>
 python-tomlkit <br><br>
-
+may require packaging and requests package see requirements.txt if needing to adjust <br><br>
 python main.py <br><br>
 tested on nemesis and xcb-util was needed for qt <br>
 pman -Sw xcb-util-cursor <br>
 pman -Sw xcb-util-keysyms <br>
 pman -Sw xcb-util-wm <br><br>
-
-may require packaging and requests package see requirements.txt if needing to adjust <br>
-
-
-
 see [gpg setup](https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0#bookmark=id.kotw1gextu63) for troubleshooting <br><br>
 things to do after installation: chown root:root /usr/local/recentchanges <br>
 the reason it is owned by guest:users is so pyinstaller has permission to build <br><br>
