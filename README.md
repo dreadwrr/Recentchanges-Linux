@@ -35,7 +35,15 @@ recentchanges reset <br><br>
 
 Can be run from a venv or system
 
-## Installation
+## virtual environment
+
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+python main.py
+
+## System Install
 install pip with package manager <br>
 cd /usr/local/recentchanges <br>
 pip install PySide6 <br>
