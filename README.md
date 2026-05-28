@@ -1,7 +1,3 @@
-Version 6.0.0 released! <br>
-updated to work with only user pinentry configured <br>
-new bash launcher and helper script and ensured proper operation with venv or system <br><br>
-
 While I could distribute just a binary I believe this is the better way. It can be used with just python
 or build it into a binary with pyinstaller from the same release. All that has to be changed is a few scripts
 copied from the pyinstaller release. Or just built from the pyinstaller release
