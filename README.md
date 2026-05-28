@@ -58,7 +58,10 @@ chown root:root /usr/local/recentchanges if not later using pyinstaller <br><br>
 
 Another method to install is by packages on system
 
-This will cover the installation for nemesis. [porteus install instructions](https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0#bookmark=id.4bfen5md1n9x) here. or with [pip installation](https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0#bookmark=id.alk9y51grswe)<br>
+This will cover the installation for nemesis. [porteus install instructions](https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0#bookmark=id.4bfen5md1n9x) here. or with [pip installation](https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0#bookmark=id.alk9y51grswe)<br><br>
+optional try running and if needing pinentry setup for user <br>
+echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br>
+gpgconf --kill gpg-agent <br>
 cd /usr/local/recentchanges <br>
 
 use pman -Sw for the packages <br>
@@ -76,9 +79,7 @@ pman -Sw xcb-util-wm <br><br>
 
 may require packaging and requests package see requirements.txt if needing to adjust <br>
 
-optional try running and if needing pinentry setup for user <br>
-echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br>
-gpgconf --kill gpg-agent <br>
+
 
 see [gpg setup](https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0#bookmark=id.kotw1gextu63) for troubleshooting <br><br>
 things to do after installation: chown root:root /usr/local/recentchanges <br>
