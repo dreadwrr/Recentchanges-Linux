@@ -163,8 +163,8 @@ def genkey(appdata_local, usr, email, name, dbtarget, cache_f, cache_s, flth, te
             return False
 
         finally:
-            if os.path.isfile():
-                os.remove(fpath)
+            if os.path.isfile(ftarget):
+                os.remove(ftarget)
     # for shared keys with user and root 05/26/2026
     # if usr != 'root':
     #     keyfile = os.path.join(kp, "key.asc")
