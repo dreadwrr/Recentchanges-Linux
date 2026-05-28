@@ -57,7 +57,7 @@ python main.py <br><br>
 see [gpg setup](https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0#bookmark=id.kotw1gextu63) for troubleshooting <br><br>
 
 as a last step <br> 
-chown root:root /usr/local/recentchanges if not later using pyinstaller <br><br>
+chown root:root /usr/local/recentchanges if not using pyinstaller <br><br>
 
 ## System Install
 
