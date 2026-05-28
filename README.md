@@ -89,7 +89,7 @@ https://github.com/dreadwrr/Linux-Pyinstaller <br><br>
 then launcher script /usr/local/bin/recentchanges and polkit have to be changed. <br><br>
 1. in /usr/local/bin/recentchanges change python3 "$app_install"/src/rntchanges.py to "$app_install"/main in the two areas <br><br>
 2. then in /usr/local/recentchanges/scripts/rntchangesfunctions ln119 to "$app_install"/main and line below <br><br>
-and<br>
+
 3. /usr/share/polkit-1/actions/org.freedesktop.set-recentchanges.policy   ln14 <br>
 change to /usr/local/recentchanges/main <br><br>
 
