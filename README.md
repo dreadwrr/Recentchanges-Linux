@@ -49,19 +49,28 @@ python main.py <br><br>
 
 Another method to install by installing packages on system
 
-install pip with package manager <br>
+This will cover the installation for nemesis. porteus install instructions are at https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0#bookmark=id.4bfen5md1n9x <br>
+
 cd /usr/local/recentchanges <br>
-pip install PySide6 <br>
-pip install tomlkit <br>
-pip install python-magic <br>
-pip install psutil <br>
-pip install requests <br>
-pip install packaging <br>
-pip install pillow <br>
-pip install pyudev <br>
-python main.py <br><br>
-adjust if missing any<br>
-optionally can install the required packages in system using package manager. nemesis may require xcb-util-cursor xcb-util-keysyms xcb-util-wm<br><br>
+
+use pman -Sw for the packages
+pyside6
+python-pyudev
+python-psutil
+python-magic
+python-pillow
+python-tomlkit
+
+tested on nemesis and xcb-util was needed for qt 
+pman -Sw xcb-util-cursor
+pman -Sw xcb-util-keysyms
+pman -Sw xcb-util-wm
+
+may require packaging and requests package see requirements.txt if needing to adjust
+
+
+
+
 
 requires gpg setup as user <br>
 While testing nemesis the follow step wasnt needed but may be needed to get pinentry working <br>
