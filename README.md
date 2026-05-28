@@ -42,7 +42,7 @@ gpgconf --kill gpg-agent
 
 or
 
-cd /usr/local/recentchanges
+cd /usr/local/recentchanges <br>
 python -m venv .venv <br>
 source .venv/bin/activate <br>
 python -m pip install --upgrade pip <br>
