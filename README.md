@@ -35,6 +35,11 @@ recentchanges reset <br><br>
 
 ## Installation instructions
 
+note while testing nemesis the follow step wasnt needed but might be needed at some point. this is needed for poteus <br>
+requires gpg setup as user <br>
+echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br>
+gpgconf --kill gpg-agent <br>
+
 setup a virtual environment from menu icon or command recentchanges gui 
 
 or
@@ -69,14 +74,9 @@ pman -Sw xcb-util-wm <br><br>
 may require packaging and requests package see requirements.txt if needing to adjust <br>
 
 
-
-
-
 requires gpg setup as user <br>
-While testing nemesis the follow step wasnt needed but may be needed to get pinentry working <br>
 echo "pinentry-program /usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf <br>
 gpgconf --kill gpg-agent <br>
-then as root <br>
 
 see [gpg setup](https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0#bookmark=id.kotw1gextu63) for troubleshooting <br><br>
 things to do after installation: chown root:root /usr/local/recentchanges <br>
