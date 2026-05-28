@@ -24,7 +24,7 @@ requirements: find 4.8.0 gnupg 2 and pinentry  <br><br>
 
 Full commandline support with recentchanges being in path<br><br>
 
-commands:
+commands: <br>
 recentchanges <br>
 recentchanges search <br>
 recentchanges gui <br>
