@@ -12,8 +12,8 @@ modern approaches at gui distribution.
 
 ![Alt text](https://i.imgur.com/gqbO4HB.png) <br>
 
-Linux file search application with hybrid analysis <br><br>
-
+Linux file search application with hybrid analysis <br>
+requirements: find 4.8.0 gnupg 2 and pinentry  <br><br>
 
 <p>
 Check for hash collisions during search <br>
@@ -24,7 +24,7 @@ Create a custom crest with a .png image file max size 255 x 333 <br>
 Build a system profile to compare during hybrid analysis as well as a system index scan <br>
 Features system profile by .xzm for porteus linux <br>
 </p><br>
-requirements: find 4.8.0 gnupg 2 and pinentry  <br><br>
+
 
 Full commandline support with recentchanges being in path<br>
 recentchanges <br>
