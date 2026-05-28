@@ -40,6 +40,7 @@ setup a virtual environment from menu icon or command recentchanges gui
 
 or
 
+cd /usr/local/recentchanges
 python -m venv .venv <br>
 source .venv/bin/activate <br>
 python -m pip install --upgrade pip <br>
