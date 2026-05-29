@@ -114,7 +114,7 @@ use pyinstaller version with changes made <br><br>
 
 ## Troubleshooting
 
-will add thing here with plans to automate them on later updates <br><br>
+will add things here with plans to automate them on later updates <br><br>
 
 If having problem with config file and fails to load it could be a old mismatch between version or with incorrect keys <br>
 remove from <br>
