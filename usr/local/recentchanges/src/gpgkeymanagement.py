@@ -252,14 +252,30 @@ def get_key_fingerprint(email, root_target=None):
     return None
 
 
-def clear_gpg(usr, dbtarget, cache_f, cache_s, flth):
-    """ delete ctimecache & db .gpg & profile .gpgs """
+def clear_gpg(usr, dbtarget, cache_f, cache_s, flth, toml_file=None, json_file=None):
+    """ delete ctimecache & db .gpg & profile .gpgs 
+         if toml_file it is called from delete_gpg_keys and prompt to reset config files """
     from .rntchangesfunctions import name_of
 
     systimeche = name_of(cache_s)
     dbopt = name_of(dbtarget, '.db')
     file_path = os.path.dirname(cache_s)
     pattern = os.path.join(file_path, f"{systimeche}*")
+    # configs
+    if (toml_file):
+        while True:
+            uinp = input("Reset config files (Y/N): ").strip().lower()
+            if uinp == 'y':
+                for config in (toml_file, json_file):
+                    if os.path.isfile(config):
+                        os.remove(config)
+                break
+            elif uinp == 'n':
+                break
+            else:
+                print("Invalid input, please enter 'Y' or 'N'.")
+
+    # gpgs
     for r in (cache_f, dbopt, dbtarget, flth, *glob.glob(pattern)):
         p = Path(r)
         try:
@@ -272,7 +288,7 @@ def clear_gpg(usr, dbtarget, cache_f, cache_s, flth):
             pass
 
 
-def delete_gpg_keys(usr, email, dbtarget, cache_f, cache_s, flth):
+def delete_gpg_keys(usr, email, dbtarget, cache_f, cache_s, flth, toml_file, json_file):
 
     def instruct_out():
         print()
@@ -313,7 +329,7 @@ def delete_gpg_keys(usr, email, dbtarget, cache_f, cache_s, flth):
                 #         result = True
                 #         exec_delete_keys(usr, email, fingerprint)
 
-                clear_gpg(usr, dbtarget, cache_f, cache_s, flth)
+                clear_gpg(usr, dbtarget, cache_f, cache_s, flth, toml_file, json_file)
                 if result:
                     # print(f"\nDelete {dbtarget} if it exists as it uses the old key pair.")
                     return 0
@@ -337,4 +353,5 @@ def reset_gpg_keys(usr, email, dbtarget, cache_f, cache_s, flth, agnostic_check,
     elif agnostic_check is True and no_key is False:
         print("only user has key. Select n and manually import the key for root to fix it. or delete the key pair to reset state.\n")
     print("A problem was detected with key pair. ")
-    return delete_gpg_keys(usr, email, dbtarget, cache_f, cache_s, flth)
+    return delete_gpg_keys(usr, email, dbtarget, cache_f, cache_s, flth, toml_file, json_file)
+

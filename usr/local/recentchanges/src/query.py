@@ -86,7 +86,7 @@ def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, d
         #     print("Unable to verify gpg in path. Likely path was partially initialized. quitting")
         #     return 1
 
-        toml_file, json_file, home_dir, xdg_config, xdg_runtime, USR, uid, gid = get_config(appdata_local, user, platform="Linux")
+        toml_file, json_file, home_dir, xdg_config, xdg_runtime, usr, uid, gid = get_config(appdata_local, user, platform="Linux")
         config = load_toml(toml_file)
         if not config:
             return 1
@@ -107,7 +107,7 @@ def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, d
 
     if reset:
 
-        return delete_gpg_keys(user, email, dbtarget, cache_f, cache_s, flth)
+        return delete_gpg_keys(user, email, dbtarget, cache_f, cache_s, flth, toml_file, json_file)
 
     try:
 
