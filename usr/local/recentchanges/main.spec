@@ -2,11 +2,12 @@
 from PyInstaller.utils.hooks import collect_all
 from pathlib import Path
 import PIL
-datas = [('Resources', 'Resources')]
+# datas = [('Resources', 'Resources')]
+datas = []
 binaries = []
 hiddenimports = []
-tmp_ret = collect_all('PySide6')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+#tmp_ret = collect_all('PySide6')
+#datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('shiboken6')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 _pillow_libs_dir = Path(PIL.__file__).resolve().parent.parent / "pillow.libs"
