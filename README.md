@@ -111,6 +111,14 @@ use pyinstaller version with changes made <br><br>
 
 <p> chown root:root /usr/local/recentchanges </p>
 
+## Troubleshooting
+
+If having problem with config file and fails to load it could be a old mismatch between version or with incorrect keys <br>
+remove from <br>
+~/.config/recentchanges/ <br><br>
+
+this will be added to reset command in later updates <br><br>
+
 ##
 picture for graphic https://i.imgur.com/UoL7CHQ.jpeg<br><br>
 ui source file https://drive.google.com/file/d/1ndV65m31pbRN7oFnh1ut4z867GPm7rYr/view?usp=sharing<br>
