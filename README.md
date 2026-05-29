@@ -110,7 +110,7 @@ use pyinstaller version with changes made <br><br>
 
 
 <p> chown root:root /usr/local/recentchanges </p>
-
+<br><br>
 
 ## Troubleshooting
 
