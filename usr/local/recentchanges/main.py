@@ -86,6 +86,7 @@ from src.qtfunctions import valid_crest
 from src.qtfunctions import window_prompt
 from src.qtfunctions import window_message
 from src.qtparser import dispatch_internal as dispatcher
+from src.rntchangesfunctions import change_perm
 from src.rntchangesfunctions import check_utility
 from src.rntchangesfunctions import display
 from src.rntchangesfunctions import get_diff_file
@@ -246,9 +247,9 @@ class MainWindow(QMainWindow):
         self.sys_a, self.sys_b = sys_tables
 
         self.is_pyinstall = False
-        if getattr(sys, "frozen", False):
+        if getattr(sys, "frozen", False) or "__compiled__" in globals():
             self.is_pyinstall = True
-            self.dispatch = Path(sys.executable).resolve()  # set internal python 
+            self.dispatch = Path(sys.argv[0]).resolve()  # set internal python 
         self.is_polkit = False
         self.isexec = False
 
@@ -3070,9 +3071,25 @@ def start_main_window():
             sys.exit(1)
 
 
+def secure_onefile():
+    # when running as pkexec check ownership and change owner of extracted bin to root in tmp if necessary
+    if not ("__compiled__" in globals() or os.environ.get("PKEXEC_UID")):
+        return
+
+    extracted = Path(sys.executable).resolve().parent  # find_install()
+
+    if os.stat(extracted).st_uid != 0:
+        change_perm(extracted, 0, 0, mode=0o755)
+        #shutil.chown(path, user="root", group="root")
+        #os.chmod(path, 0o755)
+
+
 if __name__ == "__main__":
     caller = os.environ.get("CMD_LINE")
     multiprocessing.freeze_support()
     if caller or len(sys.argv) >= 2:
+        secure_onefile()
+
         dispatcher(sys.argv)
     sys.exit(start_main_window())
+
