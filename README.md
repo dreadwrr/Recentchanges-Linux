@@ -120,6 +120,9 @@ If having problem with config file and fails to load it could be a old mismatch 
 remove from <br>
 ~/.config/recentchanges/ <br><br>
 
+command recentchanges reset can be used to remove the gpg key and .gpg files to clear inconsitencies. The next release will have
+config clear prompt <br><br>
+
 
 
 ##
