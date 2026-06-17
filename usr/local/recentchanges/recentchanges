@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # first check if pyinstaller and launch. check for any python dependencies or look for venv or prompt to install venv. then launch recentchanges app.
 scroll_term() { while true; do echo press enter to quit ; read -r input ; done ; }
+export LIBVA_DRIVER_NAME=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 app_install=$SCRIPT_DIR
 pyinstall="$app_install/main"
@@ -12,34 +13,37 @@ cd "$app_install" || exit
 [[ -x "$pyinstall" ]] && exec "$pyinstall" "$@"
 # locate existing venv
 venv="$( find "$app_install" -maxdepth 3 \( -type l -o -type f \) -path '*/bin/python*' -print -quit 2>/dev/null)"
-PY_EXEC=$venv
+PY_EXE=$venv
 
-[[ -z "$venv" ]] && PY_EXEC="$(command -v python3 || command -v python)"
-[[ -z "$PY_EXEC" ]] && echo "python not installed"
+[[ -z "$venv" ]] && PY_EXE="$(command -v python3 || command -v python)"
 
-# default see if any sys dep and run
-if "$PY_EXEC" -c 'import PySide6, psutil, tomlkit' >/dev/null 2>&1; then
-    "$PY_EXEC" main.py "$@"
-    res=$? ; [[ $res -ne 0 && $res -ne 1 ]] && scrollterm $res ; exit $res  # could be dep issue add small delay so error can be seen
-else  # or prompt and try with venv
-    
-    if [ -z "$venv" ]; then
-        echo "recentchanges could not locate dependencies. install venv in $app_install [Y,n] ?"
-        read input
-        if [[ "$input" =~ ^[Yy]$ ]]; then
-            if ! "$PY_EXEC" -m venv "$output"; then echo "Failed to create virtual environment. Exiting..." >&2 ; fi
-            echo "Installing dependencies from requirements.txt for $output..."
-            "$output/bin/python" -m pip install --upgrade pip
-            "$output/bin/pip" install -r "$app_install/requirements.txt"  # first run
-            "$output/bin/python" main.py "$@"
-            res=$? ; [[ $res -ne 0 && $res -ne 1 ]] && scrollterm ; exit $res
+if [[ -n "$PY_EXE" ]]; then
+    # default see if any sys dep and run
+    if "$PY_EXE" -c 'import PySide6, psutil, tomlkit' >/dev/null 2>&1; then
+        "$PY_EXE" main.py "$@"
+        res=$? ; [[ $res -ne 0 && $res -ne 1 ]] && scroll_term $res ; exit $res  # could be dep issue add small delay so error can be seen
+    else  # or prompt and try with venv
+
+        if [ -z "$venv" ]; then
+            echo "recentchanges could not locate dependencies. install venv in $app_install [Y,n] ?"
+            read input
+            if [[ "$input" =~ ^[Yy]$ ]]; then
+                if ! "$PY_EXE" -m venv "$output"; then echo "Failed to create virtual environment. Exiting..." >&2 ; fi
+                echo "Installing dependencies from requirements.txt for $output..."
+                "$output/bin/python" -m pip install --upgrade pip
+                "$output/bin/pip" install -r "$app_install/requirements.txt"  # first run
+                "$output/bin/python" main.py "$@"
+                res=$? ; [[ $res -ne 0 && $res -ne 1 ]] && scroll_term ; exit $res
+            else
+                echo "couldnt find python quitting"
+            fi
+
         else
-            echo "couldnt find python quitting"
+            echo "a previous venv with missing dependencies is present at $venv. remove it and try again"
         fi
-
-    else
-        echo "a previous venv with missing dependencies is present at $venv. remove it and try again"
     fi
+else
+    echo "python not installed"
 fi
 sleep 3
 
