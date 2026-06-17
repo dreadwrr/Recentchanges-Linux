@@ -1,4 +1,4 @@
-# 06/16/2026              Qt gui linux                 Developer buddy 6.1.2
+# 06/17/2026              Qt gui linux                 Developer buddy 6.1.2
 import glob
 import logging
 import multiprocessing
@@ -23,6 +23,7 @@ from src.config import update_dict
 from src.config import update_j_settings
 from src.config import update_toml_setting
 from src.config import update_toml_values
+from src.configfunctions import find_gnupg_home
 from src.configfunctions import get_config
 from src.dbworkerstream import DbWorkerIncremental
 from src.gpgcrypto import decr
@@ -44,7 +45,7 @@ from src.pyfunctions import user_path
 from src.pysql import clear_extn_tbl
 from src.pysql import create_db
 from src.pysql import dbtable_has_data
-from src.pysql import get_total_throughput
+from src.pysql import get_lifetime_throughput
 from src.pysql import get_unique_files
 from src.qtclasses import BasedirProfiles
 from src.qtclasses import BasedirDrive
@@ -70,9 +71,9 @@ from src.qtfunctions import available_fonts
 from src.qtfunctions import check_for_updates
 from src.qtfunctions import commit_note
 from src.qtfunctions import fill_extensions
-from src.qtfunctions import find_gnupg_home
 from src.qtfunctions import get_conn
 from src.qtfunctions import get_help
+from src.qtfunctions import get_timezone
 from src.qtfunctions import has_log_data
 from src.qtfunctions import has_sys_data
 from src.qtfunctions import help_about
@@ -230,7 +231,6 @@ class MainWindow(QMainWindow):
         self.usercrest = self.crestuserdir / "dragonm.png"
 
         # 06/09/2026
-        # self.alarmdir = self.resources  # alarms are stored in \\Resources\\
         self.alarm_sounddefault = "alarm.mp3"  # default in \\Resources\\
         self.alarm_set_sounddefault = "alarmt.mp3"
 
@@ -325,6 +325,8 @@ class MainWindow(QMainWindow):
         if fo:
             self.ui.sffile.setValue(int(fo))
 
+        json_dump = False
+
         so = self.j_settings.get("search_output")
         if so:
             ix = self.ui.combftimeout.findText(so)
@@ -332,7 +334,7 @@ class MainWindow(QMainWindow):
                 self.ui.combftimeout.setCurrentIndex(ix)
             else:
                 update_dict(None, self.j_settings, "search_output")
-                dump_j_settings(self.j_settings, self.sj)
+                json_dump = True
                 print(f"Couldnt find search output setting {so}")
         else:
             self.ui.combftimeout.setCurrentText("Downloads")
@@ -345,7 +347,7 @@ class MainWindow(QMainWindow):
                 self.ui.combt.setCurrentIndex(ix)
             else:
                 update_dict(None, self.j_settings, "newer_output")
-                dump_j_settings(self.j_settings, self.sj)
+                json_dump = True
                 print(f"Couldnt find newer than output setting {no}")
         # newer than starting directory for convenience
         self.nt_path = str(self.lclhome)
@@ -355,7 +357,7 @@ class MainWindow(QMainWindow):
                 self.nt_path = ntp
             else:
                 update_dict(None, self.j_settings, "newer_path")
-                dump_j_settings(self.j_settings, self.sj)
+                json_dump = True
                 print(f"Couldnt find newer than last path setting {no}")
         # end newer than
 
@@ -366,8 +368,11 @@ class MainWindow(QMainWindow):
             res = self.ui.widget.set_alarm_time(ao)
             if res == 2 or res == 3:
                 update_dict(None, self.j_settings, "alarm_time")
-                dump_j_settings(self.j_settings, self.sj)
+                json_dump = True
                 print(f"Alarm saved time was invalid using default value {ao}")
+
+        if json_dump:
+            dump_j_settings(self.j_settings, self.sj)
 
         self.initialize_ui(is_startup=True)  # load extensions from database. if no database create one. fill combos
         # end one time items
@@ -422,7 +427,7 @@ class MainWindow(QMainWindow):
 
         sound_path = os.path.join(self.resources, sound_file) if sound_file else None
         sound_set_path = os.path.join(self.resources, sound_set_file) if sound_set_file else None
-        # sound_path = sound_set_path = None
+
         if self.alarmCOLOR == "":
             self.alarmCOLOR = None
         self.ui.widget = AlarmClock(self, theme=self.alarmCOLOR, _24hformat=self.alarm_24h, sound_file=sound_path, sound_set_file=sound_set_path)
@@ -803,15 +808,8 @@ class MainWindow(QMainWindow):
     # on startup set the alarm formatting
     def set_clock(self):
 
-        region = zone = None
-        time_zone = self.j_settings.get("time_zone")
-        if time_zone:
-            parts = time_zone.split("/")
-            if len(parts) == 2:
-                region, zone = parts
-            else:
-                print("time_zone was malformed in json clearing")
-                update_j_settings({"time_zone": None}, self.j_settings, None, self.sj)
+        _, region, zone = get_timezone(self.j_settings, self.sj)
+
         dialog = TimezoneDialog(self, region, zone)
 
         if dialog.exec():
@@ -1110,7 +1108,7 @@ class MainWindow(QMainWindow):
                     is_alarm_path = True
                     if alarm_soundFILE:
                         sound_file_path = os.path.join(self.resources, alarm_soundFILE)
-                elif self.alarm_set_soundFILE != alarm_set_soundFILE:
+                if self.alarm_set_soundFILE != alarm_set_soundFILE:
                     is_alarm_path = True
                     if alarm_set_soundFILE:
                         set_sound_file_path = os.path.join(self.resources, alarm_set_soundFILE)
@@ -1118,8 +1116,6 @@ class MainWindow(QMainWindow):
                 if zipPATH != self.zipPATH or new_downloads or popPATH != self.popPATH or is_alarm_path:
                     if not check_utility(zipPATH, updated_downloads, popPATH, sound_file_path, set_sound_file_path):
                         raise ConfigurationError
-
-                alarm_changed = (alarm_24h != self.alarm_24h or alarmCOLOR != self.alarmCOLOR)
 
                 if new_downloads:
                     self.downloads = updated_downloads
@@ -1210,6 +1206,8 @@ class MainWindow(QMainWindow):
                     self.hudFNT = hudFNT
                     self.change_format(True)
 
+                alarm_changed = (alarm_24h != self.alarm_24h or alarmCOLOR != self.alarmCOLOR)
+
                 if alarm_changed:
                     self.alarm_24h = alarm_24h
                     self.alarmCOLOR = alarmCOLOR
@@ -1218,12 +1216,6 @@ class MainWindow(QMainWindow):
                 if is_alarm_path:
                     self.alarm_soundFILE = alarm_soundFILE
                     self.alarm_set_soundFILE = alarm_set_soundFILE
-                    sound_file_path = None
-                    set_sound_file_path = None
-                    if self.alarm_soundFILE:
-                        sound_file_path = os.path.join(self.resources, self.alarm_soundFILE)
-                    if self.alarm_set_soundFILE:
-                        set_sound_file_path = os.path.join(self.resources, self.alarm_set_soundFILE)
 
                     self.ui.widget.sound_file = sound_file_path
                     self.ui.widget.sound_set_file = set_sound_file_path
@@ -1377,7 +1369,7 @@ class MainWindow(QMainWindow):
             search_count = blank_count(cur)
             if search_count and search_count > 0:
                 unique_files = get_unique_files(cur)
-                lifetime_throughput = get_total_throughput(cur)
+                lifetime_throughput = get_lifetime_throughput(cur)
             if ps and psEXTN:
                 # cur.execute("SELECT COUNT(*) FROM scans")
                 cur.execute("""
@@ -1395,7 +1387,7 @@ class MainWindow(QMainWindow):
         drive_id = self.j_settings[self.suffix].get("drive_id_model")
         model_type = self.j_settings[self.suffix].get("model_type")
         drive_type = self.j_settings[self.suffix].get("drive_type")
-        #     return (device_name, parent_device, drive_id_model, model_type, drive_type)
+
         drive_model = None
         if not drive_id:
             # drive_id = "Unknown"
@@ -1411,17 +1403,7 @@ class MainWindow(QMainWindow):
             model_type = drive_model
 
         typeModel = f"{drive_id} / {model_type}"
-
-        region = zone = None
-        time_zone = self.j_settings.get("time_zone")
-        if time_zone:
-            parts = time_zone.split("/")
-            if len(parts) == 2:
-                region, zone = parts
-                time_zone = f'{region}/{zone}'
-            else:
-                time_zone = None
-
+        timezone, _, _ = get_timezone(self.j_settings, self.sj)
         # log_path = filename_of_handler()
         stat_value.update({
             "Drive or basedir:": self.basedir,
@@ -1432,7 +1414,7 @@ class MainWindow(QMainWindow):
             "Proteus Shield active": str(ps),
             "Checksum and Caching": "y" if self.checksum else "n",
             "Empty1":  "",
-            "Timezone":  time_zone,
+            "Timezone":  timezone,
             "Database": self.dbopt,
             "Last table": self.table,
             "Logfile":  self.log_path,
@@ -1452,7 +1434,7 @@ class MainWindow(QMainWindow):
             elif key == "Exhibit2":
                 hudt(value)
             elif key == "Timezone":
-                if time_zone:
+                if timezone:
                     hudt(f"{key} {value}")
             else:
                 hudt(f"{key} {value}")
