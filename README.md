@@ -1,4 +1,4 @@
-Release 6.1.2!
+Released 6.1.2!
 
 Added LCD alarm clock
 Changed the way the find command is run and other ease of use improvements
