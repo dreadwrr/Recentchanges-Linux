@@ -252,7 +252,7 @@ def test_gpg_agent(email):
     return result.returncode == 0
 
 
-def parse_gpg_agent_conf(gnupg_home):
+def parse_gpg_agent_conf(gnupg_home) -> dict[str, Any]:
 
     conf = gnupg_home / "gpg-agent.conf"
     opts = {}
@@ -277,7 +277,7 @@ def parse_gpg_agent_conf(gnupg_home):
 
 
 # can also delete the key with the subid from fingerprint of the .gpg file
-def get_subkey_id(gpg_file):
+def get_subkey_id(gpg_file) -> str | None:
     result = subprocess.run(
         ["gpg", "--decrypt", "--dry-run", gpg_file],
         capture_output=True,

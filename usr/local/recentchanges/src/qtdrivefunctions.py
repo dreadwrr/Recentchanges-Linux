@@ -4,6 +4,7 @@ import pyudev
 import sqlite3
 import subprocess
 from pathlib import Path
+from PySide6.QtWidgets import QApplication
 from .config import get_json_settings
 from .config import dump_j_settings
 from .config import set_json_settings
@@ -13,6 +14,7 @@ from .gpgcrypto import decr
 from .gpgcrypto import encr
 from .pyfunctions import cnc
 from .pysql import table_exists
+from .qtfunctions import window_prompt
 from .rntchangesfunctions import name_of
 from .rntchangesfunctions import removefile
 
@@ -193,7 +195,7 @@ def current_drive_type_model_check(base_dir="/"):
     usb_drive = 0
     drive_id_model = "Unknown"
     model_type = "Unknown"
-    drive_type = "HDD"
+    drive_type = None
     file_sys = None
     try:
         try:
@@ -266,18 +268,40 @@ def current_drive_type_model_check(base_dir="/"):
             if usb_drive:
                 model_type = "USB"
                 drive_type = "SSD"
-            else:
-                if drive_type != "SSD":
-                    if rotational == 0:
-                        drive_type = "SSD"
+            elif not drive_type:
+                if rotational == 0:
+                    drive_type = "SSD"
+                else:
+                    # failing all else prompt the user to save on having to perform
+                    # a speed test which are unreliable time consuming puts wear on
+                    # the drive and then leads to including unecessary packages
+                    drive_type = "HDD"
+                    parent = None
+                    app_inst = QApplication.instance()
+                    if app_inst:
+                        parent = QApplication.activeWindow()
+                        uinpt = window_prompt(parent, "Drive type", f"Is {base_dir} ssd", "Yes", "No")
+                        if uinpt:
+                            drive_type = "SSD"
+                    else:
+                        while True:
+                            uinp = input(f"Is {base_dir} ssd (Y/N): ").strip().lower()
+                            if uinp == 'y':
+                                drive_type = "SSD"
+                                break
+                            elif uinp == 'n':
+                                break
+                            else:
+                                print("Invalid input, please enter 'Y' or 'N'.")
+
+        return (device_name, parent_device, drive_id_model, model_type, drive_type)
+
     except pyudev.DeviceNotFoundByFileError:
         # / with unknown fs backing default to HDD and unknown
         pass
     except Exception as e:
         print("An error occurred in drive model check:", type(e).__name__, e)
         return None
-
-    return (device_name, parent_device, drive_id_model, model_type, drive_type)
 
 
 # check by model type, pnp description or rotation. if not run read test fall back to write test. if all fails set to HDD.

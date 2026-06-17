@@ -5,9 +5,10 @@ import sys
 from dataclasses import dataclass
 from PySide6.QtCore import Signal, QObject, Slot
 from PySide6.QtGui import QTextCharFormat, QColor, QTextCursor, QIcon
-from PySide6.QtWidgets import QPlainTextEdit, QVBoxLayout, QDialog, QPushButton, QComboBox, QLineEdit, QDialogButtonBox, QLabel
+from PySide6.QtWidgets import QPlainTextEdit, QVBoxLayout, QDialog, QPushButton, QComboBox, QLineEdit, QDialogButtonBox, QLabel, QCheckBox
 from .gpgcrypto import start_user_agent
 
+ZONEINFO = "/usr/share/zoneinfo"
 
 ANSI_COLOR_MAP = {
     "36": QColor("cyan"),
@@ -30,8 +31,8 @@ class FastColorText(QPlainTextEdit):
         self.current_color = None
 
     def append_colored_output(self, line: str):
-        normalized = line.replace("\r\n", "\n").replace("\r", "\n")
-        parts = ANSI_REGEX.split(normalized)
+        # ormalized = line.replace("\r\n", "\n").replace("\r", "\n")
+        parts = ANSI_REGEX.split(line)
         i = 0
 
         while i < len(parts):
@@ -69,7 +70,7 @@ class QTextEditLogger(QObject):  # gui/console
     def __init__(self, output_handler):
         super().__init__()
         self.output_handler = output_handler
-        self.console = sys.__stdout__   # save original stdout
+        self.console = sys.stdout  # 05/30/2026 changed from __stdout__ # save original stdout
 
     def write(self, message):
         if message is None:
@@ -79,6 +80,7 @@ class QTextEditLogger(QObject):  # gui/console
         # self.output_handler(message)   # show in GUI
 
         self.console.write(message)  # also show in console
+
         self.console.flush()
 
     def flush(self):
@@ -324,3 +326,61 @@ class PassphraseDialog(QDialog):
 
     def get_password(self):
         return self.password_input.text()
+
+
+class TimezoneDialog(QDialog):
+    def __init__(self, parent=None, region=None, zone=None):
+        super().__init__(parent)
+        self.setWindowTitle("Set Timezone")
+        layout = QVBoxLayout(self)
+
+        self.region_box = QComboBox()
+        self.zone_box = QComboBox()
+        self.apply_btn = QPushButton("Apply")
+
+        layout.addWidget(self.region_box)
+        layout.addWidget(self.zone_box)
+        layout.addWidget(self.apply_btn)
+
+        self.sync_clock = QCheckBox("Sync clock")
+        layout.addWidget(self.sync_clock)
+        self.dual_boot = QCheckBox("Dual boot")
+        layout.addWidget(self.dual_boot)
+
+        self.setup_region()
+
+        if region and zone:
+            r_idx = self.region_box.findText(region)
+            if r_idx != -1:
+                self.region_box.setCurrentIndex(r_idx)
+                self.update_zones(region)
+                z_idx = self.zone_box.findText(zone)
+                if z_idx != -1:
+                    self.zone_box.setCurrentIndex(z_idx)
+                else:
+                    self.update_zones(self.region_box.currentText())
+            else:
+                self.setup_region()
+        else:
+            self.update_zones(self.region_box.currentText())
+
+        self.region_box.currentTextChanged.connect(self.update_zones)
+        self.apply_btn.clicked.connect(self.apply_timezone)
+
+    def setup_region(self):
+        self.region_box.clear()
+        regions = sorted(e.name for e in os.scandir(ZONEINFO) if e.is_dir())
+        self.region_box.addItems(regions)
+
+    def update_zones(self, region):
+        self.zone_box.clear()
+        path = os.path.join(ZONEINFO, region)
+        zones = sorted(e.name for e in os.scandir(path) if e.is_file())
+        self.zone_box.addItems(zones)
+
+    def apply_timezone(self):
+        # tz = f"{self.region_box.currentText()}/{self.zone_box.currentText()}"
+        # os.system(f"ln -sf {ZONEINFO}/{tz} /etc/localtime")
+        # os.system("ntpdate pool.ntp.org")
+        # os.system("hwclock -wl")
+        self.accept()

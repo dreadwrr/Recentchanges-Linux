@@ -8,6 +8,7 @@ import sqlite3
 import subprocess
 import traceback
 import webbrowser
+from datetime import datetime
 from packaging import version
 from pathlib import Path
 from PySide6.QtCore import QDateTime
@@ -23,11 +24,14 @@ from .gpgcrypto import decrypt_from_text
 from .gpgcrypto import encr
 from .gpgcrypto import encrypt_to_text
 from .pyfunctions import is_integer
-# 05/27/2026
-
+from .rntchangesfunctions import to_bool
+from .rntchangesfunctions import porteus_linux_check
+# 06/16/2026
 
 
 def find_gnupg_home(json_file, gpg_home=None, j_settings=None, iqt=False):
+    if isinstance(gpg_home, Path):
+        gpg_home = str(gpg_home)
     """ try to find gnupg home for exclusion purposes in build index """
     if not j_settings and j_settings is not None:
         print("find_gnupg_home warning json file was empty")
@@ -168,7 +172,10 @@ def sort_right(tables, cache_table, systimeche, suffix):
     return tbl
 
 
-def select_custom(parent, title, msg, importjpg, defaultjpg, importcrest, defaultcrest):
+def select_custom(parent):
+
+    title = "Choose an Option"
+    msg = "Please select an option:"
 
     dlg = QDialog(parent)
     dlg.setWindowTitle(title)
@@ -180,42 +187,60 @@ def select_custom(parent, title, msg, importjpg, defaultjpg, importcrest, defaul
 
     # Jpg
     row1 = QHBoxLayout()
-    btn_importjpg = QPushButton(importjpg)
-    btn_resetjpg = QPushButton(defaultjpg)
-    row1.addStretch()
+    btn_importjpg = QPushButton("Jpg")
+    btn_resetjpg = QPushButton("Reset")
+    # Alarm One
+    btn_alarmone = QPushButton("Alarm set")
+    btn_resetalarmone = QPushButton("Reset")
+
+    # row1.addStretch()  # original
     row1.addWidget(btn_importjpg)
     row1.addWidget(btn_resetjpg)
-    row1.addStretch()
+    row1.addWidget(btn_alarmone)
+    row1.addWidget(btn_resetalarmone)
+    # row1.addStretch()  # .
     layout.addLayout(row1)
+
     # Crest
     row2 = QHBoxLayout()
-    btn_importcrest = QPushButton(importcrest)
-    btn_resetcrest = QPushButton(defaultcrest)
-    row2.addStretch()
+    btn_importcrest = QPushButton("Crest")
+    btn_resetcrest = QPushButton("Reset")
+    # Alarm Two
+    btn_alarmtwo = QPushButton("Alarm sound")
+    btn_resetalarmtwo = QPushButton("Reset")
+
+    # row2.addStretch()  # .
     row2.addWidget(btn_importcrest)
     row2.addWidget(btn_resetcrest)
-    row2.addStretch()
+    row2.addWidget(btn_alarmtwo)
+    row2.addWidget(btn_resetalarmtwo)
+    # row2.addStretch()  # .
     layout.addLayout(row2)
 
     row3 = QHBoxLayout()
     btn_embosscrest = QPushButton("Emboss Crest")
-    row3.addStretch()
+    # row3.addStretch()  # .
     row3.addWidget(btn_embosscrest)
-    row3.addStretch()
+    # row3.addStretch()  # .
     layout.addLayout(row3)
 
     result = {"value": None}
-    buttons = [btn_importjpg, btn_resetjpg, btn_importcrest, btn_resetcrest, btn_embosscrest]
+    buttons = [btn_importjpg, btn_resetjpg, btn_alarmone, btn_resetalarmone, btn_importcrest, btn_resetcrest, btn_alarmtwo, btn_resetalarmtwo, btn_embosscrest]
     max_w = max(b.sizeHint().width() for b in buttons)
     max_h = max(b.sizeHint().height() for b in buttons)
 
     for b in buttons:
         b.setFixedSize(max_w, max_h)
+
     # Connect buttons to results
     btn_importjpg.clicked.connect(lambda: (result.update(value="jpg"), dlg.accept()))
     btn_resetjpg.clicked.connect(lambda: (result.update(value="defjpg"), dlg.accept()))
+    btn_alarmone.clicked.connect(lambda: (result.update(value="alarmone"), dlg.accept()))
+    btn_resetalarmone.clicked.connect(lambda: (result.update(value="defalarmone"), dlg.accept()))
     btn_importcrest.clicked.connect(lambda: (result.update(value="crest"), dlg.accept()))
     btn_resetcrest.clicked.connect(lambda: (result.update(value="defcrest"), dlg.accept()))
+    btn_alarmtwo.clicked.connect(lambda: (result.update(value="alarmtwo"), dlg.accept()))
+    btn_resetalarmtwo.clicked.connect(lambda: (result.update(value="defalarmtwo"), dlg.accept()))
     btn_embosscrest.clicked.connect(lambda: (result.update(value="emboss"), dlg.accept()))
 
     dlg.exec()
@@ -470,7 +495,6 @@ def show_cmddoc(cmddoc, lclhome, pst_data, gpg_path, gnupg_home, email, example_
         hudt(f"Delete a GPG key for: {email}\n")
         hudt(f"gpg --delete-secret-key {fingerprint}")
         hudt(f"gpg --delete-key {fingerprint}")
-        hudt("\nrepeat for root as has same keypair")
 
     gpg_command = "gpg"
 
@@ -607,6 +631,7 @@ def return_terminal():
 
 def run_set_helper(script_path, args=None, is_polkit=False, input_data=None):
 
+    result = 0
     comm = "pkexec" if is_polkit else "sudo"
     cmd = [
         comm,
@@ -628,12 +653,14 @@ def run_set_helper(script_path, args=None, is_polkit=False, input_data=None):
     stdout = result.stdout.decode(errors="replace")
     stderr = result.stderr.decode(errors="replace")
     if result.returncode != 0:
+        result = 1
         stdout = "STDOUT:\n" + stdout  # print any debug
         stderr = "STDERR:\n" + stderr  # gpg prints to stderr
     if stdout:
         print(stdout)
     if stderr:
         print(stderr)
+    return result
 
 
 def load_konsole(lclhome, popPATH=None):
@@ -704,6 +731,69 @@ def kill_process(pid):
     except ProcessLookupError:
         # print(f"PID {pid} does not exist")
         pass
+
+
+def set_clock(region, zone, distro, sync_clock, dual_boot):
+    if not (region and zone):
+        print("<region> <zone> required")
+        return 1
+    if not os.path.exists("/etc/localtime.bak"):
+        ret = os.system("cp /etc/localtime /etc/localtime.bak")
+        if ret == 0:
+            print("/etc/localtime backed up to /etc/localtime.bak")
+    rz = f'{region}/{zone}'
+    tz_file = f"/usr/share/zoneinfo/{rz}"
+    if not os.path.isfile(tz_file):
+        print(f"Timezone file not found: {tz_file}")
+        return
+    if os.path.exists("/etc/localtime"):
+        os.remove("/etc/localtime")
+    os.symlink(tz_file, "/etc/localtime")
+    print(f"Timezone set to {rz}")
+    sync_clock = to_bool(sync_clock)
+    dual_boot = to_bool(dual_boot)
+
+    ret = 0
+    if sync_clock:
+        # currently if the distro is "" its not nemesis or porteus
+        # if case of "None" was passed
+        if distro == "None":
+            distro = porteus_linux_check()  # returns porteus or nemesis or False None
+
+        if distro == "nemesis":
+            result = subprocess.run(["rc-service", "ntpd", "status"], capture_output=True, text=True)
+            if result.returncode == 0:
+                print("rc-service ntpd running")
+            # os.system("rc-service ntpd stop")
+            # os.system("ntpdate pool.ntp.org")
+            # os.system("rc-service ntpd start")
+            pass
+        elif distro == "porteus":
+            out_str = "ntpdate pool.ntp.org"
+            print(out_str)
+            ret = os.system(out_str)
+            if ret != 0:
+                print(out_str, "had failed")
+        else:
+            out_str = f"timedatectl set-timezone {rz}"
+            print(out_str)
+            ret = os.system(out_str)
+            if ret == 0:
+                out_str = "timedatectl set-ntp true"
+                print(out_str)
+                ret = os.system("timedatectl set-ntp true")
+                if ret != 0:
+                    print(f"{out_str} had failed")
+            else:
+                print(out_str, "had failed")
+
+        if ret == 0:
+            hw_str = "hwclock -wl" if dual_boot else "hwclock -uw"
+            print(hw_str)
+            ret = os.system(hw_str)
+            if ret != 0:
+                print(hw_str, "had failed")
+    return ret
 
 
 def add_new_extension(default_extensions, logger, combffile, dbopt, dbtarget, email, nc, parent=None):
@@ -810,12 +900,27 @@ def user_data_to_database(notes, logger, dbopt, dbtarget, email, nc, isexit=Fals
     return False
 
 
-def user_data_from_database(logger, textEdit, combffile, extensions, dbopt, parent=None):
+def user_data_from_database(logger, textEdit, combffile, extensions, dbopt, is_startup=False, parent=None):
     query = None
     extension_data = []
     data_name = ""
     try:
         with DBMexec(dbopt, "sq_1", ui_logger=logger) as dmn:
+
+            # this is called when the app is started store the current time so later can check if app has been started after system boot
+            if is_startup:
+
+                last_start = int(datetime.now().timestamp())  # to compare later to system start time to see if the app is launched for the first time **
+                sql = """
+                    INSERT INTO analytics (id,last_start)
+                    VALUES (1, :last_start)
+                    ON CONFLICT(id) DO UPDATE SET
+                        last_start = excluded.last_start;
+                """
+                query = dmn.execute(sql, {"last_start": str(last_start)})
+                if not query:
+                    logger.appendPlainText("Query failed analytics table in user_data_from_database while starting up")
+
             data_name = "extn"
             sql = "SELECT extension FROM extn WHERE id != 1"
             query = dmn.execute(sql)

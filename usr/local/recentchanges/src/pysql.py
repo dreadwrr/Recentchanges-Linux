@@ -1,26 +1,31 @@
-import logging
-import os
 import sqlite3
 import traceback
+
+
+COLUMNS = [
+    'timestamp TEXT',
+    'filename TEXT',
+    'changetime TEXT',
+    'inode INTEGER',
+    'accesstime TEXT',
+    "checksum TEXT",  # NOT NULL DEFAULT ''
+    'filesize INTEGER',
+    'symlink TEXT',
+    'owner TEXT',
+    '`group` TEXT',
+    'permissions TEXT',
+    'casmod TEXT',
+    'target TEXT',
+    'lastmodified TEXT',
+    'hardlinks INTEGER'
+]
 
 
 def create_logs_table(c, unique_columns, add_column=None):
     columns = [
         'id INTEGER PRIMARY KEY AUTOINCREMENT',
-        'timestamp TEXT',
-        'filename TEXT',
-        'changetime TEXT',
-        'inode INTEGER',
-        'accesstime TEXT',
-        'checksum TEXT',
-        'filesize INTEGER',
-        'symlink TEXT',
-        'owner TEXT',
-        '`group` TEXT',
-        'permissions TEXT',
-        'casmod TEXT',
-        'target TEXT',
-        'lastmodified TEXT'
+        *COLUMNS
+
     ]
     if add_column:
         if isinstance(add_column, (tuple, list)):
@@ -66,25 +71,43 @@ def create_sys_variant(c, table_name, columns, unique_columns):
         c.execute(f'CREATE INDEX IF NOT EXISTS idx_{table_name}_checksum_filename ON {table_name} (checksum, filename)')  # Composite
 
 
-def create_sys_table(c, sys_tables):
+def create_scan_tables(c):
+    """ Used to store previous scans to dynamically append to diff file
+          this allows it to be secure persistent and organized """
+    sql = """
+        CREATE TABLE IF NOT EXISTS scans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scantime TEXT UNIQUE
+        )
+    """
+    c.execute(sql)
+
+    columns = [
+        'id INTEGER PRIMARY KEY',
+        'scan_id INTEGER REFERENCES scans(id)',
+        'basedir TEXT',
+        *COLUMNS,
+        'count INTEGER',
+        'mtime_us INTEGER'
+    ]
+
+    col_str = ',\n      '.join(columns)
+
+    sql = f'''
+    CREATE TABLE IF NOT EXISTS scan_entries (
+        {col_str}
+    )
+    '''
+    c.execute(sql)
+    c.execute('CREATE INDEX IF NOT EXISTS idx_scan_id ON scan_entries(scan_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_basedir ON scan_entries(basedir)')
+
+
+def create_sys_tables(c, sys_tables):
     sys_a, sys_b = sys_tables
     columns = [
         'id INTEGER PRIMARY KEY AUTOINCREMENT',
-        'timestamp TEXT',
-        'filename TEXT',
-        'changetime TEXT',
-        'inode INTEGER',
-        'accesstime TEXT',
-        "checksum TEXT",  # NOT NULL DEFAULT ''
-        'filesize INTEGER',
-        'symlink TEXT',
-        'owner TEXT',
-        '`group` TEXT',
-        'permissions TEXT',
-        'casmod TEXT',
-        'target TEXT',
-        'lastmodified TEXT',
-        'hardlinks INTEGER',
+        *COLUMNS,
         'count INTEGER',
         'mtime_us INTEGER'
     ]
@@ -92,6 +115,7 @@ def create_sys_table(c, sys_tables):
     # columns.append('count INTEGER')
     create_sys_variant(c, sys_a, columns, ('filename',))
     create_sys_variant(c, sys_b, columns, ('timestamp', 'filename', 'changetime', 'checksum'))  # , 'checksum'
+    create_scan_tables(c)
 
 
 def create_table_cache(c, table, unique_columns):
@@ -130,9 +154,9 @@ def create_db(database, sys_tables, action=None):
     conn = sqlite3.connect(database)
     c = conn.cursor()
 
-    create_logs_table(c, ('timestamp', 'filename', 'changetime', 'checksum'), ['hardlinks INTEGER', 'mtime_us INTEGER'])
+    create_logs_table(c, ('timestamp', 'filename', 'changetime', 'checksum'), ['mtime_us INTEGER'])
 
-    create_sys_table(c, sys_tables)  # sys and sys2
+    create_sys_tables(c, sys_tables)  # sys and sys2
 
     tables = [
         '''
@@ -152,6 +176,14 @@ def create_db(database, sys_tables, action=None):
             timestamp TEXT,
             notes TEXT,
             UNIQUE(extension)
+        )
+        ''',
+        '''
+        CREATE TABLE IF NOT EXISTS analytics (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            total_files INTEGER NOT NULL DEFAULT 0,
+            total_time INTEGER NOT NULL DEFAULT 0,
+            last_start INTEGER
         )
         '''
     ]
@@ -377,7 +409,7 @@ def dbtable_has_data(dbopt, table_name):
         clear_conn(conn, cur)
 
 
-def clear_sys_profile(conn, cur, sys_tables, cache_table, systimeche, log_fn=print):
+def clear_sys_profile(conn, cur, basedir, sys_tables, cache_table, systimeche, log_fn=print):
 
     del_tables = sys_tables + (cache_table,) + (systimeche,)
 
@@ -386,6 +418,12 @@ def clear_sys_profile(conn, cur, sys_tables, cache_table, systimeche, log_fn=pri
         for tbl in del_tables:
             cur_tbl = tbl
             cur.execute(f"DROP TABLE IF EXISTS {tbl}")
+
+        # 06/15/2026 remove scan history for the profile
+
+        cur.execute("DELETE FROM scan_entries WHERE basedir = ?", (basedir,))
+        cur.execute("DELETE FROM scans WHERE id NOT IN (SELECT DISTINCT scan_id FROM scan_entries)")
+
         conn.commit()
         # for tbl in (del_tables):
         #     cur.execute("""
@@ -764,8 +802,9 @@ def increment_f(conn, c, sys_tables, records, logger=None):
     """
     try:
 
-        with conn:
-            c.executemany(sql_insert, records)
+        # with conn:
+        c.executemany(sql_insert, records)
+
         return True
     except sqlite3.OperationalError as e:
         err = f"increment_f failed to insert changes in sys_b {e}"
@@ -777,81 +816,42 @@ def increment_f(conn, c, sys_tables, records, logger=None):
         print(err)
         if logger:
             logger.error(err, exc_info=True)
-    return False
+    return None
 
 
-def find_symmetrics(dbopt, cache_table, systimeche):
+def get_unique_files(c):
+    # How many unique files are in the logs table
+    unique_files = c.execute(
+        "SELECT COUNT(DISTINCT filename) FROM logs WHERE filename IS NOT NULL"
+    ).fetchone()[0]
+    return unique_files
 
-    # dirs that had no files and now do
 
-    cache_records = []
-    has_systime = False
-    conn = cur = None
-    try:
-        conn = sqlite3.connect(dbopt)
-        cur = conn.cursor()
-        if table_has_data(conn, systimeche):
-            has_systime = True
-            query = f"""
-                SELECT s.modified_time,
-                    s.filename,
-                    s.file_count
-                FROM {systimeche} AS s
-                WHERE s.file_count > 0
-                AND s.type IS NULL
-                AND EXISTS (
-                        SELECT 1
-                        FROM {cache_table} AS c
-                        WHERE c.filename = s.filename
-                        AND c.file_count = 0
-                        AND c.type IS NULL
-                )
-            """
-            cur.execute(query)
-            cache_records = cur.fetchall()
-        else:
-            query = f'''
-                SELECT modified_time,
-                    filename,
-                    file_count
-                FROM {cache_table}
-                WHERE file_count = 0
-                AND type IS NULL
-            '''
-            cur.execute(query)
-            records = cur.fetchall()
-            if records:
-                for record in records:
-                    dirname = record[1]
-                    if os.path.isdir(dirname):
-                        try:
-                            if any(entry.is_file() for entry in os.scandir(dirname)):
-                                cache_records.append(record)
-                        except (FileNotFoundError, PermissionError):
-                            pass
+def insert_files_time(c, total_files, total_time):
+    total_time_int = int(total_time * 1000)
+    c.execute("""
+        INSERT INTO analytics (id, total_files, total_time)
+        VALUES (1, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            total_files = total_files + excluded.total_files,
+            total_time = total_time + excluded.total_time;
+    """, (total_files, total_time_int))
 
-        # new directories
 
-        sql = f"""
-        SELECT DISTINCT s.filename
-        FROM {systimeche} s
-        LEFT JOIN {cache_table} c ON s.filename = c.filename
-        WHERE c.filename IS NULL
-        """
-        cur.execute(sql)
-        new_records = [row[0] for row in cur.fetchall()]
+def get_total_throughput(c):
+    total_throughput = 0
+    lifetime_files, lifetime_time = c.execute("""
+        SELECT total_files, total_time
+        FROM analytics
+    """).fetchone()
 
-        return cache_records, new_records
-    except sqlite3.Error as e:
-        errmsg = f"table {cache_table}" if not has_systime else f"tables {cache_table} {systimeche}"
-        print(f"dirwalker.py problem retrieving data in find_symmetrics. database {dbopt} {errmsg} {type(e).__name__} error: {e}")
-        return None, None
-    except Exception as e:
-        print(f"General error in find_symmetrics {type(e).__name__} error: {e} \n{traceback.format_exc()}")
-        logging.error(f'find_symmetrics profile cache:{cache_table} cache table: {systimeche}  {type(e).__name__} error: {e}\n', exc_info=True)
-        return None, None
-    finally:
-        clear_conn(conn, cur)
+    if lifetime_files and lifetime_time:
+
+        lifetime_total_time = lifetime_time / 1000
+
+        total_throughput = lifetime_files / lifetime_total_time
+
+    return total_throughput
 
 
 def clear_conn(conn, cur):

@@ -59,7 +59,7 @@ class ProcessHandler(QObject):
         self.dspPATH = None
         self.temp_dir = None
 
-        self.analyticSECT = None  # process duration display
+        self.analytics = None  # process duration display
         self.st_time = 0  # .
         self.result_path = None  # result path from stdout
         self._stdout_buffer = ""
@@ -156,10 +156,33 @@ class ProcessHandler(QObject):
         self.process.start(cmd, args)
         self.pid = int(self.process.processId())
 
-    def start_pyprocess(self, script, args=None, database=None, dbtarget=None, user=None, email=None, status_message=None, is_search=False, is_postop=False, is_scanIDX=False, analyticSECT=None, parent=None):
+    def start_sync_clock(self, script_path, args=None, is_polkit=False):
+
+        comm = "pkexec" if is_polkit else "sudo"
+        cmd = [
+            comm,
+            str(script_path),
+        ]
+        if args:
+
+            if isinstance(args, (list, tuple)):
+                cmd += list(map(str, args))
+            else:
+                print("args must be a list or tuple of strings")
+                return
+
+        self.process.start(cmd[0], cmd[1:])
+        self.pid = int(self.process.processId())
+
+    def start_pyprocess(self, script, args=None, database=None, dbtarget=None, user=None, email=None, status_message=None, is_search=False, is_postop=False, is_scanIDX=False, analytics=None, parent=None):
+
+        env = QProcessEnvironment.systemEnvironment()
+        # env.insert("PYTHONUTF8", "1")
+        # env.insert("PYTHONIOENCODING", "utf-8")
+        self.process.setProcessEnvironment(env)
 
         self.script = script
-        self.script_list = [script]  #  self.lclhome
+        self.script_list = [script]  # self.lclhome
         self.database = database
         self.dbtarget = dbtarget
         self.statusmsg = status_message
@@ -167,9 +190,9 @@ class ProcessHandler(QObject):
         self.is_postop = is_postop
         self.is_scanIDX = is_scanIDX
 
-        if analyticSECT:
+        if analytics:
             self.st_time = time.time()
-            self.analyticSECT = True
+            self.analytics = True
 
         # args = list(args) if args else []  # args = [str(a) for a in args if a is not None]
 
@@ -182,7 +205,7 @@ class ProcessHandler(QObject):
         self.args = args
 
         if self.is_polkit:
-            self.comm = "pkexec"  #  env PATH=/usr/sbin:/usr/bin:/sbin:/bin:/root/bin:/usr/local/recentchanges/.venv/bin
+            self.comm = "pkexec"  # env PATH=/usr/sbin:/usr/bin:/sbin:/bin:/root/bin:/usr/local/recentchanges/.venv/bin
         else:
             # hudt prompt to use terminal if polkit isnt installed
             self.comm = "sudo"
@@ -218,9 +241,9 @@ class ProcessHandler(QObject):
 
             if self.dspEDITOR and self.result_path:
 
-                display(self.dspEDITOR, self.result_path, True, self.dspPATH)  # open text editor?
+                display(self.dspEDITOR, self.result_path, self.dspPATH, True)  # open text editor?
 
-            if self.analyticSECT:  # powershell scripts
+            if self.analytics:  # powershell scripts
                 el = time.time() - self.st_time
                 self.log.emit(f'Search took {el:.3f} seconds')
 
@@ -258,13 +281,16 @@ class ProcessHandler(QObject):
                 self.is_prompt_timer = False
 
             self.handle_progress(line)
+
         elif line.startswith("RESULT:") and self.result_path is None:
             self.result_path = line.split(":", 1)[1].strip()
+
         else:
-            if line.strip():
-                self.log.emit(line)
+            # if line.strip():
+            self.log.emit(line)
 
     def handle_stdout(self):
+
         data = self.process.readAllStandardOutput()
         text = bytes(data).decode("utf-8", errors="replace")
         if not text:
@@ -275,7 +301,7 @@ class ProcessHandler(QObject):
         self._stdout_buffer = lines.pop()
 
         for line in lines:
-            self.process_stdout_line(line.rstrip())
+            self.process_stdout_line(line)
 
     def handle_stderr(self):
         data = self.process.readAllStandardError()

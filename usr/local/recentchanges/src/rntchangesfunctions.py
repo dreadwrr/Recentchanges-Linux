@@ -1,4 +1,4 @@
-# developer buddy v5.0 core                     05/05/2026
+# developer buddy v5.0 core                     06/14/2026
 import csv
 import glob
 import importlib.util
@@ -6,6 +6,7 @@ import logging
 import magic
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -21,6 +22,7 @@ from .fsearchscan import process_scan
 from .pyfunctions import cprint
 from .pyfunctions import suppress_list
 from .pyfunctions import unescf_py
+from .pyfunctions import user_path
 install_root = find_install()
 filter_patterns_path = install_root / "filter.py"
 spec = importlib.util.spec_from_file_location("user_filter", filter_patterns_path)
@@ -32,12 +34,15 @@ spec.loader.exec_module(user_filter)
 def reset_csvliteral(csv_file):
 
     patterns_to_reset = user_filter._filterhitRESET
+    is_diff = False
     try:
         with open(csv_file, newline='') as f:
             reader = csv.reader(f)
             rows = list(reader)
         for row in rows[1:]:
             if row[0] in patterns_to_reset:
+                if row[1] != '0':
+                    is_diff = True
                 row[1] = '0'
         with open(csv_file, 'w', newline='') as f:
             writer = csv.writer(f)
@@ -45,6 +50,7 @@ def reset_csvliteral(csv_file):
     except (FileNotFoundError, PermissionError):
         print(f"nfs permission error on {csv_file} reset_csvliteral.")
         pass
+    return is_diff
 
 
 # return base filename or base filename a new extension
@@ -189,7 +195,7 @@ def logic(syschg, nodiff, diffrlt, validrlt, thetime, argone, argf, result_outpu
 
 # dspEDITOR disabled and results opened in bash wrapper /usr/local/bin/recentchanges to not run query or editor as root **
 # open text editor   # Resource leaks   wait() commun
-def display(dspEDITOR, filepath, syschg, dspPATH):
+def display(dspEDITOR, filepath, dspPATH, syschg=False):
     if not (dspEDITOR and dspPATH):
         return
     if not syschg:
@@ -310,23 +316,26 @@ def get_linux_distro():
     return None, None
 
 
-def porteus_linux_check():
-    if os.path.isfile("/etc/porteus-release"):
-        return True
+def porteus_linux_check(any_version=False):
+    if any_version:
+        if os.path.isfile("/etc/porteus-release"):
+            return True
     os_release_path = "/etc/os-release"
     distro_info = {}
     try:
-        with open(os_release_path, "r") as file:
-            for line in file:
-                if "=" in line:
-                    key, value = line.strip().split("=", 1)
-                    value = value.strip('"')
-                    distro_info[key] = value
-        distro_id = distro_info.get("ID", "").lower()
-        distro_name = distro_info.get("NAME", "").lower()
-        for target in ("porteus", "nemesis"):
-            if target in distro_id or target in distro_name:
-                return True
+        if os.path.isfile("/etc/porteus-release"):
+            with open(os_release_path, "r") as file:
+                for line in file:
+                    if "=" in line:
+                        key, value = line.strip().split("=", 1)
+                        value = value.strip('"')
+                        distro_info[key] = value
+            distro_id = distro_info.get("ID", "").lower()
+            distro_name = distro_info.get("NAME", "").lower()
+            for target in ("artix", "nemesis"):
+                if target in distro_id or target in distro_name:
+                    return "nemesis"
+            return "porteus"
         return False
     except FileNotFoundError:
         print("The file /etc/os-release was not found.")
@@ -335,7 +344,7 @@ def porteus_linux_check():
     return None
 
 
-def find_scan(recent, complete, init, cfr, search_start_dt, user_setting, logging_values, end, cstart, exclDIRS, iqt=False, strt=20, endp=60, logger=None):
+def find_scan(recent, complete, init, cfr, search_start_dt, user_setting, logging_values, end, cstart, exclDIRS, exclDIRS_fullpath, iqt=False, logger=None, strt=20, endp=60):
 
     records = []
 
@@ -343,7 +352,8 @@ def find_scan(recent, complete, init, cfr, search_start_dt, user_setting, loggin
     feedback = user_setting['feedback']
 
     # normal execution
-    records, _ = files_search(basedir, search_start_dt, feedback, exclDIRS, logger, iqt=iqt, strt=strt, endp=endp)
+
+    records, _ = files_search(basedir, search_start_dt, feedback, exclDIRS, exclDIRS_fullpath=exclDIRS_fullpath, iqt=iqt, logger=logger, strt=strt, endp=endp)
     strt += 15
     end = time.time()
 
@@ -366,69 +376,89 @@ def find_scan(recent, complete, init, cfr, search_start_dt, user_setting, loggin
 
 # One search ctime > mtime for downloaded, copied or preserved metadata files. cmin. Main search for mtime newer than mmin.
 
-def find_files(find_command, search_paths, file_type, recent, complete, recentnul, init, cfr, search_start_dt, user_setting, logging_values, end, cstart, iqt=False, strt=20, endp=60, logger=None):
+def find_files(find_command, secondary, search_paths, file_type, recent, complete, recentnul, init, cfr, search_start_dt, user_setting, logging_values, end, cstart, iqt=False, logger=None, strt=20, endp=60):
     records = []
 
     if search_paths:
         print(search_paths)
     else:
-        print('Running command:', ' '.join(find_command))
+        print('Running command:', shlex.join(find_command))  # ' '.join(find_command))
+
+    # import shlex
+    # cmd = shlex.join(find_command)
+
+    # if secondary:
+    #     cmd += " ; " + shlex.join(secondary)
+
+    # proc = subprocess.Popen(
+    #     cmd,
+    #     shell=True,
+    #     stdout=subprocess.PIPE,
+    #     stderr=subprocess.PIPE
+    # )
 
     try:
-        buffer = b''
-        proc = subprocess.Popen(find_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # stderr=subprocess.DEVNULL
-        # output, err = proc.communicate()  # original if buffering
 
-        # if proc.returncode not in (0, 1):  # original if buffering
-        #     stderr_str = err.decode("utf-8")
-        #     print(stderr_str)
-        #     print("Find command failed, unable to continue. Quitting.")
-        #     sys.exit(1)
-        while True:
-            if proc.stdout is None:
-                break
-            chunk = proc.stdout.read(8192)
-            if not chunk:
-                break
-            buffer += chunk
-            while b'\0' in buffer:
-                part, buffer = buffer.split(b'\0', 1)
-                if part.strip():
+        comm = [find_command]
+        if secondary:
+            comm.append(secondary)
 
-                    line = part.decode("utf-8", errors="replace")
+        for cmd in comm:
+            buffer = b''
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # stderr=subprocess.DEVNULL  # original
+
+            # output, err = proc.communicate()  # original if buffering
+
+            # if proc.returncode not in (0, 1):  # original if buffering
+            #     stderr_str = err.decode("utf-8")
+            #     print(stderr_str)
+            #     print("Find command failed, unable to continue. Quitting.")
+            #     sys.exit(1)
+            while True:
+                if proc.stdout is None:
+                    break
+                chunk = proc.stdout.read(8192)
+                if not chunk:
+                    break
+                buffer += chunk
+                while b'\0' in buffer:
+                    part, buffer = buffer.split(b'\0', 1)
+                    if part.strip():
+
+                        line = part.decode("utf-8", errors="replace")
+                        fields = line.split(maxsplit=10)
+                        if len(fields) >= 11:
+                            if file_type == "main":
+                                file_path = fields[10]
+                                recentnul += (file_path.encode() + b'\0')  # copy file list `recentchanges` null byte
+                                if user_setting['feedback']:  # scrolling terminal look       alternative output
+                                    print(fields[10], flush=True)
+                            # escaped_entry = " ".join(fields)
+                            records.append(fields)
+            if buffer.strip():
+                try:
+                    line = buffer.decode('utf-8', errors='replace')
                     fields = line.split(maxsplit=10)
                     if len(fields) >= 11:
-                        if file_type == "main":
-                            file_path = fields[10]
-                            recentnul += (file_path.encode() + b'\0')  # copy file list `recentchanges` null byte
-                            if user_setting['feedback']:  # scrolling terminal look       alternative output
-                                print(fields[10], flush=True)
-                        # escaped_entry = " ".join(fields)
                         records.append(fields)
-        if buffer.strip():
-            try:
-                line = buffer.decode('utf-8', errors='replace')
-                fields = line.split(maxsplit=10)
-                if len(fields) >= 11:
-                    records.append(fields)
 
-            except Exception as e:
-                print(f"fault in trailing buffer ignored. {type(e).__name__} {e}")
-                pass
+                except Exception as e:
+                    print(f"fault in trailing buffer ignored. {type(e).__name__} {e}")
+                    pass
 
-        if proc.stdout is not None:
-            proc.stdout.close()
-        proc.wait()
+            if proc.stdout is not None:
+                proc.stdout.close()
+            proc.wait()
 
-        if proc.returncode not in (0, 1):
-            if proc.stderr is not None:
+            if proc.returncode not in (0, 1):
+                if proc.stderr is not None:
 
-                for raw in iter(proc.stderr.readline, b''):
-                    text = raw.decode("utf-8", errors="replace").strip()
-                    if text:
-                        print(text)
-            print("Find command failed, unable to continue. Quitting.")
-            sys.exit(1)
+                    for raw in iter(proc.stderr.readline, b''):
+                        text = raw.decode("utf-8", errors="replace").strip()
+                        if text:
+                            print(text)
+                print("Find command failed, unable to continue. Quitting.")
+                sys.exit(1)
 
     except (FileNotFoundError, PermissionError) as e:
         print(f"Error running find in find_files {e}")
@@ -548,7 +578,7 @@ def clear_logs(dirSRC, method, appdata_local, moduleNAME, archivesrh):
     return validrlt
 
 
-def check_utility(zipPATH=None, downloads=None, popPATH=None):
+def check_utility(zipPATH=None, downloads=None, popPATH=None, alarm_sound=None, alarm_set_sound=None):
     res = True
     if downloads:
         if not os.path.isdir(downloads):
@@ -562,6 +592,14 @@ def check_utility(zipPATH=None, downloads=None, popPATH=None):
         if not os.path.isdir(popPATH):
             print(f"setting popPATH {popPATH} does not exist. check setting")
             res = False
+    if alarm_sound:
+        if not os.path.isfile(alarm_sound):
+            print(f"setting alarm_soundFILE {alarm_sound} does not exist. check setting")
+            res = False
+    if alarm_set_sound:
+        if not os.path.isfile(alarm_set_sound):
+            print(f"setting alarm_soundFILE {alarm_set_sound} does not exist. check setting")
+            res = False
     return res
 
 
@@ -569,8 +607,10 @@ def filter_lines_from_list(lines, escaped_user, idx=1):
     if user_filter is None:
         print("Error unable to load filter filter.py")
         return None
+    user_filter._filter = user_path(user_filter._filter, escaped_user)
 
-    regexes = [re.compile(p.replace("{{user}}", escaped_user)) for p in user_filter._filter]
+    regexes = [re.compile(p) for p in user_filter._filter]
+    # regexes = [re.compile(p.replace("{{user}}", escaped_user)) for p in user_filter._filter]
 
     # filtered = [
     #     line for line in lines

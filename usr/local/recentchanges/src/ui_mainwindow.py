@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'untitled9.ui'
+## Form generated from reading UI file 'untitled13.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.3
+## Created by: Qt User Interface Compiler version 6.8.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -28,7 +28,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(1679, 1024)
+        MainWindow.resize(1583, 1020)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -362,14 +362,6 @@ class Ui_MainWindow(object):
 
         self.gridLayout.addLayout(self.horizontalLayout_8, 12, 0, 1, 6)
 
-        self.ntbrowseb2 = QPushButton(self.page)
-        self.ntbrowseb2.setObjectName(u"ntbrowseb2")
-        sizePolicy1.setHeightForWidth(self.ntbrowseb2.sizePolicy().hasHeightForWidth())
-        self.ntbrowseb2.setSizePolicy(sizePolicy1)
-        self.ntbrowseb2.setMinimumSize(QSize(89, 0))
-
-        self.gridLayout.addWidget(self.ntbrowseb2, 13, 0, 1, 1)
-
         self.verticalLayout = QVBoxLayout()
         self.verticalLayout.setSpacing(0)
         self.verticalLayout.setObjectName(u"verticalLayout")
@@ -644,6 +636,36 @@ class Ui_MainWindow(object):
 
         self.gridLayout.addWidget(self.combftimeout, 9, 1, 1, 1)
 
+        self.horizontalLayout_18 = QHBoxLayout()
+        self.horizontalLayout_18.setSpacing(0)
+        self.horizontalLayout_18.setObjectName(u"horizontalLayout_18")
+        self.ntbrowseb2 = QPushButton(self.page)
+        self.ntbrowseb2.setObjectName(u"ntbrowseb2")
+        sizePolicy1.setHeightForWidth(self.ntbrowseb2.sizePolicy().hasHeightForWidth())
+        self.ntbrowseb2.setSizePolicy(sizePolicy1)
+        self.ntbrowseb2.setMinimumSize(QSize(89, 0))
+
+        self.horizontalLayout_18.addWidget(self.ntbrowseb2)
+
+        self.ntbrowseb3 = QPushButton(self.page)
+        self.ntbrowseb3.setObjectName(u"ntbrowseb3")
+        sizePolicy1.setHeightForWidth(self.ntbrowseb3.sizePolicy().hasHeightForWidth())
+        self.ntbrowseb3.setSizePolicy(sizePolicy1)
+        self.ntbrowseb3.setMinimumSize(QSize(89, 0))
+
+        self.horizontalLayout_18.addWidget(self.ntbrowseb3)
+
+
+        self.gridLayout.addLayout(self.horizontalLayout_18, 13, 0, 1, 1)
+
+        self.widget = QWidget(self.page)
+        self.widget.setObjectName(u"widget")
+        sizePolicy.setHeightForWidth(self.widget.sizePolicy().hasHeightForWidth())
+        self.widget.setSizePolicy(sizePolicy)
+        self.widget.setMinimumSize(QSize(50, 50))
+
+        self.gridLayout.addWidget(self.widget, 29, 4, 3, 5)
+
 
         self.gridLayout_3.addLayout(self.gridLayout, 1, 0, 1, 1)
 
@@ -868,7 +890,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 1679, 19))
+        self.menubar.setGeometry(QRect(0, 0, 1583, 19))
         self.menuRecent_changes = QMenu(self.menubar)
         self.menuRecent_changes.setObjectName(u"menuRecent_changes")
         self.menuHelp = QMenu(self.menubar)
@@ -993,10 +1015,6 @@ class Ui_MainWindow(object):
         self.ntbrowseb.setToolTip(QCoreApplication.translate("MainWindow", u"newer than a file", None))
 #endif // QT_CONFIG(tooltip)
         self.ntbrowseb.setText(QCoreApplication.translate("MainWindow", u"Browse", None))
-#if QT_CONFIG(tooltip)
-        self.ntbrowseb2.setToolTip(QCoreApplication.translate("MainWindow", u"search newer than a folder", None))
-#endif // QT_CONFIG(tooltip)
-        self.ntbrowseb2.setText(QCoreApplication.translate("MainWindow", u"Folder", None))
         self.ntlabel.setText(QCoreApplication.translate("MainWindow", u"Newer than", None))
         self.dlabel.setText(QCoreApplication.translate("MainWindow", u"Find", None))
         self.combt.setItemText(0, QCoreApplication.translate("MainWindow", u"Filtered", None))
@@ -1051,6 +1069,14 @@ class Ui_MainWindow(object):
 #if QT_CONFIG(tooltip)
         self.combftimeout.setToolTip(QCoreApplication.translate("MainWindow", u"unfiltered search output", None))
 #endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.ntbrowseb2.setToolTip(QCoreApplication.translate("MainWindow", u"search newer than a folder", None))
+#endif // QT_CONFIG(tooltip)
+        self.ntbrowseb2.setText(QCoreApplication.translate("MainWindow", u"Folder", None))
+#if QT_CONFIG(tooltip)
+        self.ntbrowseb3.setToolTip(QCoreApplication.translate("MainWindow", u"search newer than a folder", None))
+#endif // QT_CONFIG(tooltip)
+        self.ntbrowseb3.setText(QCoreApplication.translate("MainWindow", u"File Manager", None))
         self.dbmainlabel.setText(QCoreApplication.translate("MainWindow", u"Status: Offline", None))
 #if QT_CONFIG(tooltip)
         self.dbmainb1.setToolTip(QCoreApplication.translate("MainWindow", u"remove cache items from logs and stats table", None))

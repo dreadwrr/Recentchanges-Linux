@@ -7,10 +7,12 @@ from src.findfile import main_entry as findfile_main
 from src.gpgkeymanagement import import_key
 from src.recentchangessearch import main as recentchanges_main
 from src.recentchangessearchparser import build_subparser
+from src.rntchangesfunctions import display
 from src.rntchanges import main as rntchanges_main
 from src.qtfunctions import load_konsole
 from src.qtfunctions import load_file_manager
 from src.qtfunctions import kill_process
+from src.qtfunctions import set_clock
 # 03/14/2026
 
 
@@ -20,7 +22,8 @@ def dispatch_internal(argv):
         script = argv[1].lower()
         args = argv[2:]
         cmd = args[0]   
-        if arglen > 5:
+
+        if arglen > 4:
 
             DISPATCH_MAP = {
                 "dirwalker.py": {
@@ -68,11 +71,17 @@ def dispatch_internal(argv):
                 elif script == "import":
                     return entry(args)
 
-        elif script == "run":
-            if cmd == "filemanager":
-                sys.exit(load_file_manager(*args[1:]))  # lclhome, popPATH=
-            if cmd == "terminal":
-                sys.exit(load_konsole(*args[1:]))  # lclhome, popPATH=
-            if cmd == "kill":
-                sys.exit(kill_process(*args[1:]))
+            elif script == "run":
+
+                if cmd == "filemanager":
+                    sys.exit(load_file_manager(*args[1:]))  # lclhome, popPATH=
+                elif cmd == "terminal":
+                    sys.exit(load_konsole(*args[1:]))  # lclhome, popPATH=
+                elif cmd == "kill":
+                    sys.exit(kill_process(*args[1:]))
+                elif cmd == "display":
+                    sys.exit(display(*args[1:], True))
+                elif cmd == "setclock":
+                    sys.exit(set_clock(*args[1:]))
+
     sys.exit(rntchanges_main(argv))

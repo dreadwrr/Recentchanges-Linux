@@ -4,6 +4,7 @@ import traceback
 import multiprocessing as mp
 import os
 import sqlite3
+import time
 import threading
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures.process import BrokenProcessPool
@@ -17,7 +18,7 @@ from .pyfunctions import escf_py
 from .pysql import detect_copy
 from .pysql import increment_f
 
-# 03/14/2026
+# 06/15/2026
 
 
 # tfile
@@ -26,13 +27,14 @@ def logger_process(results, sys_records, sys_tables, rout, scr, cerr, dbopt, ps,
     # if there are sys_records add them to the database sys changes sys_b
     #
     # distribute the appropriate messages to cerr and scr.
-
+    fmt = "%Y-%m-%d %H:%M:%S"
     log = logger if logger else logging
     key_to_files = {
         "flag": [rout],
         "cerr": [cerr],
         "scr": [scr],
     }
+
     with sqlite3.connect(dbopt) as conn:
         c = conn.cursor()
 
@@ -67,13 +69,25 @@ def logger_process(results, sys_records, sys_tables, rout, scr, cerr, dbopt, ps,
                                 if filesize:
                                     timestamp = msg[0]
                                     filepath = msg[1]
-                                    ct = msg[2]
+                                    changetime = msg[2]
                                     inode = msg[3]
                                     checksum = msg[5]
+
+                                    label = escf_py(filepath)
                                     result = detect_copy(filepath, inode, checksum, sys_tables, c, ps)
                                     if result:
-                                        label = escf_py(filepath)
-                                        rout.append(f'Copy {timestamp} {ct} {label}')
+                                        rout.append(f'Copy {timestamp} {changetime} {label}')
+
+                                    # windows if creation time is greater than modified time it could be a copy, a download or a created file
+                                    # this differs from linux that has no creation time but casmod or change as mod can be put instead
+                                    # change as modified means it is significant in that it could be a downloaded file with preserved metadata
+                                    else:
+                                        # mod_time = timestamp  # if not datetime
+                                        mod_time = timestamp.strftime(fmt)
+                                        # lexographic compare
+                                        if changetime and changetime > mod_time:
+                                            rout.append(f'Copy {timestamp} {changetime} {label}')
+
                             else:
                                 log.debug("Skipping dcp message due to insufficient length: %s", msg)
 
@@ -86,6 +100,7 @@ def logger_process(results, sys_records, sys_tables, rout, scr, cerr, dbopt, ps,
         if sys_records:
             try:
                 increment_f(conn, c, sys_tables, sys_records, logger=log)  # add changes to sys_b
+
             except Exception as e:
                 em = "Failed to update sys table in hanlyparallel increment_f"  # {traceback.format_exc()}"
                 print(f"{em} : {e} {type(e).__name__}")
@@ -107,7 +122,7 @@ def logger_process(results, sys_records, sys_tables, rout, scr, cerr, dbopt, ps,
                     log.error(em, exc_info=True)
 
 
-def hanly_parallel(drive_type, rout, scr, cerr, parsed, cachermPATTERNS, analyticSECT, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, iqt=False, strt=65, endp=90):
+def hanly_parallel(drive_type, rout, scr, cerr, parsed, cachermPATTERNS, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, iqt=False, strt=65, endp=90):
 
     all_results = []
     batch_incr = []
@@ -119,8 +134,7 @@ def hanly_parallel(drive_type, rout, scr, cerr, parsed, cachermPATTERNS, analyti
 
     csum = False
 
-    if analyticSECT:
-        cprint.green('Hybrid analysis on')
+    cprint.green('Hybrid analysis on')
 
     logger = logging.getLogger("HANLY")
 
@@ -128,6 +142,7 @@ def hanly_parallel(drive_type, rout, scr, cerr, parsed, cachermPATTERNS, analyti
     if iqt:
         show_progress = True
 
+    start = time.perf_counter()
     if len_parsed < 80 or drive_type.lower() == "hdd":
 
         # also move off thread for single core and directly log
@@ -205,8 +220,14 @@ def hanly_parallel(drive_type, rout, scr, cerr, parsed, cachermPATTERNS, analyti
             log_q.close()
             log_q.join_thread()
 
+    end = time.perf_counter()
+    ha_total_time = end - start
+
     print("processing results", flush=True)
     logger = logging.getLogger("HANLYLOGGER")
-    logger_process(all_results, batch_incr, sys_tables,  rout, scr, cerr, dbopt, ps, logger)
+    logger_process(all_results, batch_incr, sys_tables, rout, scr, cerr, dbopt, ps, logger)
+
+    lend = time.perf_counter()
+    logger_total_time = lend - end
     gc.collect()
-    return csum
+    return csum, ha_total_time, logger_total_time

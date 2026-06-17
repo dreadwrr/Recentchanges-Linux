@@ -13,9 +13,13 @@ from .fsearchfunctions import file_owner
 from .gpgcrypto import decrm
 from .logs import emit_log
 from .pyfunctions import epoch_to_str
-# 05/05/2026
+# 06/15/2026
 
 # Globals
+MOUNT_FOLDERS = ("mnt",  "media")  # list any other base mount folders here. these could have files or files in folders that belong to basedir and are not mount points
+# for mounts in /var /home ect find those because -xdev wont. and are relavent folders
+MOUNTS_INCLUDE = ("/var", "/home", "/usr")
+
 fmt = "%Y-%m-%d %H:%M:%S"
 
 MODE_FILENAME = 1
@@ -127,31 +131,144 @@ def none_if_empty(value):
 #         return None, None, None
 
 
+# see MOUNTS_INCLUDE for relavent mount folders to include in search but exclude their mount points
+
+# first attempt but mounts in aufs doesnt parse correctly
+# import subprocess
+# result = subprocess.run(
+#     ["findmnt", "-rn", "-o", "TARGET"],
+#     capture_output=True,
+#     text=True,
+#     check=True,
+# )
+# sort so any base comes firsts
+# targets = sorted(result.stdout.splitlines(), key=len)
+
+# alternative to final method used with subprocess
+# result = subprocess.run(
+#     ['awk', '{print $4}', '/proc/self/mountinfo'],
+#     capture_output=True, text=True
+# )
+# targets = [
+#     line for line in result.stdout.splitlines()
+#     if line.startswith(prefixes)
+# ]
+# sort so any base comes firsts
+# targets.sort(key=len)
+
+# final method
+def get_relavent_mounts(exclDIRS_fullpath):
+    # find any mounts we are interested in
+    targets = []
+    with open('/proc/self/mountinfo') as f:
+
+        # sort so any base comes firsts
+        targets = sorted(
+            (line.split()[3] for line in f
+                if line.split()[3].startswith(MOUNTS_INCLUDE)),
+            key=len
+        )
+
+    # list any tmpfs mounted on /
+    # for d in /*; do
+    #     printf '%-15s ' "$d"
+    #     df -T "$d" | awk 'NR==2 {print $2, $7}'
+    # done
+    # and include any other in mounts
+
+    mounts = []
+    # find any mounts such as /home /var /usr from MOUNTS_INCLUDE
+    for t in targets:
+        if not any(t == p or t.startswith(p + "/") for p in MOUNTS_INCLUDE):
+            continue
+        if t in exclDIRS_fullpath:
+            continue
+        # skip if already an existing parent
+        if any(t.startswith(m + "/") or t == m for m in mounts):
+            continue
+
+        mounts.append(t)
+    return mounts
+
+
+def check_mount_folders(folder_path, base_folders, exclDIRS_fullpath):
+    """ instead of excluding mount areas such as mnt and media by default only exclude if in config exclDIRS
+        this way if there are any files or files in folders that belong to device in those mount areas they are included
+        in the scan profiles
+
+        add to exclDIRS_fullpath the mount points to exclude while iterating in files_search python, find_created and
+        index_system.
+
+        """
+    x = 0
+    mnt_dev = os.stat(folder_path).st_dev
+
+    for entry in os.scandir(folder_path):
+        if entry.is_dir():
+            if entry.path in exclDIRS_fullpath:
+                continue
+            dev = os.stat(entry.path).st_dev
+
+            if dev != mnt_dev:
+                x += 1
+                exclDIRS_fullpath.append(entry.path)
+    return x
+
+
 def get_base_folders(basedir, exclDIRS_fullpath):
+    """ used to get the search areas for find_created and also to display the searched folders for recentchanges search
+
+        adds any mount points in MOUNT_FOLDERS to exclDIRS_fullpath this way any obscure files in MOUNT_FOLDERS or
+        files in folders are searched but mount points are not """
+
     c = 0
     base_folders = []
     if os.path.isdir(basedir):
         c += 1
         base_folders.append(basedir)
 
-    for folder_name in os.listdir(basedir):
-        folder_path = os.path.join(basedir, folder_name)
-        if folder_path in exclDIRS_fullpath:
-            continue
-        if os.path.isdir(folder_path):
+    # original
+    # for folder_name in os.listdir(basedir):
+    #     folder_path = os.path.join(basedir, folder_name)
+    #     if folder_path in exclDIRS_fullpath
+    #         continue
+    #     if os.path.isdir(folder_path):
+    #         c += 1
+    #         base_folders.append(folder_path)
+
+    # 06/15/2026 changed to make sure all possible search locations are returned
+    # example if /mnt/myfolder is part of basedir or / device that it is
+    # searched and any other mount points in /mnt are excluded in
+    # exclDIRS_fullpath. the same for /media or any other folder in
+    # MOUNT_FOLDERS
+
+    for entry in os.scandir(basedir):
+        if entry.is_dir():
+
+            path = entry.path
+            name = entry.name
+
+            if path in exclDIRS_fullpath:
+                continue
             c += 1
-            base_folders.append(folder_path)
+            base_folders.append(path)
+            if name in MOUNT_FOLDERS:
+                count = check_mount_folders(path, base_folders, exclDIRS_fullpath)
+                c += count
+
     return base_folders, c
 
 
 # os.scandir find
-def files_search(base_dir, search_start_dt, feedback, exclDIRS, logger, filename=None, extension=None, mode=None, iqt=False, strt=0, endp=100):
-
+def files_search(base_dir, search_start_dt, feedback, exclDIRS: list, exclDIRS_fullpath=None, filename=None, extension=None, mode=None, iqt=False, logger=None, strt=0, endp=100):
+    if exclDIRS_fullpath is not None and not isinstance(exclDIRS_fullpath, list):
+        raise TypeError("exclDIRS_fullpath is not a list")
+    logger = logger if logger else logging
     if search_start_dt and not isinstance(search_start_dt, datetime):
         print("search_start_dt is not a valid date time object exitting")
         return None, 0
 
-    # primary mode use process scan find created files by time for recentchangessearch
+    # if mode is None use process scan find created files by time for recentchangessearch
     # modes
     # process search find filename, extension or filename and extension and or by time for findfile
 
@@ -191,11 +308,14 @@ def files_search(base_dir, search_start_dt, feedback, exclDIRS, logger, filename
         elif mode == MODE_FILENAME_EXT:
             matcher = match_name_extn
 
-    exclDIRS_fullpath = set(os.path.join(base_dir, d.lstrip("/")) for d in exclDIRS)
+    if not exclDIRS_fullpath:
+        exclDIRS_fullpath = [os.path.join(base_dir, d.lstrip("/")) for d in exclDIRS]
+
     base_folders, root_count = get_base_folders(base_dir, exclDIRS_fullpath)
-    if root_count == 0:
+    if root_count <= 1:
         print(f"Unable to read base folders of drive {base_dir} the drive could be empty or check permissions")
         return None, 0
+    exclDIRS_fullpath = set(exclDIRS_fullpath)
 
     try:
 
@@ -770,7 +890,7 @@ def meta_sys(file_path, previous_md5, previous_symlink, previous_target, previou
 
         if sym != "y":
 
-            checks, file_dt, file_us, file_st, status = calculate_checksum(file_path, m_dt, mtime_us, inode, size, retry=2, max_retry=2, cacheable=False, log_q=log_q)
+            checks, file_dt, file_us, file_st, status = calculate_checksum(file_path, m_dt, mtime_us, inode, size, retry=2, cacheable=False, log_q=log_q)
             if checks is not None:  # if status in ("Returned", "Retried"):
                 if status == "Retried":
                     checks, mtime, st, mtime_us, c_time, inode, size = set_stat(file_info, checks, file_dt, file_st, file_us, inode, log_q)
@@ -921,3 +1041,160 @@ def check_precedence(lib_tup, bin_tup, suppress=False):
             if path in bin_tup:
                 print(f"Duplicate entry {path} from LIBRARY in BINARY set. LIBRARY has precedence over BINARY.")
                 print("for both use PATH set with exec for proper precedence")
+
+
+def get_exclDIRS_set(basedir, exclDIRS_fullpath, not_set=False):
+    """ use of function of get_base_folders to get the mount points to exclude from the mount folder
+         for use by index_system in dirwalker """
+    discard = []
+    mount_folders = (os.path.join(basedir, fld) for fld in MOUNT_FOLDERS)
+    for fld in mount_folders:
+        if os.path.exists(fld):
+            check_mount_folders(fld, discard, exclDIRS_fullpath)
+    if not_set:
+        return exclDIRS_fullpath
+    return set(exclDIRS_fullpath)
+
+
+def output_diff(diff_file, prev_scans, all_sys, link_diff, nfs_records, dir_diff, new_diff, cmsg, are_symmetrics, showDiff, scan_start):
+    """ handle output of differences to terminal and to diff file. as this is a dynamic append it tries to handle situations where the scan
+         failed but still pulls previous scans and dir_diff and new_diff. If the scan succeeded you also have link_diff and nfs_records.
+
+         this function makes it so all changes since the profile was made are inserted at the bottom of a diff file entirely. This is secure
+         as the data is stored in scans and scan_entries tables. that data is pulled then the current scan is appended to the dict of lists
+         prev_scans which first has the values converted into tuples.
+
+         the end result is a history of scans along with symmetric differences at the end
+
+         symmetric differences
+         for all_sys
+         link_diff symlinks whois target has changed
+         nfs_records files that no longer exist from the profile
+         for the profile
+         dir_diff directories that had no files when the profile was created but now do
+         new_diff new directories made since the profile was created
+
+         cmsg is the hit rate and if its over 30% print to terminal and write to file """
+
+    hdr1 = 'System index scan'
+    mode = 'a' if os.path.isfile(diff_file) else 'w'
+    write_type = "appended" if mode == 'a' else "written"
+    hdr2 = "The following files from sys index have changes by checksum\n"
+    fstr = "timestamp,filename,creationtime,inode,accesstime,checksum,filesize,symlink,user,group,mode,casmod,target,lastmodified,hardlinks,count,mtimeus"
+
+    # current_time = datetime.now().strftime("MDY_%m-%d-%y-TIME_%H_%M_%S")  # FLBRAND
+
+    # check if there are previous scan results so they can be removed from the bottom
+
+    found = False
+
+    if mode == "a":
+
+        with open(diff_file, 'r') as f:
+            lines = f.readlines()
+
+        for i, line in enumerate(lines):
+            if line.startswith("System index scan"):
+                lines = lines[:i]
+                found = True
+                break
+
+    if found:
+        with open(diff_file, 'w') as f:
+            f.writelines(lines)
+
+    # write out the scan results for the profile
+
+    with open(diff_file, mode) as f:
+        if not found and mode == 'a':
+            f.write('\n')
+        if prev_scans:
+
+            for scan_date in prev_scans.keys():
+                records = prev_scans[scan_date]
+                if records:
+                    print(hdr1, file=f)
+                    print(hdr2, file=f)
+                    print(fstr, file=f)
+                for record in records:
+                    record_str = ' '.join(map(str, record))
+                    f.write(record_str + '\n')
+
+                parts = scan_date.split()
+                time_stamp = f'MDY_{parts[0]}-TIME_{parts[1]}'
+                f.write(time_stamp + '\n\n')
+            if cmsg:
+                print(cmsg, file=f)
+
+        # symmetric differences content
+        # if the scan was successful:
+        # symlink target change
+        # show the files that no longer exist from the miss rate
+        # always listed:
+        # show directories that had 0 files at indexing but now have files
+        # show new directories since profile was created
+
+        if showDiff and are_symmetrics:
+
+            # write out the symmetric differences
+
+            # write the header in case if the prev_scans was empty
+            if not prev_scans:
+                print(hdr1, file=f)
+
+            if link_diff:
+                link_header = "symlink(s) with changed target"
+                print(link_header, file=f)
+                for i in range(0, len(link_diff), 2):
+                    tup = link_diff[i]  # file record
+                    if i+1 < len(link_diff):
+                        second_tup = link_diff[i+1]  # old target new target
+                        tup_str = " ".join(map(str, tup)) + " " + ">".join(map(str, second_tup))
+                    else:
+                        tup_str = " ".join(map(str, tup))
+                    f.write(tup_str + "\n")
+                f.write('\n')
+            if nfs_records:
+                header = "following profile files no longer exist"
+                print(header, file=f)
+                for tup in nfs_records:
+                    tup_str = " ".join(map(str, tup))
+                    f.write(tup_str + "\n")
+                f.write('\n')
+            if dir_diff:
+                diff_header = "Directory had 0 files when profile created but now has files"
+                print(diff_header, file=f)
+                for tup in dir_diff:
+                    f.write(" ".join(map(str, tup)) + "\n")
+                f.write('\n')
+            if new_diff:
+                p = len(new_diff)
+                print(f'{p} new directories since profile was created', file=f)
+                for d in new_diff:
+                    f.write(d + "\n")
+                f.write('\n')
+            # end write out the symmetric differences
+
+    # terminal feedback
+    if prev_scans:
+        print()
+        if cmsg:
+            print(cmsg)
+
+    if all_sys:
+        print(hdr2)
+        for record in all_sys:
+            print(record[0], record[1])
+        print(f"\nChanges {write_type} to difference file {diff_file}")
+        if showDiff and are_symmetrics:
+            print("Differences included")
+
+    else:
+        if showDiff and are_symmetrics:
+            if not prev_scans and (dir_diff or new_diff):
+                print("Directory differences found")
+                print()
+            print(f"{write_type} to difference file {diff_file}")
+
+    if showDiff and not are_symmetrics:
+        print("no symmetric differences found.")

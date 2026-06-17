@@ -253,14 +253,15 @@ def get_key_fingerprint(email, root_target=None):
 
 
 def clear_gpg(usr, dbtarget, cache_f, cache_s, flth, toml_file=None, json_file=None):
-    """ delete ctimecache & db .gpg & profile .gpgs 
-         if toml_file it is called from delete_gpg_keys and prompt to reset config files """
+    """ delete ctimecache & db .gpg & profile .gpgs
+        if toml_file it is called from delete_gpg_keys and prompt to reset config files """
     from .rntchangesfunctions import name_of
 
     systimeche = name_of(cache_s)
     dbopt = name_of(dbtarget, '.db')
     file_path = os.path.dirname(cache_s)
     pattern = os.path.join(file_path, f"{systimeche}*")
+
     # configs
     if (toml_file):
         while True:
@@ -274,7 +275,7 @@ def clear_gpg(usr, dbtarget, cache_f, cache_s, flth, toml_file=None, json_file=N
                 break
             else:
                 print("Invalid input, please enter 'Y' or 'N'.")
-
+    
     # gpgs
     for r in (cache_f, dbopt, dbtarget, flth, *glob.glob(pattern)):
         p = Path(r)
@@ -292,6 +293,12 @@ def delete_gpg_keys(usr, email, dbtarget, cache_f, cache_s, flth, toml_file, jso
 
     def instruct_out():
         print()
+    #     print("To trust a gpg key")
+    #     print(f"gpg --edit-key {email}")
+    #     print("trust")
+    #     print("5")
+    #     print("y")
+    #     print("quit")
 
     def exec_delete_keys(usr, email, fingerprint):
         silent: dict[str, Any] = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
@@ -353,5 +360,4 @@ def reset_gpg_keys(usr, email, dbtarget, cache_f, cache_s, flth, agnostic_check,
     elif agnostic_check is True and no_key is False:
         print("only user has key. Select n and manually import the key for root to fix it. or delete the key pair to reset state.\n")
     print("A problem was detected with key pair. ")
-    return delete_gpg_keys(usr, email, dbtarget, cache_f, cache_s, flth, toml_file, json_file)
-
+    return delete_gpg_keys(usr, email, dbtarget, cache_f, cache_s, flth)

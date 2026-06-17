@@ -1,32 +1,25 @@
 #!/usr/bin/env python3
-#   Porteus                                                                           05/04/2026
-#   recentchanges. Developer buddy      recentchanges and recentchanges search
+#   Porteus                                                                           06/16/2026
+#   recentchanges. Developer buddy      recentchanges/ recentchanges search
 #   Provide ease of pattern finding ie what files to block we can do this a number of ways
 #   1) if a file was there (many as in more than a few) and another search lists them as deleted its either a sys file or not but unwanted nontheless
 #   2) Is a system file inherent to the specifc platform
 #   3) intangibles ie trashed items that may pop up infrequently and are not known about
 #
 #   This script is called by two methods. recentchanges and recentchanges search. The former is discussed below
-#
+
 #   recentchanges
-#           Searches are saved in /tmp. make xzm
-#           1. Search results are unfiltered and copied files for the .xzm are from a filter.
-#
-#           The purpose of this script is to save files ideally less than 5 minutes old. So when compiling or you dont know where some files are
-#   or what changed on your system. So if you compiled something you call this script to build a module of it for distribution. If not using for developing
-#   call it a file change snapshot
-#   We use the find command to list all files 5 minutes or newer. Filter it and then get to copying the files in a temporary staging directory.
-#   Then take those files and make an .xzm. It will be placed in   /tmp  along with a transfer log to staging directory and file manifest of the xzm
+#           Searches are saved in /tmp and are unfiltered.
+#           old search can be grabbed from /tmp/{moduleNAME}_MDY/
 #
 #   recentchanges search
-#           Searches are saved in /home/{user}/Downloads
+#           Output to Downloads
+#           The search is unfiltered and a filesearch is filtered.
+#           old searches can be grabbed from /tmp or /tmp/{moduleNAME}_MDY/ for convenience
+#           if there is no differences it displays the old search for specified search criteria
 #
-#           This has the same names as `recentchanges` but also includes /tmp files and or a filesearch.
-#           1. old searches can be grabbed from /Downloads, /tmp or /tmp/{moduleNAME}_MDY. for convenience if there is no differences it displays the old search for specified search criteria
-#           2. The search is unfiltered and a filesearch is filtered.
-#           2. rnt search inverses the results. For a standard search it will filter the results. For a file search it removes the filter.
-#
-#  Also borrowed script features from various scripts on porteus forums
+#   rnt inverses the results. from symlink rnt or rnt search will filter the results. For a file search it removes the filter.
+#   Also borrowed script features from various scripts on porteus forums
 import logging
 import os
 import re
@@ -42,14 +35,16 @@ from .config import load_toml
 from .configfunctions import check_config
 from .configfunctions import find_install
 from .configfunctions import get_config
-from .dirwalker import scan_system
 from .dirwalkerfunctions import get_base_folders
+from .dirwalkerfunctions import get_relavent_mounts
+from .dirwalkerfunctions import MOUNT_FOLDERS
 from .filterhits import update_filter_csv
 from .gpgcrypto import decr_ctime
 from .gpgcrypto import encr_cache
 from .inotifyfunctions import init_recentchanges
 from .logs import setup_logger
 from .pstsrg import main as pst_srg
+from .pyfunctions import cache_clear_patterns
 from .pyfunctions import cprint
 from .pyfunctions import user_path
 from .qtdrivefunctions import setup_drive_cache
@@ -63,7 +58,6 @@ from .rntchangesfunctions import filter_lines_from_list
 from .rntchangesfunctions import filter_output
 from .rntchangesfunctions import find_files
 from .rntchangesfunctions import find_scan
-from .rntchangesfunctions import get_diff_file
 from .rntchangesfunctions import get_runtime_exclude_list
 from .rntchangesfunctions import hsearch
 from .rntchangesfunctions import logic
@@ -104,13 +98,13 @@ def sighandle(signum, frame):
 '''
 
 
-def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None,  dtype=None, dbopt=None, cache_s=None, post_OP=False, scan_idx=False, showDIFF=False, gnupg_home=None):
+def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None,  dtype=None, dbopt=None, cache_s=None, post_OP=False, gnupg_home=None):
 
     # has_tty = sys.stdin.isatty() and sys.stderr.isatty()
     # if has_tty:
     #     print("tty from qt")
     # else:
-    #     print("No tty")
+    #     print("no tty")
 
     signal.signal(signal.SIGINT, sighandle)
     signal.signal(signal.SIGTERM, sighandle)
@@ -154,22 +148,19 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
         return 1
     feedback = config['analytics']['feedback']
     analytics = config['analytics']['analytics']
-    analyticSECT = config['analytics']['analyticSECT']
     email = config['backend']['email']
     autooutput = config['src']['autooutput']
     xzmname = config['src']['xzmname']
     cmode = config['src']['cmode']
-    cachermPATTERNS = config['backend']['cachermPATTERNS']
+    cachermPATTERNS = config['backend']['cachermPATTERNS']  # cache clear patterns
+    cachermPATTERNS = cache_clear_patterns(usr, cachermPATTERNS)
     checksum = config['diagnostics']['checkSUM']
     cdiag = config['diagnostics']['cdiag']
-    scanIDX = config['diagnostics']['scanIDX']
-    autoIDX = config['diagnostics']['autoIDX']
     suppress_browser = config['diagnostics']['supbrw']
     supbrwLIST = config['diagnostics']['supbrwLIST']
     suppress = config['diagnostics']['suppress']
     postop = config['diagnostics']['postop']
     ps = config['shield']['proteusSHIELD']  # proteus shield
-    show_diff = config['diagnostics']['showDIFF']
     compLVL = config['logs']['compLVL']
     moduleNAME = config['paths']['moduleNAME']
     archivesrh = config['search']['archivesrh']
@@ -189,13 +180,6 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
 
     escaped_user = re.escape(usr)
 
-    # db cache patterns in config
-    cachermPATTERNS = config['backend']['cachermPATTERNS']
-    cachermPATTERNS = [
-        p.replace("{{user}}", usr)
-        for p in cachermPATTERNS
-    ]
-
     # suppress browser list in config. regex
     supbrwLIST = [
         p.replace("{{user}}", escaped_user)
@@ -212,9 +196,7 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
         else:
             print("driveTYPE for drive", basedir, " was null check json file", json_file)
 
-        show_diff = showDIFF
         postop = post_OP
-        scanIDX = scan_idx
     else:
 
         gnupg_home = os.getenv("GNUPGHOME")
@@ -231,7 +213,7 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
         outfile = name_of(dbtarget, '.db')
         dbopt = os.path.join(pst_data, outfile)
 
-        if ps or scanIDX:
+        if ps:
             proteusPATH = config['shield']['proteusPATH']
             nogo = user_path(config['shield']['nogo'], usr)
             suppress_list = user_path(config['shield']['filterout'], usr)
@@ -260,7 +242,6 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
         'driveTYPE': driveTYPE,
         'feedback': feedback,
         'analytics': analytics,
-        'analyticSECT': analyticSECT,
         'checksum': checksum,
         'ps': ps,
         'cdiag': cdiag,
@@ -299,7 +280,7 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
     syschg = False
     flsrh = False
     filtered = False
-
+    valid_data = False
     dcr = False  # means to remove after encrypting.
 
     flnm = ""
@@ -319,29 +300,39 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
     usrDIR = os.path.join(home_dir, "Downloads")
     os.makedirs(usrDIR, mode=0o755, exist_ok=True)
 
-    F = ["find", basedir]
+    F = ["find", basedir, "-xdev"]  # what is on the device
+
+    # this will make sure files and directories that are in base of / or /mnt or some other oscure place are listed.
+    # but mountpoints are not
 
     search_list = []
+
+    exclDIRS_fullpath = [os.path.join(basedir, d) for d in exclDIRS]
 
     if not python:
 
         try:
 
-            baselen = len(exclDIRS)
+            baselen = len(exclDIRS_fullpath)
+            skipped = [os.path.join(basedir, m) for m in MOUNT_FOLDERS]  # using xdev so can skip mount excludes
             prune = ["("]
-            for i, d in enumerate(exclDIRS):
-                prune += ["-path", os.path.join(basedir, d.replace('$', '\\$'))]
+            for i, d in enumerate(exclDIRS_fullpath):
+                if d in skipped:
+                    continue
+                prune += ["-path", d]
                 if i < baselen - 1:
                     prune.append("-o")
             prune += [")", "-prune",  "-o"]
 
-            # build the folders that are searched to output to user
+            mounts = get_relavent_mounts(exclDIRS_fullpath)
 
-            exclDIRS_fullpath = [os.path.join(basedir, d) for d in exclDIRS]
+            # build the folders that are searched to output to user
+            # folders on the device in mount folders are added to base_folders so files in those obscure
+            # areas show up. mount points in mount folders are added to exclDIRS_fullpath
             base_folders, _ = get_base_folders(basedir, exclDIRS_fullpath)
             for folder in base_folders:
-                if folder == "/":
-                    continue
+                # if folder == "/":
+                #     continue
                 search_list.append(folder)
 
         except Exception as e:
@@ -385,7 +376,8 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
 
         start = time.time()
 
-        logging_values = (log_file, ll_level, appdata_local, tempwork)
+        # make a named tuple to pass less args
+        logging_values = (log_file, ll_level, appdata_local, tempwork, scr, cerr, cache_f, cache_s, json_file, gnupg_home)  # append to so pass less args in pstsrg
 
         setup_logger(log_file, logging_values[1], "MAIN")
         change_perm(log_file, uid, gid)
@@ -405,6 +397,7 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
             filtered = True
 
         # search criteria
+
         if thetime != "noarguser":
             p = 60
             try:
@@ -464,37 +457,46 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
 
             recent, complete_1, end, cstart = find_scan(
                 recent, complete_1, init, cfr, search_start_dt, user_setting, logging_values,
-                end, cstart, exclDIRS, iqt=iqt, strt=proval, endp=endval, logger=logger
+                end, cstart, exclDIRS, exclDIRS_fullpath, iqt=iqt, logger=logger,
+                strt=proval, endp=endval
             )
 
         else:
-
+            secondary = []
             if tout:
                 mmin = ["-mmin", f"-{search_time}"]
-                if search_list:
-                    search_paths = 'Running command:' + ' '.join(["find"] + search_list + mmin + TAIL)
 
                 find_command_mmin = F + prune + mmin + TAIL
+                if search_list:
+                    if mounts:
+                        secondary = ["find", *mounts] + mmin + TAIL
+
+                    search_paths = 'Running command:' + ' '.join(["find"] + search_list + mmin + TAIL)
+
                 init = True
                 endval += 30
 
                 recent, complete_1, recentnul, end, cstart = find_files(
-                    find_command_mmin, search_paths, "main", recent, complete_1, recentnul, init, cfr,
-                    search_start_dt, user_setting, logging_values, end, cstart, iqt=iqt, strt=proval,
-                    endp=endval, logger=logger
+                    find_command_mmin, secondary, search_paths, "main", recent, complete_1, recentnul, init, cfr,
+                    search_start_dt, user_setting, logging_values, end, cstart, iqt=iqt, logger=logger, strt=proval,
+                    endp=endval
                 )
 
             else:
                 cmin = ["-cmin", f"-{search_time}"]
                 current_time = datetime.now()
-                if search_list:
-                    search_paths = 'Running command:' + ' '.join(["find"] + search_list + cmin + TAIL)
 
                 find_command_cmin = F + prune + cmin + TAIL
+                if search_list:
+                    if mounts:
+                        secondary = ["find", *mounts] + cmin + TAIL
+
+                    search_paths = 'Running command:' + ' '.join(["find"] + search_list + cmin + TAIL)
+
                 init = True
 
                 tout, complete_2, recentnul, end, cstart = find_files(
-                    find_command_cmin, search_paths, "ctime", tout, complete_2, recentnul, init, cfr,
+                    find_command_cmin, secondary, search_paths, "ctime", tout, complete_2, recentnul, init, cfr,
                     search_start_dt, user_setting, logging_values, end, cstart, iqt=iqt, strt=proval,
                     endp=endval, logger=logger
                 )
@@ -505,15 +507,20 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
                 check_stop(stopf)
 
                 mmin = ["-mmin", f"-{search_time + cmin_offset:.2f}"]
-                if search_list:
-                    search_paths = 'Running command:' + ' '.join(["find"] + search_list + mmin + TAIL)
+
                 find_command_mmin = F + prune + mmin + TAIL
+                if search_list:
+                    if mounts:
+                        secondary = ["find", *mounts] + mmin + TAIL
+
+                    search_paths = 'Running command:' + ' '.join(["find"] + search_list + mmin + TAIL)
+
                 proval += 10
                 endval += 30
                 init = False
 
                 recent, complete_1, recentnul, end, cstart = find_files(
-                    find_command_mmin, search_paths, "main", recent, complete_1, recentnul, init, cfr,
+                    find_command_mmin, secondary, search_paths, "main", recent, complete_1, recentnul, init, cfr,
                     search_start_dt, user_setting, logging_values, end, cstart, iqt=iqt, strt=proval,
                     endp=endval, logger=logger
                 )
@@ -651,7 +658,7 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
                 check_stop(stopf)
 
                 if not iqt and argtwo == "SRC":
-                    res = porteus_linux_check()
+                    res = porteus_linux_check(any_version=True)
                     if res:
                         validrlt = copy_files(recent, recentnul, tmpopt, argone, thetime, argtwo, usr, tempwork, archivesrh, autooutput, xzmname, cmode, fmt, script_dir)
                     elif res is not None:
@@ -748,45 +755,52 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
             if postop:
                 endval = 85  # adjust 65% - 85%
 
-            if scanIDX or iqt:
-                dcr = True  # leave open as there is a system scan after
-                if scanIDX:
-                    endval = 80  # adjust 65% - 80%
+            # if scanIDX:
+            #     endval = 80  # adjust 65% - 80%
 
-            if postop and scanIDX:
-                endval = 75
+            # if postop and scanIDX:
+            #     endval = 75
 
             check_stop(stopf)
             if iqt:
+                dcr = True  # leave open as its called from the app
                 print(f"Progress: {proval}", flush=True)
+            # elif not scanIDX:
+            #     dcr = False
+            else:
+                dcr = False
 
+            # pass some analytics into pstsrg
+            el = end - start
+            el2 = cend - cstart
+            total_time = el + el2
+            total_files = len(sortcomplete)
             # Backend
-            dbopt, csum = pst_srg(
-                dbopt, dbtarget, basedir, sortcomplete, complete, rout, scr, cerr, cache_s, cachermPATTERNS, json_file,
-                gnupg_home, user_setting, logging_values, dcr=dcr, iqt=iqt, strt=proval, endp=endval
+
+            dbopt, data = pst_srg(
+                dbopt, dbtarget, sortcomplete, complete, rout, cachermPATTERNS, user_setting, logging_values,
+                total_time, total_files, dcr=dcr, iqt=iqt, strt=proval, endp=endval
             )
             # dbopt return from pst_srg is either path, encr_error, new_profile or None
             proval = endval
             endval = 100
-            if not iqt and scanIDX:
-                dcr = False  # for command line reset to default False. This means to remove db after system scan. qt remains open for gui
+
             if not dbopt:
                 print("There is a problem in pst_srg no return value. likely database wasnt created, path to database did not exist or permission issue")
                 return 1
-            if scanIDX and not os.path.isfile(dbopt):
-                print(f"dbopt missing from pstsrg. {dbopt} unable to scan profile")
-                scanIDX = False
             # if dbopt and dbopt != "encr_error":
             #     if os.path.isfile(dbtarget):
             #         change_perm(dbtarget, uid, gid, 0o644)
 
-            if analyticSECT:
-                el = end - start
-                print(f'Search took {el:.3f} seconds')
-                if checksum:
-                    el = cend - cstart
-                    print(f'Checksum took {el:.3f} seconds')
-                print()
+            csum, unique_files, lifetime_throughput, ha_total_time, logger_total_time = data
+
+            # for benchmarking pstsrg returned the time for multiprocessing ect. This can help verify if any changes or new designs improve performance and also
+            # where the bulk of the work is. This data isnt stored so it is essentially free and adds no complexity.
+            if analytics:
+                if dbopt not in ("new_database", "encr_error", "db_error"):  # "new_profile" would be not to scan index as it was just made
+                    valid_data = True
+                    if ha_total_time:
+                        print("Hanly total time:", format(ha_total_time, ".3f"), "seconds", "logger:", format(logger_total_time, ".4f"), "seconds")
 
             # Diff output to user
             processha.processha(rout, absent, diff_file, cerr, flsrh, argf, srttime, escaped_user, supbrwLIST, suppress_browser, suppress)
@@ -853,39 +867,65 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
         try:
 
             logic(syschg, nodiff, diffrlt, validrlt, thetime, argone, argf, result_output, filename, flsrh, method)  # feedback
-            # display(dspEDITOR, result_output, syschg, dspPATH)  # open text editor? handled in wrapper
+            # display(dspEDITOR, result_output, dspPATH, syschg)  # open text editor? handled in wrapper
 
         except Exception as e:
             print(f"Error in logic or display {type(e).__name__} : {e}")
 
-        if dbopt not in ("new_profile", "encr_error", "db_error") and scanIDX:  # Scan system index. If it is from the command line and a new profile was just made dont scan it. Encryption failure dont scan as there is a problem.
+        if analytics:
 
-            cprint.green('Running postop system index scan.')
+            print(f'Search took {el:.3f} seconds')
+            if checksum:
+                print(f'Checksum took {el2:.3f} seconds')
+            print()
 
-            # append to old or use new default
-            diff_file = diff_file if diffrlt else get_diff_file(usrDIR, moduleNAME)
+            print("Files scanned:", total_files)
+            throughput = total_files / total_time
+            if total_files != 0:
 
-            check_stop(stopf)
-            rlt = scan_system(appdata_local, dbopt, dbtarget, basedir, usr, diff_file, cache_s, email, analyticSECT, show_diff, compLVL, dcr=dcr, iqt=iqt, strt=proval, endp=endval)
-            if not iqt and not autoIDX:  # if commandline, turn off so doesnt scan every time
-                # update_toml_values({'diagnostics': {'scanIDX': False}}, toml_file)
-                config['diagnostics']['scanIDX'] = False
-                dump_toml(None, config, toml_file)
-                #
-                #
-                #
-            if rlt != 0:
-                if rlt == 1:
-                    print("Post op index scan failed scan_system dirwalker.py")
-                    return 1
-                if rlt == 7:
-                    if not iqt:
-                        print("No profile created. set proteusSHIELD to create profile")
-                    else:
-                        print("No profile created. run build IDX on pg2")
-                else:
-                    print(f"Unexpected error scan_system : error code {rlt}")
-                    return rlt
+                output = "Perceived throughput: {:.3f} files per second".format(throughput)
+                if valid_data:
+                    output += f" Lifetime throughput: {lifetime_throughput:.3f}" if lifetime_throughput else ""
+                print(output)
+                if unique_files:
+                    print()
+                    print("Total unique files in logs:", unique_files)
+        print()
+
+        # removed below to handle scan idx after this script in qt as scanning a profile index from commandline is unecessary hence
+        # why its removed from the script. Makes it less complex and its a feature that wouldnt be used because there is a gui
+        #
+
+        # Scan system index. If it is from the command line and a new profile was just made dont scan it.
+        # Encryption failure dont scan as there is a problem.
+        # if dbopt not in ("new_profile", "encr_error", "db_error") and scanIDX:  # Scan system index. If it is from the command line and a new profile was just made dont scan it. Encryption failure dont scan as there is a problem.
+
+        #     cprint.green('Running postop system index scan.')
+
+        #     # append to old or use new default
+        #     diff_file = diff_file if diffrlt else get_diff_file(usrDIR, moduleNAME)
+
+        #     check_stop(stopf)
+        #     rlt = scan_system(appdata_local, dbopt, dbtarget, basedir, usr, diff_file, cache_s, email, analytics, show_diff, compLVL, dcr=dcr, iqt=iqt, strt=proval, endp=endval)
+        #     if not iqt and not autoIDX:  # if commandline, turn off so doesnt scan every time
+        #         # update_toml_values({'diagnostics': {'scanIDX': False}}, toml_file)
+        #         config['diagnostics']['scanIDX'] = False
+        #         dump_toml(None, config, toml_file)
+        #         #
+        #         #
+        #         #
+        #     if rlt != 0:
+        #         if rlt == 1:
+        #             print("Post op index scan failed scan_system dirwalker.py")
+        #             return 1
+        #         if rlt == 7:
+        #             if not iqt:
+        #                 print("No profile created. set proteusSHIELD to create profile")
+        #             else:
+        #                 print("No profile created. run build IDX on pg2")
+        #         else:
+        #             print(f"Unexpected error scan_system : error code {rlt}")
+        #             return rlt
 
         change_perm(diff_file, uid, gid)
 
@@ -913,8 +953,6 @@ def main_entry(argv):
         args.db_output,
         args.cache_file,
         args.post_OP,
-        args.scan_idx,
-        args.showDIFF,
         args.gnupghome
     ]
 

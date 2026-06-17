@@ -12,6 +12,9 @@ from collections import Counter
 from .config import load_toml
 from .configfunctions import get_config
 from .dirwalkerfunctions import files_search
+from .dirwalkerfunctions import get_base_folders
+from .dirwalkerfunctions import get_relavent_mounts
+from .dirwalkerfunctions import MOUNT_FOLDERS
 from .findfileparser import build_parser
 from .logs import setup_logger
 from .pyfunctions import cprint
@@ -21,7 +24,7 @@ from .pyfunctions import user_path
 from .rntchangesfunctions import filter_lines_from_list
 from .rntchangesfunctions import get_runtime_exclude_list
 from .rntchangesfunctions import removefile
-# 05/05/2026
+# 06/16/2026
 
 
 def archive_failure_blk(result, file_list):
@@ -318,6 +321,9 @@ def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dsp
     ll_level = config['logs']['logLEVEL']
     root_log_file = config['logs']['rootLOG']
     log_file = config['logs']['userLOG'] if usr != "root" else root_log_file
+    # dspEDITOR = config['display']['dspEDITOR']
+    # if dspEDITOR:
+    #     dspEDITOR = multi_value(dspEDITOR)
     tarcmode = config['compress']['tarcmode']
     tarclevel = config['compress']['tarclevel']
     zipcmode = config['compress']['zipcmode']
@@ -338,20 +344,34 @@ def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dsp
     res = 1
 
     try:
+        exclDIRS_fullpath = [os.path.join(basedir, d) for d in exclDIRS]
 
         if action == "find":
             arge = []
 
-            F = ["find", basedir]
+            F = ["find", basedir, "-xdev"]
 
+            baselen = len(exclDIRS_fullpath)
+            skipped = [os.path.join(basedir, m) for m in MOUNT_FOLDERS]  # using xdev so can skip mount excludes
             PRUNE = ["("]
-            for i, d in enumerate(exclDIRS):
-                PRUNE += ["-path", os.path.join(basedir, d.replace('$', '\\$'))]
-                if i < len(exclDIRS) - 1:
+            for i, d in enumerate(exclDIRS_fullpath):
+                if d in skipped:
+                    continue
+                PRUNE += ["-path", d]
+                if i < baselen - 1:
                     PRUNE.append("-o")
             PRUNE += [")", "-prune", "-o"]
 
             TAIL = ["-not", "-type", "d"]
+
+            search_list = []
+            base_folders, _ = get_base_folders(basedir, exclDIRS_fullpath)
+            for folder in base_folders:
+                # if folder == "/":
+                #     continue
+                search_list.append(folder)
+
+            mounts = get_relavent_mounts(exclDIRS_fullpath)
 
             find_command = F + PRUNE
 
@@ -373,9 +393,14 @@ def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dsp
             find_command += TAIL
             find_command += arge
 
+            secondary = []
+            if mounts:
+                secondary = ["find", *mounts] + TAIL + arge
+
             result_inclusion = ".txt" in filename or ".txt" in extension
 
             is_progress = True
+            total_count = 1
             base_folder_paths = []
             try:
                 for item in os.listdir(basedir):
@@ -388,12 +413,15 @@ def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dsp
             y = len(base_folder_paths)
             is_progress = y > 0
 
-            print('Running command:', ' '.join(find_command), flush=True)
+            search_paths = 'Running command:' + ' '.join(["find"] + search_list + TAIL + arge)
+            print(search_paths)
+            # print('Running command:', ' '.join(find_command), flush=True) # debug
             print()
 
-            stderr_thread = None
-            stderr_output = []
-            proc = subprocess.Popen(find_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            comm = [find_command]
+            if secondary:
+                comm.append(secondary)
+                total_count = 2
 
             def process_stderr(stderr_pipe, sink):
                 try:
@@ -404,67 +432,86 @@ def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dsp
                 finally:
                     stderr_pipe.close()
 
-            if proc.stderr is not None:
-                stderr_thread = threading.Thread(target=process_stderr, args=(proc.stderr, stderr_output), daemon=True)
-                stderr_thread.start()
+            open(recent_files, "w").close()
 
-            buffer = b''
+            x = 0
+            last_progress = 0
+            stderr_thread = None
+            stderr_output = []
+            for cmd in comm:
 
-            emitted = set()
-            with open(recent_files, "w", encoding="utf-8") as f1:
-                while True:
-                    if proc.stdout is None:
-                        break
-                    chunk = proc.stdout.read(8192)
-                    if not chunk:
-                        break
-                    buffer += chunk
-                    while b'\0' in buffer:
-                        part, buffer = buffer.split(b'\0', 1)
-                        if part.strip():
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                if proc.stderr is not None:
+                    stderr_thread = threading.Thread(target=process_stderr, args=(proc.stderr, stderr_output), daemon=True)
+                    stderr_thread.start()
 
-                            otline = part.decode("utf-8", errors="replace")
-                            if otline:
-                                for i, prefix in enumerate(base_folder_paths, start=1):
-                                    if otline.startswith(prefix):
-                                        if is_progress and i not in emitted:
-                                            print(f"Progress: {round((i / y) * 100, 2)}", flush=True)
-                                            emitted.add(i)
-                                        break
+                buffer = b''
 
-                                if not (result_inclusion and otline == recent_files):
+                emitted = set()
+                with open(recent_files, "a", encoding="utf-8") as f1:
+                    while True:
+                        if proc.stdout is None:
+                            break
+                        chunk = proc.stdout.read(8192)
+                        if not chunk:
+                            break
+                        buffer += chunk
+                        while b'\0' in buffer:
+                            part, buffer = buffer.split(b'\0', 1)
+                            if part.strip():
 
-                                    if downloads is not None:
+                                otline = part.decode("utf-8", errors="replace")
+                                if otline:
+
+                                    if is_progress and x == 0:
+                                        for i, prefix in enumerate(base_folder_paths, start=1):
+                                            if otline.startswith(prefix):
+                                                if i not in emitted:
+                                                    last_progress = round(((i / y) * 100) / total_count, 2)
+                                                    print(f"Progress: {last_progress}", flush=True)
+                                                    emitted.add(i)
+                                                break
+
+                                    if not (result_inclusion and otline == recent_files):
+
+                                        # if downloads is not None:
                                         cline = escf_py(otline.rstrip('\n'))
                                         target_files.append(cline)
-                                    f1.write(otline + '\n')
-                                    print(otline, flush=True)
 
-                if buffer.strip():
-                    try:
-                        otline = buffer.decode('utf-8', errors='replace')
-                        if os.path.isfile(otline):
-                            if downloads is not None:
+                                        f1.write(otline + '\n')
+                                        print(otline, flush=True)
+
+                    if buffer.strip():
+                        try:
+                            otline = buffer.decode('utf-8', errors='replace')
+                            if os.path.isfile(otline):
+
                                 cline = escf_py(otline.rstrip('\n'))
                                 target_files.append(cline)
-                            print(otline)
-                    except Exception as e:
-                        print(f"fault in trailing buffer ignored. {type(e).__name__} {e}")
-                        pass
+                                print(otline)
+                        except Exception as e:
+                            print(f"fault in trailing buffer ignored. {type(e).__name__} {e}")
+                            pass
 
-            if proc.stdout is not None:
-                proc.stdout.close()
-            proc.wait()
-            if stderr_thread is not None:
-                stderr_thread.join()
+                if proc.stdout is not None:
+                    proc.stdout.close()
+                proc.wait()
+                if stderr_thread is not None:
+                    stderr_thread.join()
 
-            if proc.returncode not in (0, 1):
-                errors = "\n".join(stderr_output)
-                if errors:
-                    print(errors)
-                print()
-                print("Find failed unable to continue. quitting")
-                return proc.returncode
+                if proc.returncode not in (0, 1):
+                    errors = "\n".join(stderr_output)
+                    if errors:
+                        print(errors)
+                    print()
+                    print("Find failed unable to continue. quitting")
+                    return proc.returncode
+                if is_progress and x > 0:
+                    if last_progress < 90:
+                        print("Progress: 90%", flush=True)
+                stderr_thread = None
+                proc = None
+                x += 1
 
         elif action == "python":
 
@@ -494,7 +541,7 @@ def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dsp
             feedback = True
             iqt = True
 
-            target_files, _ = files_search(basedir, search_start_dt, feedback, exclDIRS, logger, filename, extension, mode, iqt, strt=0, endp=100)
+            target_files, _ = files_search(basedir, search_start_dt, feedback, exclDIRS, exclDIRS_fullpath, filename, extension, mode, iqt, logger, strt=0, endp=100)
 
             if target_files:
                 with open(recent_files, "w", encoding="utf-8") as f1:
@@ -537,9 +584,8 @@ def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dsp
             # elif downloads and cutoffTIME is not None:
             #     res = 1
             #     print(f"no archive path list: {target_files} couldnt compress")
-
             print(f"RESULT: {recent_files}")
-            # display(dspEDITOR, recent_files, True, dspPATH)  # cant open as root for compatibility and security *
+            # display(dspEDITOR, recent_files, dspPATH, True)  # cant open as root for compatibility and security *
             if res != 0:
                 pass
                 # return 1

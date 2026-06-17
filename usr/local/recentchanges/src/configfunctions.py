@@ -27,7 +27,7 @@ def not_absolute(user_path: str, quiet=False) -> bool:
     return True
 
 
-def check_config(paths, nogo, filterout):
+def check_config(paths: list, nogo: list, filterout: list):
     for entry in paths + nogo + filterout:
         if not not_absolute(entry):
             return False
