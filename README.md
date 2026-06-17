@@ -1,9 +1,7 @@
-While could just distribute a binary it can be used with just python
-or build it into a binary with pyinstaller from the same release. 
+Release 6.1.2!
 
-now focusing on just linux and researching how I can reshape and retool recentchanges to be more responsive and adapt to
-modern approaches at gui distribution. 
-
+Added LCD alarm clock
+Changed the way the find command is run and other ease of use improvements
 
 ![Alt text](https://i.imgur.com/gqbO4HB.png) <br>
 
