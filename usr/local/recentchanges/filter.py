@@ -1,10 +1,10 @@
-# Filter modified date: 02/21/2026       SN:049BN6KZ01
+# Filter modified date: 06/16/2026       SN:049BN6KZ01
 #
 #   Notes: Nemesis 25.04
 #
 #  [^/]+ match up to only one directory level example somepath/[^/]+/thisdir
 # /.*?/ non greedily match up to and including first directory found. ie somepath/.*?/thisdir
-#
+# /home/{{user}} is replaced with /root if user is root
 # Example from below to combine but not done here for readability note regex
 # r'/var/cache',
 # r'/var/run',
@@ -27,8 +27,7 @@ _filter = [
         r'/home/{{user}}/\.config',
         r'/home/{{user}}/\.Xauthority',
         r'/home/{{user}}/\.local/state/wireplumber',
-        r'/root/\.Xauthority',
-        r'/root/\.local/state/wireplumber',
+
 
         r'\.bash_history',
         r'\.cache',
@@ -40,10 +39,12 @@ _filter = [
         r'\.local/state',
         r'\.xsession',
 
-        r'/root/\.auth',
-        r'/root/\.config',
-        r'/root/\.lesshst',
-        r'/root/\.xauth',
+        # r'/root/\.Xauthority',
+        # r'/root/\.local/state/wireplumber',
+        # r'/root/\.auth',
+        # r'/root/\.config',
+        # r'/root/\.lesshst',
+        # r'/root/\.xauth',
 
         # Firefox-specific exclusions
         r'release/cookies\.sqlite-wal',
@@ -56,13 +57,6 @@ _filter = [
         # Chromium exclusions (uncomment if needed)
         # r'ungoogled'
 
-        #    Now we get into the important directories. Do we exclude at the risk of deleting our program? Tread carefully
-
-        #    Very carefully select only starting /etc/    <------  We can remove this filter if needed
-
-
-        #    we dont want  /etc/
-        # r'^/etc'  # Uncomment to exclude /etc
     ]
 
 
@@ -78,4 +72,3 @@ _filterhitRESET = [
     r'\.local/share'
 
 ]
-
