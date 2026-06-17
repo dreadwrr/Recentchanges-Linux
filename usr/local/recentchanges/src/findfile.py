@@ -6,14 +6,14 @@ import sys
 import threading
 import traceback
 import zipfile
-from pathlib import Path
 from datetime import datetime, timedelta
 from collections import Counter
+from pathlib import Path
 from .config import load_toml
 from .configfunctions import get_config
 from .dirwalkerfunctions import files_search
 from .dirwalkerfunctions import get_base_folders
-from .dirwalkerfunctions import get_relavent_mounts
+from .dirwalkerfunctions import get_relavant_mounts
 from .dirwalkerfunctions import MOUNT_FOLDERS
 from .findfileparser import build_parser
 from .logs import setup_logger
@@ -337,6 +337,7 @@ def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dsp
 
     recent_files = os.path.join(temp_dir, tgt_file)  # result output
 
+    search_list = []
     target_files = []
 
     tmn = str(cutoffTIME)
@@ -352,7 +353,7 @@ def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dsp
             F = ["find", basedir, "-xdev"]
 
             baselen = len(exclDIRS_fullpath)
-            skipped = [os.path.join(basedir, m) for m in MOUNT_FOLDERS]  # using xdev so can skip mount excludes
+            skipped = [os.path.join(basedir, m) for m in MOUNT_FOLDERS]  # using xdev skip the mount excludes
             PRUNE = ["("]
             for i, d in enumerate(exclDIRS_fullpath):
                 if d in skipped:
@@ -364,14 +365,15 @@ def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dsp
 
             TAIL = ["-not", "-type", "d"]
 
-            search_list = []
+            # build the folders that are searched to output to user
+
             base_folders, _ = get_base_folders(basedir, exclDIRS_fullpath)
             for folder in base_folders:
                 # if folder == "/":
                 #     continue
                 search_list.append(folder)
 
-            mounts = get_relavent_mounts(exclDIRS_fullpath)
+            mounts = get_relavant_mounts(exclDIRS_fullpath)
 
             find_command = F + PRUNE
 

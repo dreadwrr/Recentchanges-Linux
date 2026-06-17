@@ -4,18 +4,18 @@ import os
 import sqlite3
 import sys
 import traceback
-from .qtfunctions import find_gnupg_home
+from .configfunctions import find_gnupg_home
 from .dirwalker import index_system
-from .gpgcrypto import encr
 from .gpgcrypto import decr
+from .gpgcrypto import encr
 from .hanlyparallel import hanly_parallel
 from .pyfunctions import cprint
 from .pyfunctions import unescf_py
 from .pysql import clear_conn
-from .pysql import create_db
 from .pysql import collision_check
+from .pysql import create_db
 from .pysql import get_unique_files
-from .pysql import get_total_throughput
+from .pysql import get_lifetime_throughput
 from .pysql import insert
 from .pysql import insert_files_time
 from .pysql import insert_if_not_exists
@@ -62,7 +62,7 @@ def main(dbopt, dbtarget, xdata, complete, rout, cachermPATTERNS, user_setting, 
 
     ha_total_time = logger_total_time = 0
     unique_files = 0
-    total_throughput = 0
+    lifetime_throughput = 0
 
     # original with a temp dir cant leave db to reencrypt if everything succeeds but only reencryption fails. so leave in app directory with proper perms
     # tempdir = tempfile.gettempdir()
@@ -131,27 +131,10 @@ def main(dbopt, dbtarget, xdata, complete, rout, cachermPATTERNS, user_setting, 
             elif ps and not iqt:
                 print('Sys profile requires the setting checksum to index')
 
-        # Analytics - Store the total files and total time for the search. Also get unique files and lifetime throughput.
-        if total_files:
-            if total_time > 0:
-                insert_files_time(c, total_files, total_time)  # insert the run file count and time
-                conn.commit()
-            unique_files = get_unique_files(c)
-
-            if not unique_files:
-                goahead = False
-                new_database = True
-
-            # it is not the first run
-            # Lifetime throughput
-            # get the lifetime total files processed and total time since app or database was made
-            else:
-
-                total_throughput = get_total_throughput(c)
-
-                if not total_throughput:
-                    print("pstsrg couldnt get analytics. skipped")
-                # end Lifetime throughput
+        count = blank_count(c)
+        if count < 1:
+            goahead = False
+            new_database = True
 
         # Log
         if xdata:
@@ -176,12 +159,26 @@ def main(dbopt, dbtarget, xdata, complete, rout, cachermPATTERNS, user_setting, 
                 insert(parsed, conn, c, "logs", "mtime_us")
 
                 count = blank_count(c)
+
                 if count % 10 == 0:
-                    print(f'{count + 1} searches in gpg database')
+                    print(f'{count} searches in gpg database')
 
                 if checksum and cdiag:
                     if collision_check(xdata, cerr, sys_tables, c, ps):
                         csum = True
+
+                # Analytics - Store the total files and total time for the search. Also get unique files and lifetime throughput.
+                if total_files:
+                    if total_time > 0:
+                        insert_files_time(c, total_files, total_time)  # insert and increment
+
+                        lifetime_throughput = get_lifetime_throughput(c)  # get the total
+
+                    unique_files = get_unique_files(c)
+
+                    if not lifetime_throughput:
+                        print("pstsrg couldnt get analytics. skipped")
+                    # end Lifetime throughput
 
             except Exception as e:
                 print(f'log db failed insert err: {e} {type(e).__name__}  \n{traceback.format_exc()}')
@@ -241,7 +238,7 @@ def main(dbopt, dbtarget, xdata, complete, rout, cachermPATTERNS, user_setting, 
     finally:
         clear_conn(conn, c)
 
-    data = (csum, unique_files, total_throughput, ha_total_time, logger_total_time)
+    data = (csum, unique_files, lifetime_throughput, ha_total_time, logger_total_time)
 
     if not dcr and res != 3:
         removefile(dbopt)

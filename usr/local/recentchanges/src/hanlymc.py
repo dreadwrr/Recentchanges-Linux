@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from .logs import emit_log
 from . import logs
-from .pyfunctions import is_valid_datetime
 from .pyfunctions import is_integer
+from .pyfunctions import is_valid_datetime
 from .pyfunctions import matches_any_pattern
 from .pyfunctions import new_meta
 from .pyfunctions import parse_datetime

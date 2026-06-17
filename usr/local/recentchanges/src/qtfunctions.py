@@ -15,8 +15,7 @@ from PySide6.QtCore import QDateTime
 from PySide6.QtGui import QIcon, QFontDatabase, QImage
 from PySide6.QtSql import QSqlDatabase, QSqlQuery
 from PySide6.QtWidgets import QVBoxLayout, QDialog, QPushButton, QLabel, QInputDialog, QMessageBox, QHBoxLayout
-from .config import dump_j_settings
-from .config import get_json_settings
+from .config import update_j_settings
 from .dbmexec import DBConnectionError
 from .dbmexec import DBMexec
 from .gpgcrypto import decr
@@ -26,44 +25,7 @@ from .gpgcrypto import encrypt_to_text
 from .pyfunctions import is_integer
 from .rntchangesfunctions import to_bool
 from .rntchangesfunctions import porteus_linux_check
-# 06/16/2026
-
-
-def find_gnupg_home(json_file, gpg_home=None, j_settings=None, iqt=False):
-    if isinstance(gpg_home, Path):
-        gpg_home = str(gpg_home)
-    """ try to find gnupg home for exclusion purposes in build index """
-    if not j_settings and j_settings is not None:
-        print("find_gnupg_home warning json file was empty")
-    gnupg_home = None
-    try:
-        if not j_settings:
-            j_settings = get_json_settings(None, None, json_file)
-
-        gnupg_home = j_settings.get("gnupghome")
-        if gnupg_home:
-
-            if not gpg_home:
-                gpg_home = os.environ.get("GNUPGHOME")
-
-            if gpg_home and gpg_home != gnupg_home:
-                j_settings["gnupghome"] = gpg_home
-                gnupg_home = gpg_home
-                if not iqt:
-                    dump_j_settings(j_settings, json_file)
-
-        else:
-            result = subprocess.run(["gpgconf", "--list-dirs", "homedir"], capture_output=True, text=True)
-            if result.returncode == 0:
-                gpg_home = result.stdout.strip()
-                if gpg_home:
-                    gnupg_home = gpg_home
-                    j_settings["gnupghome"] = gpg_home
-                    dump_j_settings(j_settings, json_file)
-        return gnupg_home
-    except OSError as e:
-        print(f"Couldnt get gnupg_home for exclusion file: {json_file} {type(e).__name__} err: {e}")
-        return None
+# 06/17/2026
 
 
 def polkit_check(action_id="org.freedesktop.set_recent_helper"):
@@ -731,6 +693,21 @@ def kill_process(pid):
     except ProcessLookupError:
         # print(f"PID {pid} does not exist")
         pass
+
+
+def get_timezone(j_settings: dict, json_file: Path) -> str:
+    region = zone = None
+    timezone = j_settings.get("time_zone")
+    if timezone:
+        parts = timezone.split("/")
+        if len(parts) == 2:
+            region, zone = parts
+            timezone = f'{region}/{zone}'
+        else:
+            print("time_zone was malformed in json clearing")
+            timezone = None
+            update_j_settings({"time_zone": None}, j_settings, None, json_file)
+    return timezone, region, zone
 
 
 def set_clock(region, zone, distro, sync_clock, dual_boot):

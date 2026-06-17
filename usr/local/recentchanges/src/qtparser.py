@@ -7,13 +7,13 @@ from src.findfile import main_entry as findfile_main
 from src.gpgkeymanagement import import_key
 from src.recentchangessearch import main as recentchanges_main
 from src.recentchangessearchparser import build_subparser
-from src.rntchangesfunctions import display
 from src.rntchanges import main as rntchanges_main
-from src.qtfunctions import load_konsole
+from src.rntchangesfunctions import display
 from src.qtfunctions import load_file_manager
+from src.qtfunctions import load_konsole
 from src.qtfunctions import kill_process
 from src.qtfunctions import set_clock
-# 03/14/2026
+# 06/16/2026
 
 
 def dispatch_internal(argv):

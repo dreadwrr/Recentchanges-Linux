@@ -36,7 +36,7 @@ from .configfunctions import check_config
 from .configfunctions import find_install
 from .configfunctions import get_config
 from .dirwalkerfunctions import get_base_folders
-from .dirwalkerfunctions import get_relavent_mounts
+from .dirwalkerfunctions import get_relavant_mounts
 from .dirwalkerfunctions import MOUNT_FOLDERS
 from .filterhits import update_filter_csv
 from .gpgcrypto import decr_ctime
@@ -74,7 +74,7 @@ is_mcore = False
 
 def sighandle(signum, frame):
     global stopf
-    global is_mcore
+    # global is_mcore
     if signum in (signal.SIGINT, signal.SIGTERM):
         if signum == 2:
             print("Exit on ctrl-c", flush=True)
@@ -122,7 +122,7 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
     #         print("please call from recentchanges from /usr/local/bin")
     #         sys.exit(1)
 
-    global is_mcore
+    # global is_mcore
 
     appdata_local = find_install()  # appdata software install aka workdir
     toml_file, json_file, home_dir, xdg_config, xdg_runtime, usr, uid, gid = get_config(appdata_local, usr, platform="Linux")
@@ -142,7 +142,7 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
     cache_s_str = str(cache_s_frm)
 
     j_settings = {}  # convenience for commandline if basedir other than C:\\ always have available.
-    # if basedir is "/" doesnt not touch json for speed as its set that way most of the time **
+    # if basedir is "/" dont not touch json for speed as its set that way most of the time **
     config = load_toml(toml_file)
     if not config:
         return 1
@@ -314,7 +314,7 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
         try:
 
             baselen = len(exclDIRS_fullpath)
-            skipped = [os.path.join(basedir, m) for m in MOUNT_FOLDERS]  # using xdev so can skip mount excludes
+            skipped = [os.path.join(basedir, m) for m in MOUNT_FOLDERS]  # using xdev skip the mount excludes
             prune = ["("]
             for i, d in enumerate(exclDIRS_fullpath):
                 if d in skipped:
@@ -324,11 +324,10 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
                     prune.append("-o")
             prune += [")", "-prune",  "-o"]
 
-            mounts = get_relavent_mounts(exclDIRS_fullpath)
+            mounts = get_relavant_mounts(exclDIRS_fullpath)
 
             # build the folders that are searched to output to user
-            # folders on the device in mount folders are added to base_folders so files in those obscure
-            # areas show up. mount points in mount folders are added to exclDIRS_fullpath
+
             base_folders, _ = get_base_folders(basedir, exclDIRS_fullpath)
             for folder in base_folders:
                 # if folder == "/":

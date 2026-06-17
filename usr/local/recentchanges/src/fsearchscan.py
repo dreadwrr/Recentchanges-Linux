@@ -7,7 +7,6 @@ from .fileops import calculate_checksum
 from .fileops import find_link_target
 from .fileops import set_stat
 from .fsearchfunctions import get_cached
-# from .fsearchfunctions import normalize_timestamp
 from .pyfunctions import epoch_to_date
 from .pyfunctions import escf_py
 

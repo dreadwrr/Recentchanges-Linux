@@ -5,13 +5,13 @@ import traceback
 from PySide6.QtCore import Signal
 from .gpgcrypto import encr
 from .gpgcrypto import start_gpg_agent
+from .pyfunctions import cnc
 from .pysql import clear_conn
 from .pysql import clear_sys_profile
 from .query import blank_count
 from .query import main as query_main
 from .qtclasses import Worker
 from .qtfunctions import clear_cache
-from .pyfunctions import cnc
 from .rntchangesfunctions import removefile
 from .rntchangesfunctions import reset_csvliteral
 # import io

@@ -31,7 +31,7 @@ class FastColorText(QPlainTextEdit):
         self.current_color = None
 
     def append_colored_output(self, line: str):
-        # ormalized = line.replace("\r\n", "\n").replace("\r", "\n")
+        # normalized = line.replace("\r\n", "\n").replace("\r", "\n")
         parts = ANSI_REGEX.split(line)
         i = 0
 

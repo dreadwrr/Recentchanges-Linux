@@ -8,8 +8,8 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.configfunctions import find_install
 from src.configfunctions import get_config
-from src.gpgcrypto import start_user_agent
 from src.gpgcrypto import GPGStatus
+from src.gpgcrypto import start_user_agent
 from src.gpgkeymanagement import iskey
 from src.logs import check_log_perms
 

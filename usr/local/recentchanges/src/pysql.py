@@ -8,7 +8,7 @@ COLUMNS = [
     'changetime TEXT',
     'inode INTEGER',
     'accesstime TEXT',
-    "checksum TEXT",  # NOT NULL DEFAULT ''
+    "checksum TEXT",
     'filesize INTEGER',
     'symlink TEXT',
     'owner TEXT',
@@ -33,7 +33,6 @@ def create_logs_table(c, unique_columns, add_column=None):
         elif isinstance(add_column, str):
             e_cols = [col.strip() for col in add_column.split(',') if col.strip()]
             columns += e_cols
-            # columns.append(add_column)
         else:
             raise TypeError("add_column must be str, tuple, or list")
 
@@ -112,9 +111,8 @@ def create_sys_tables(c, sys_tables):
         'mtime_us INTEGER'
     ]
 
-    # columns.append('count INTEGER')
     create_sys_variant(c, sys_a, columns, ('filename',))
-    create_sys_variant(c, sys_b, columns, ('timestamp', 'filename', 'changetime', 'checksum'))  # , 'checksum'
+    create_sys_variant(c, sys_b, columns, ('timestamp', 'filename', 'changetime', 'checksum'))
     create_scan_tables(c)
 
 
@@ -802,7 +800,6 @@ def increment_f(conn, c, sys_tables, records, logger=None):
     """
     try:
 
-        # with conn:
         c.executemany(sql_insert, records)
 
         return True
@@ -838,20 +835,20 @@ def insert_files_time(c, total_files, total_time):
     """, (total_files, total_time_int))
 
 
-def get_total_throughput(c):
-    total_throughput = 0
-    lifetime_files, lifetime_time = c.execute("""
+def get_lifetime_throughput(c):
+    throughput = 0
+    total_files, total_time = c.execute("""
         SELECT total_files, total_time
         FROM analytics
     """).fetchone()
 
-    if lifetime_files and lifetime_time:
+    if total_files and total_time:
 
-        lifetime_total_time = lifetime_time / 1000
+        total_time_float = total_time / 1_000
 
-        total_throughput = lifetime_files / lifetime_total_time
+        throughput = total_files / total_time_float
 
-    return total_throughput
+    return throughput
 
 
 def clear_conn(conn, cur):

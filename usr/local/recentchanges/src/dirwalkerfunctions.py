@@ -16,8 +16,8 @@ from .pyfunctions import epoch_to_str
 # 06/15/2026
 
 # Globals
-MOUNT_FOLDERS = ("mnt",  "media")  # list any other base mount folders here. these could have files or files in folders that belong to basedir and are not mount points
-# for mounts in /var /home ect find those because -xdev wont. and are relavent folders
+MOUNT_FOLDERS = ("mnt",  "media")  # list any other base mount folders here. these could have files or files in folders that are not mount points
+# for mounts in /var /home ect find those because -xdev wont. and are relavent folders for a search
 MOUNTS_INCLUDE = ("/var", "/home", "/usr")
 
 fmt = "%Y-%m-%d %H:%M:%S"
@@ -117,6 +117,7 @@ def none_if_empty(value):
     return value or None
 
 
+# from original design
 # def get_dir_mtime(dirpath, locale):
 #     try:
 #         modified_ep = None
@@ -131,33 +132,37 @@ def none_if_empty(value):
 #         return None, None, None
 
 
-# see MOUNTS_INCLUDE for relavent mount folders to include in search but exclude their mount points
+# see MOUNTS_INCLUDE for relavent mount folders like /var /usr /home
 
-# first attempt but mounts in aufs doesnt parse correctly
-# import subprocess
-# result = subprocess.run(
-#     ["findmnt", "-rn", "-o", "TARGET"],
-#     capture_output=True,
-#     text=True,
-#     check=True,
-# )
-# sort so any base comes firsts
-# targets = sorted(result.stdout.splitlines(), key=len)
 
-# alternative to final method used with subprocess
-# result = subprocess.run(
-#     ['awk', '{print $4}', '/proc/self/mountinfo'],
-#     capture_output=True, text=True
-# )
-# targets = [
-#     line for line in result.stdout.splitlines()
-#     if line.startswith(prefixes)
-# ]
-# sort so any base comes firsts
-# targets.sort(key=len)
+def get_relavant_mounts(exclDIRS_fullpath):
+    """ used by find -xdev to cover common mounts like /home or /var/lib/containers that it would miss """
 
-# final method
-def get_relavent_mounts(exclDIRS_fullpath):
+    # first attempt but mounts in aufs doesnt parse correctly
+    # import subprocess
+    # result = subprocess.run(
+    #     ["findmnt", "-rn", "-o", "TARGET"],
+    #     capture_output=True,
+    #     text=True,
+    #     check=True,
+    # )
+    # sort so any base comes firsts
+    # targets = sorted(result.stdout.splitlines(), key=len)
+
+    # alternative to final method used with subprocess
+    # result = subprocess.run(
+    #     ['awk', '{print $4}', '/proc/self/mountinfo'],
+    #     capture_output=True, text=True
+    # )
+    # targets = [
+    #     line for line in result.stdout.splitlines()
+    #     if line.startswith(prefixes)
+    # ]
+    # sort so any base comes firsts
+    # targets.sort(key=len)
+
+    # final method
+
     # find any mounts we are interested in
     targets = []
     with open('/proc/self/mountinfo') as f:
@@ -191,13 +196,12 @@ def get_relavent_mounts(exclDIRS_fullpath):
     return mounts
 
 
-def check_mount_folders(folder_path, base_folders, exclDIRS_fullpath):
-    """ instead of excluding mount areas such as mnt and media by default only exclude if in config exclDIRS
-        this way if there are any files or files in folders that belong to device in those mount areas they are included
-        in the scan profiles
+def check_mount_folders(folder_path, exclDIRS_fullpath):
+    """ instead of excluding mount areas such as mnt and media by default only exclude if specifically in config exclDIRS
+        exclude only those that dont belong to the device. this way if there are any files or files in folders they are
+        included in files_search python,  find_created and index_system.
 
-        add to exclDIRS_fullpath the mount points to exclude while iterating in files_search python, find_created and
-        index_system.
+        add to exclDIRS_fullpath the mount points to exclude
 
         """
     x = 0
@@ -215,11 +219,24 @@ def check_mount_folders(folder_path, base_folders, exclDIRS_fullpath):
     return x
 
 
-def get_base_folders(basedir, exclDIRS_fullpath):
-    """ used to get the search areas for find_created and also to display the searched folders for recentchanges search
+# see MOUNT_FOLDERS to look for mounts to exclude
 
-        adds any mount points in MOUNT_FOLDERS to exclDIRS_fullpath this way any obscure files in MOUNT_FOLDERS or
-        files in folders are searched but mount points are not """
+
+def get_mount_excludes(basedir, exclDIRS_fullpath, as_set=False) -> list | set:
+    """ get the mount points to exclude from MOUNT_FOLDERS
+         for use by index_system in dirwalker """
+
+    mount_folders = (os.path.join(basedir, fld) for fld in MOUNT_FOLDERS)
+    for fld in mount_folders:
+        if os.path.exists(fld):
+            check_mount_folders(fld, exclDIRS_fullpath)
+    if not as_set:
+        return exclDIRS_fullpath
+    return set(exclDIRS_fullpath)
+
+
+def get_base_folders(basedir, exclDIRS_fullpath):
+    """ used to get the search areas for find_created and also to display the searched folders for recentchanges search """
 
     c = 0
     base_folders = []
@@ -236,25 +253,16 @@ def get_base_folders(basedir, exclDIRS_fullpath):
     #         c += 1
     #         base_folders.append(folder_path)
 
-    # 06/15/2026 changed to make sure all possible search locations are returned
-    # example if /mnt/myfolder is part of basedir or / device that it is
-    # searched and any other mount points in /mnt are excluded in
-    # exclDIRS_fullpath. the same for /media or any other folder in
-    # MOUNT_FOLDERS
-
     for entry in os.scandir(basedir):
         if entry.is_dir():
 
             path = entry.path
-            name = entry.name
+            # name = entry.name
 
             if path in exclDIRS_fullpath:
                 continue
             c += 1
             base_folders.append(path)
-            if name in MOUNT_FOLDERS:
-                count = check_mount_folders(path, base_folders, exclDIRS_fullpath)
-                c += count
 
     return base_folders, c
 
@@ -312,10 +320,11 @@ def files_search(base_dir, search_start_dt, feedback, exclDIRS: list, exclDIRS_f
         exclDIRS_fullpath = [os.path.join(base_dir, d.lstrip("/")) for d in exclDIRS]
 
     base_folders, root_count = get_base_folders(base_dir, exclDIRS_fullpath)
+    exclDIRS_fullpath = get_mount_excludes(base_dir, exclDIRS_fullpath, as_set=True)  # adds to exclDIRS_fullpath mount points to exclude from MOUNT_FOLDERS. return as a set.
+
     if root_count <= 1:
         print(f"Unable to read base folders of drive {base_dir} the drive could be empty or check permissions")
         return None, 0
-    exclDIRS_fullpath = set(exclDIRS_fullpath)
 
     try:
 
@@ -1041,19 +1050,6 @@ def check_precedence(lib_tup, bin_tup, suppress=False):
             if path in bin_tup:
                 print(f"Duplicate entry {path} from LIBRARY in BINARY set. LIBRARY has precedence over BINARY.")
                 print("for both use PATH set with exec for proper precedence")
-
-
-def get_exclDIRS_set(basedir, exclDIRS_fullpath, not_set=False):
-    """ use of function of get_base_folders to get the mount points to exclude from the mount folder
-         for use by index_system in dirwalker """
-    discard = []
-    mount_folders = (os.path.join(basedir, fld) for fld in MOUNT_FOLDERS)
-    for fld in mount_folders:
-        if os.path.exists(fld):
-            check_mount_folders(fld, discard, exclDIRS_fullpath)
-    if not_set:
-        return exclDIRS_fullpath
-    return set(exclDIRS_fullpath)
 
 
 def output_diff(diff_file, prev_scans, all_sys, link_diff, nfs_records, dir_diff, new_diff, cmsg, are_symmetrics, showDiff, scan_start):

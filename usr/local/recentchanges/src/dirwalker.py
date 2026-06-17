@@ -14,8 +14,8 @@ import multiprocessing
 import os
 import queue
 import random
-import sys
 import sqlite3
+import sys
 import time
 import threading
 import traceback
@@ -31,7 +31,7 @@ from .dirwalkerfunctions import chunk_split
 from .dirwalkerfunctions import collect_files
 from .dirwalkerfunctions import decr_cache
 from .dirwalkerfunctions import get_base_folders
-from .dirwalkerfunctions import get_exclDIRS_set
+from .dirwalkerfunctions import get_mount_excludes
 from .dirwalkerfunctions import get_extension_tup
 from .dirwalkerfunctions import get_filter_tup
 from .dirwalkerfunctions import output_diff
@@ -135,8 +135,9 @@ def find_created(appdata_local, dbopt, dbtarget, basedir, user, dtype, tempdir, 
 
     filter_tup = get_filter_tup(filterout_list)
 
-    base_folders, root_count = get_base_folders(basedir, exclDIRS_fullpath)  # adds to exclDIRS_fullpath mount points to exclude in MOUNT_FOLDERS
-    exclDIRS_fullpath = set(exclDIRS_fullpath)
+    base_folders, root_count = get_base_folders(basedir, exclDIRS_fullpath)
+    exclDIRS_fullpath = get_mount_excludes(basedir, exclDIRS_fullpath, as_set=True)  # adds to exclDIRS_fullpath mount points to exclude from MOUNT_FOLDERS. return as a set.
+
     if root_count <= 1:
         print(f"Unable to read base folders of drive {basedir} the drive could be empty or check permissions")
         return 1
@@ -484,7 +485,7 @@ def index_system(appdata_local, dbopt, dbtarget, basedir, user, cache_s, email, 
         driveTYPE = get_drive_type(basedir, driveTYPE, cache_s, json_file)
 
     exclDIRS_fullpath = [os.path.join(basedir, d) for d in excldirs]
-    exclDIRS_fullpath = get_exclDIRS_set(basedir, exclDIRS_fullpath)  # exclude mount points and change list into set
+    exclDIRS_fullpath = get_mount_excludes(basedir, exclDIRS_fullpath, )  # exclude mount points and change list into set
 
     filter_tup = get_filter_tup(filterout_list)
 

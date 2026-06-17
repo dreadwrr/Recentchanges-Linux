@@ -96,6 +96,8 @@ class AlarmClock(QWidget):
                     self.beep_file = beep_file
                 else:
                     print("couldnt locate beep_file", beep_file)
+                    if not self.sound_file:
+                        raise RuntimeError("No alarm sound file. need beep file ./Resources/beep.wav or specify beep_file")
 
             if not self.beep_file:
                 if os.path.isfile(beep_default):
@@ -255,32 +257,35 @@ class AlarmClock(QWidget):
         now = QTime.currentTime()
 
         if self.alarm_on:
+
             if not self.is_24h:
-                hour = int(now.toString("hh"))
-                min = now.minute()
-                am_pm = now.hour() >= 12
-                if not (hour == self.alarm_hour and min == self.alarm_minute and am_pm == self.alarm_am_pm):
-                    self.alarm_armed = True
-                elif self.alarm_armed:
-                    self.alarm_armed = False
-                    self.trigger_alarm()
-                    return
+
+                alarm_hour_24 = self.alarm_hour % 12
+                if self.alarm_am_pm:
+                    alarm_hour_24 += 12
+                alarm_mins = alarm_hour_24 * 60 + self.alarm_minute
 
             else:
-                now_mins = now.hour() * 60 + now.minute()
+
                 alarm_mins = self.alarm_hour * 60 + self.alarm_minute
-                if now_mins < alarm_mins:
-                    self.alarm_armed = True
-                elif self.alarm_armed and now_mins >= alarm_mins:
-                    self.alarm_armed = False
-                    self.trigger_alarm()
-                    return
+
+            now_mins = now.hour() * 60 + now.minute()
+            if now_mins < alarm_mins:
+                self.alarm_armed = True
+            elif self.alarm_armed and now_mins >= alarm_mins:
+                self.alarm_armed = False
+                self.trigger_alarm()
+                return
 
         colon = ":"
 
         if not self.is_24h:
-
-            hour_str = now.toString("hh")
+            # now = QTime.currentTime()
+            # print("hour():", now.hour())
+            # print("HH:", now.toString("HH"))
+            # print("hh:", now.toString("hh"))
+            # hour_str = now.toString("hh")  # works on different version of qt
+            hour_str = now.toString("hh AP")[:2]   # onyl returns 1-12 if AP specified <---
 
             am_pm = now.hour() >= 12  # ampm = now.toString("AP")
             if self.am_pm != am_pm:
@@ -630,24 +635,24 @@ class AlarmClock(QWidget):
         self.is_set_sound = None
 
     def media_status_changed(self, status):
-        set_sound = self.is_set_sound
 
         if status == QMediaPlayer.MediaStatus.LoadedMedia:
 
             if self.new_source:
 
-                if not set_sound:
+                if not self.is_set_sound:
                     self.sound_file = self.new_source
                 else:
                     self.sound_set_file = self.new_source
-                self.soundValidated.emit(True, set_sound, self.new_source)
 
-            if not set_sound:
+                self.soundValidated.emit(True, self.is_set_sound, self.new_source)
+
+            if not self.is_set_sound:
                 self.valid_sound = True  # valid alarm sound loaded
 
-            if not self.new_source and not set_sound and self.sound_set_file:
+            if self.sound_set_file and not (self.new_source and self.is_set_sound):
                 self.is_set_sound = True
-                self.player.setSource(QUrl.fromLocalFile(self.sound_set_file))
+                self.player.setSource(QUrl.fromLocalFile(self.sound_set_file))  # chain validate on first load now check sound_set_file
                 self.new_source = None
                 return
 
@@ -655,11 +660,10 @@ class AlarmClock(QWidget):
             self.is_set_sound = None
 
         elif status == QMediaPlayer.MediaStatus.InvalidMedia:
-
-            # if its from init invalidate and use beeps
+            # if its from init default to beeps
             if not self.new_source:
                 self.valid_sound = False
-
+            # if its from trying to change a sound file keep the old sound file
             self.soundValidated.emit(False, self.is_set_sound, self.new_source)
             self.new_source = None
             self.is_set_sound = None

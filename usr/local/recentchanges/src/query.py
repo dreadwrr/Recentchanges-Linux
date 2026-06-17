@@ -8,9 +8,9 @@ from collections import Counter
 from datetime import datetime
 from math import sin, cos, atan2, pi
 from pathlib import Path
-from src.config import load_toml
-from src.configfunctions import find_install
-from src.configfunctions import get_config
+from .config import load_toml
+from .configfunctions import find_install
+from .configfunctions import get_config
 from .gpgcrypto import decr
 from .gpgcrypto import gpg_can_decrypt
 from .gpgkeymanagement import delete_gpg_keys
@@ -18,7 +18,7 @@ from .pyfunctions import is_integer
 from .pyfunctions import parse_datetime
 from .rntchangesfunctions import name_of
 # from .rntchangesfunctions import cprint
-# 06/11/2026
+# 06/15/2026
 
 
 def blank_count(curs):

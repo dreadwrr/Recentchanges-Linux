@@ -5,8 +5,8 @@ import sqlite3
 import subprocess
 from pathlib import Path
 from PySide6.QtWidgets import QApplication
-from .config import get_json_settings
 from .config import dump_j_settings
+from .config import get_json_settings
 from .config import set_json_settings
 from .config import update_dict
 from .config import update_toml_values

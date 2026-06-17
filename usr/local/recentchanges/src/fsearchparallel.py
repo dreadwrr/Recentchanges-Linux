@@ -2,8 +2,8 @@ import logging
 import math
 import multiprocessing as mp
 import os
-import traceback
 import threading
+import traceback
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures.process import BrokenProcessPool
 from .fsearchfunctions import upt_cache
