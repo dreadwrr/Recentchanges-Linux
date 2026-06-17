@@ -1,5 +1,5 @@
 
-version 6.0.0
+version 6.1.2
 
 recentchanges aka Developer buddy
 
@@ -8,7 +8,7 @@ Modes available
 
 					output /tmp
 
-recentchanges		system search 5 minutes or new these will include system search as well
+recentchanges		system search 5 minutes or newer
 recentchanges 30		system search 30 seconds or newer
 
 
