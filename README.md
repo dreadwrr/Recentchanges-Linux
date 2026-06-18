@@ -117,8 +117,8 @@ will add things here with plans to automate them on later updates <br><br>
 If having problem with config file and fails to load it could be a old mismatch between version or with incorrect keys <br>
 remove from <br>
 ~/.config/recentchanges/ <br><br>
-command recentchanges reset can be used to remove the gpg key and .gpg files to clear possible key conflicts. The next release will have the
-config clear prompt <br><br>
+command recentchanges reset can be used to remove the gpg key and .gpg files to clear possible key conflicts. <br>
+and reset config files <br>
 
 
 ##
