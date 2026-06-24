@@ -1,3 +1,8 @@
+Check in next month for these features to add finish to recentchanges: <br>
+Python watchdog service <br>
+Default dark theme for porteus <br>
+Scientific calculator in the menu bar <br><br>
+
 Released 6.1.2!
 
 Added LCD alarm clock <br>
