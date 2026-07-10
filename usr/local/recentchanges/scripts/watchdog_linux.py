@@ -456,8 +456,9 @@ def main(appdata_local, home_dir, output_file, CACHE_F, cdir, pid_file, lockfile
 
     inclusions = (appdata_local, usrDIR, temp_dir, user, flth, dbtarget, cache_f, cache_s, log_path, gnupg_home)
 
-    debug_file = home_dir / ".local" / "state" / "recentchanges" / "logs" / "watchdog.log"
-    logging.getLogger('watchdog').setLevel(logging.WARNING)
+    # debug_file = home_dir / ".local" / "state" / "recentchanges" / "logs" / "watchdog.log"  # this would get burried and never seen
+    debug_file = Path("/tmp") / "watchdog.log"
+    logging.getLogger('watchdog').setLevel(logging.WARNING)  # turn off the intercepted watchdog logging
     logger = setup_logger(str(debug_file), ll_level, "WATCHDOG")
 
     app = QApplication(sys.argv)
@@ -478,11 +479,11 @@ def main(appdata_local, home_dir, output_file, CACHE_F, cdir, pid_file, lockfile
 
     tray = TrayApp(service, pid_file, _time, logger)
 
-    import traceback
-    def hook(exctype, value, tb):
-        with open("/tmp/crash.txt", "a") as f:
-            f.write("".join(traceback.format_exception(exctype, value, tb)))
-    sys.excepthook = hook
+    # import traceback
+    # def hook(exctype, value, tb):
+    #     with open("/tmp/crash.txt", "a") as f:
+    #         f.write("".join(traceback.format_exception(exctype, value, tb)))
+    # sys.excepthook = hook
     res = app.exec()
     removefile(pid_file)
     sys.exit(res)
