@@ -1,4 +1,4 @@
-# 06/17/2026              Qt gui linux                 Developer buddy 6.1.2
+# 07/10/2026              Qt gui linux                 Developer buddy 6.1.2
 import glob
 import logging
 import multiprocessing
@@ -7,13 +7,15 @@ import shutil
 import sqlite3
 import sys
 import tempfile
+import threading
 import traceback
 from pathlib import Path
 from PySide6.QtCore import Qt, Slot, Signal, QThread, QTimer, QSortFilterProxyModel, QSize
-from PySide6.QtGui import QStandardItemModel, QStandardItem, QIcon, QPixmap, QImage  # ,QPalette, QColor
+from PySide6.QtGui import QStandardItemModel, QStandardItem, QIcon, QPixmap, QImage, QPalette, QColor
 from PySide6.QtSql import QSqlQuery
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QMainWindow, QMenu, QHeaderView, QStyle
 from src.alarmclock import AlarmClock
+from src.calculator import SCalculator
 from src.clearworker import ClearWorker
 from src.configfunctions import check_config
 from src.config import dump_j_settings
@@ -34,6 +36,9 @@ from src.gpgcrypto import test_gpg_agent
 from src.gpgkeymanagement import genkey
 from src.gpgkeymanagement import iskey
 from src.imageraster import raised_image
+from src.inotifyfunctions import old_pid_check
+from src.inotifyfunctions import process_by_target
+from src.inotifyfunctions import trim_tout
 from src.logs import check_log_perms
 from src.logs import change_logger
 from src.logs import setup_logger
@@ -42,7 +47,6 @@ from src.pyfunctions import cache_clear_patterns
 from src.pyfunctions import cnc
 from src.pyfunctions import is_integer
 from src.pyfunctions import user_path
-from src.pysql import clear_extn_tbl
 from src.pysql import create_db
 from src.pysql import dbtable_has_data
 from src.pysql import get_lifetime_throughput
@@ -69,10 +73,12 @@ from src.qtdrivefunctions import setup_drive_settings
 from src.qtfunctions import add_new_extension
 from src.qtfunctions import available_fonts
 from src.qtfunctions import check_for_updates
+from src.qtfunctions import clear_from_extn_tbl
 from src.qtfunctions import commit_note
 from src.qtfunctions import fill_extensions
 from src.qtfunctions import get_conn
 from src.qtfunctions import get_help
+from src.qtfunctions import get_history_view
 from src.qtfunctions import get_timezone
 from src.qtfunctions import has_log_data
 from src.qtfunctions import has_sys_data
@@ -185,6 +191,14 @@ class MainWindow(QMainWindow):
         self.zipPATH = config['compress']['zipPATH']
         self.downloads = downloads
         self.extensions = config['search']['extension']
+        self.cmode = config['calculator']['mode']
+        self.decimals = config['calculator']['decimals']
+        self.cTHRESHOLD = config['calculator']['scientific_threshold']
+        self.ctheme = config['calculator']['theme']
+        self.chistory = config['calculator']['history']
+        self.randintMAX = config['calculator']['randintMAX']
+        self.randintMIN = config['calculator']['randintMIN']
+        self.clogLEVEL = config['calculator']['logLEVEL']
 
         self.j_settings = j_settings  # usrprofile
 
@@ -210,6 +224,7 @@ class MainWindow(QMainWindow):
         self.usrDIR = os.path.join(home_dir, "Downloads")
         self.lclhome = appdata_local
         self.lclscripts = appdata_local / "scripts"
+        self.inotify_creation_file = self.lclscripts / "file_creation_log.txt"  # 07/10/2026
         self.resources = appdata_local / "Resources"
         # self.resources = appdata_local / "Resources" Windows alarm clock <---- 06/13/2026 linux uses /home/{user}/.local/share/recentchanges/Resources
         self.user_resources = pst_data / "Resources"
@@ -281,6 +296,10 @@ class MainWindow(QMainWindow):
         self.difffile = None
         self.xzm_obj = None
         self.user_extensions = []
+
+        # 07/01/2026
+        self.calculator = None
+        self.saved_history = ""  # 07/08/2026 save history view alongside encrypted notes in extn table
 
         self.worker = None
         self.worker2 = None  # database streamer
@@ -483,10 +502,21 @@ class MainWindow(QMainWindow):
         self.ui.actionClear_extensions.triggered.connect(self.clear_extensions)
         self.ui.actionUpdates.triggered.connect(lambda: check_for_updates(self.app_version, "dreadwrr", "Recentchanges-Linux", self))
 
-        self.ui.actionCommands_2.triggered.connect(lambda: show_cmddoc(self.command_file, self.lclhome, self.pst_data, self.gpg_path, self.gnupg_home, self.email, self.systimeche, self.ui.hudt))
+        self.ui.actionCommands.triggered.connect(lambda: show_cmddoc(self.command_file, self.lclhome, self.pst_data, self.gpg_path, self.gnupg_home, self.email, self.systimeche, self.ui.hudt))
         self.ui.actionQuick1.triggered.connect(lambda: display(self.dspEDITOR, self.command_file, self.dspPATH, True))
         self.ui.actionDiag1.triggered.connect(self.show_status)
+
+        args = ["run", "filemanager", str(self.lclscripts)]
+        args = args if self.is_pyinstall else [sys.executable, self.app] + args
+
+        self.ui.actionWatchdog.triggered.connect(lambda: run_set_helper(self.dispatch, args, self.is_polkit))  # self.ui.actionWatchdog.triggered.connect(lambda: load_explorer(self.lclscripts))
+
         self.ui.actionLogging.triggered.connect(lambda: display(self.dspEDITOR, self.log_path, self.dspPATH, True))
+
+        self.ui.actionCalculator.triggered.connect(self.open_calculator)
+        self.ui.actionClear_history.triggered.connect(self.clear_history)
+        self.ui.actionClear_history.setEnabled(False)  # set in designer <-- ** 07/08/2026
+        self.ui.actionHistoryv.triggered.connect(self.show_history)
 
         self.ui.actionAbout.triggered.connect(lambda: help_about(self.lclhome, self.ui.hudt, self.app_version))
         self.ui.actionResource.triggered.connect(self.open_resource)
@@ -798,7 +828,21 @@ class MainWindow(QMainWindow):
 
         # end fill combos pg_1
 
+    def manage_file_creation_log(self):
+        pid = process_by_target(self.search_pattern)
+        old_pid_check(self.watchdog_pid_file, pid, "windows")
+        if not pid:
+            trim_tout(self.inotify_creation_file, self.low_water, self.high_water, self.min_span)
+
     def remaining_startup(self):
+
+        # on startup user_data_from_database writes app start time so can determine last start time
+        # here for xRC option check file_creation_log.txt if its over the cutoff and trim.
+
+        if self.xRC:
+            if os.path.isfile(self.inotify_creation_file):
+                threading.Thread(target=self.manage_file_creation_log, daemon=True).start()
+
         if polkit_check():
             self.is_polkit = True
         self.timer.stop()
@@ -1077,6 +1121,16 @@ class MainWindow(QMainWindow):
                 alarm_soundFILE = updated_config['display']['alarm_soundFILE']
                 alarm_set_soundFILE = updated_config['display']['alarm_set_soundFILE']
 
+                # added 07/08/2026
+                cmode = updated_config['calculator']['mode']
+                decimals = updated_config['calculator']['decimals']
+                cTHRESHOLD = updated_config['calculator']['scientific_threshold']
+                ctheme = updated_config['calculator']['theme']
+                chistory = updated_config['calculator']['history']
+                randintMAX = updated_config['calculator']['randintMAX']
+                randintMIN = updated_config['calculator']['randintMIN']
+                clogLEVEL = updated_config['calculator']['logLEVEL']
+
                 ll_level = self.config['logs']['logLEVEL']
                 new_ll_level = updated_config['logs']['logLEVEL']
 
@@ -1112,6 +1166,23 @@ class MainWindow(QMainWindow):
                     is_alarm_path = True
                     if alarm_set_soundFILE:
                         set_sound_file_path = os.path.join(self.resources, alarm_set_soundFILE)
+
+                for x in (decimals, cTHRESHOLD, randintMAX, randintMIN):
+                    if not isinstance(x, int):
+                        raise ConfigurationError
+
+                if decimals != self.decimals:
+                    if self.calculator:
+                        if self.calculator.mode == "scientific":
+                            self.calculator.decimal_set(decimals)
+                c_change = False
+                if ctheme != self.ctheme or chistory != self.chistory or clogLEVEL != self.clogLEVEL or cTHRESHOLD != self.cTHRESHOLD or randintMAX != self.randintMAX or randintMIN != self.randintMIN:
+                    c_change = True
+                # shutdown the calculator to rebuild the mode
+                if cmode != self.cmode:
+                    if self.calculator:
+                        self.calculator.close()
+                    c_change = False  # its shutdown to reset so dont do any other checks
 
                 if zipPATH != self.zipPATH or new_downloads or popPATH != self.popPATH or is_alarm_path:
                     if not check_utility(zipPATH, updated_downloads, popPATH, sound_file_path, set_sound_file_path):
@@ -1221,6 +1292,17 @@ class MainWindow(QMainWindow):
                     self.ui.widget.sound_set_file = set_sound_file_path
                     self.ui.widget.validate_sounds()
 
+                if c_change:
+                    if self.calculator:
+                        self.calculator.theme = ctheme
+                        self.calculator.set_format(ctheme)
+                        self.calculator.history_view = chistory
+                        self.calculator.log_level = clogLEVEL
+                        if 0 <= cTHRESHOLD <= 20:
+                            self.calculator.SCI_THRESHOLD = cTHRESHOLD
+                        self.calculator.rand_max = randintMAX
+                        self.calculator.rand_min = randintMIN
+
                 if extensions != self.extensions:
                     fill_extensions(self.ui.combffile, extensions, prev_extensions=self.user_extensions)
 
@@ -1263,6 +1345,15 @@ class MainWindow(QMainWindow):
                 self.zipPROGRAM = zipPROGRAM
                 self.zipPATH = zipPATH
                 self.extensions = extensions
+
+                self.cmode = cmode
+                self.decimals = decimals
+                self.cTHRESHOLD = cTHRESHOLD
+                self.ctheme = ctheme
+                self.chistory = chistory
+                self.randintMAX = randintMAX
+                self.randintMIN = randintMIN
+                self.clogLEVEL = clogLEVEL
 
                 # config_changed = (self.config != updated_config)
                 # if config_changed:
@@ -1493,14 +1584,17 @@ class MainWindow(QMainWindow):
     def set_dirtybit(self):
         self.dirtybit = True
 
-    def save_notes(self, isexit=False):
+    def save_notes_history(self, isexit=False):
         notes = self.ui.textEdit.toPlainText()
+        self.saved_history = get_history_view(self.saved_history, self.calculator)
         nc = cnc(self.dbopt, self.compLVL)
-        user_data_to_database(notes, self.ui.hudt, self.dbopt, self.dbtarget, self.email, nc, isexit=isexit, parent=self)
+        user_data_to_database(notes, self.saved_history, self.ui.hudt, self.dbopt, self.dbtarget, self.email, nc, isexit=isexit, parent=self)
+        if self.saved_history:
+            self.ui.actionClear_history.setEnabled(True)
 
     def save_user_data(self, isexit=False):
 
-        self.save_notes(isexit)
+        self.save_notes_history(isexit)
 
         last_drive = self.ui.combd.currentText()
         sr = self.ui.stime.value()
@@ -1550,8 +1644,20 @@ class MainWindow(QMainWindow):
     def load_user_data(self, is_startup=False):
 
         self.ui.textEdit.blockSignals(True)
-        self.user_extensions = user_data_from_database(self.ui.hudt, self.ui.textEdit, self.ui.combffile, self.extensions, self.dbopt, is_startup, self)
+        self.user_extensions, self.saved_history = user_data_from_database(self.ui.hudt, self.ui.textEdit, self.ui.combffile, self.extensions, self.dbopt, is_startup, self)
+        if self.saved_history:
+            self.ui.actionClear_history.setEnabled(True)
         self.ui.textEdit.blockSignals(False)
+
+    def open_calculator(self):
+        if self.calculator is None:
+            self.calculator = SCalculator(None, self.cmode, self.cTHRESHOLD, self.decimals, self.ctheme, self.chistory,
+                                          self.saved_history, self.randintMAX, self.randintMIN, self.ui.hudt,
+                                          self.clogLEVEL)
+            self.calculator.complete.connect(self.on_calc_closed)
+        self.calculator.show()
+        self.calculator.raise_()
+        self.calculator.activateWindow()
 
     def open_resource(self):
         # self.doc_window = open_html_resource(self, self.lclhome)
@@ -1843,10 +1949,28 @@ class MainWindow(QMainWindow):
         return a_drives, systimename
     # end download button combo box
 
+    def show_history(self):
+        """ actionHistoryv show the calculator history on hudt display """
+
+        self.saved_history = get_history_view(self.saved_history, self.calculator)
+        if self.saved_history:
+            self.ui.hudt.clear()
+            self.ui.hudt.appendPlainText(self.saved_history)
+
+    def clear_history(self):
+        """ menubar actionClear_history clear history column from extn table """
+        if not self.job_running(True):
+            return
+        if clear_from_extn_tbl(self.dbopt, False, False):
+            self.saved_history = ""
+            encr(self.dbopt, self.dbtarget, self.email, no_compression=self.nc, dcr=True)
+            self.ui.actionClear_history.setEnabled(False)
+        self.isexec = False
+
     def clear_extensions(self):
         if not self.job_running(True):
             return
-        if clear_extn_tbl(self.dbopt, False):
+        if clear_from_extn_tbl(self.dbopt, True, False):
             self.user_extensions = []
             if encr(self.dbopt, self.dbtarget, self.email, no_compression=self.nc, dcr=True):
                 fill_extensions(self.ui.combffile, self.extensions)
@@ -2644,9 +2768,12 @@ class MainWindow(QMainWindow):
                         self.dirtybit = False
                         # last_drive = self.ui.combd.currentText()  # just save notes dont overwrite saved settings
                         # update_j_settings({"last_drive": last_drive}, self.j_settings, None, self.sj)
+
                         notes = self.ui.textEdit.toPlainText()
+                        self.saved_history = get_history_view(self.saved_history, self.calculator)
+
                         self.nc = cnc(self.dbopt, self.compLVL)
-                        commit_note(self.ui.hudt, notes, self.email, query)
+                        commit_note(self.ui.hudt, notes, self.saved_history, self.email, query)
 
         except Exception as e:
             res = False
@@ -3084,6 +3211,10 @@ class MainWindow(QMainWindow):
 
     # General Helpers
 
+    def on_calc_closed(self):
+        self.calculator.deleteLater()
+        self.calculator = None
+
     # Main search 5 min, search, 5 min filtered, filtered search update ui on completion
     @Slot(int, str)
     def update_ui_settings(self, code, action_type):
@@ -3414,12 +3545,53 @@ def start_main_window():
                         distro_name = res + " " + distro_name
                     j_settings.setdefault("/", {})["distro_name"] = distro_name
                     json_dump = True
-
+            # import qdarktheme
+            # qdarktheme.setup_theme("auto")
+            # qdarktheme.setup_theme()
             # experiment with default theme for porteus but too inconsistent
-            # if distro_name and distro_name.startswith("porteus"):
+
+            def get_darkModePalette(app=None):
+                darkPalette = app.palette()
+
+                darkPalette.setColor(QPalette.Window, QColor(53, 53, 53))
+                darkPalette.setColor(QPalette.WindowText, Qt.white)
+
+                darkPalette.setColor(QPalette.Disabled, QPalette.WindowText, QColor(127, 127, 127))
+
+                darkPalette.setColor(QPalette.Base, QColor(42, 42, 42))
+                darkPalette.setColor(QPalette.AlternateBase, QColor(66, 66, 66))
+
+                darkPalette.setColor(QPalette.ToolTipBase, QColor(53, 53, 53))
+                darkPalette.setColor(QPalette.ToolTipText, Qt.white)
+
+                darkPalette.setColor(QPalette.Text, Qt.white)
+                darkPalette.setColor(QPalette.Disabled, QPalette.Text, QColor(127, 127, 127))
+                darkPalette.setColor(QPalette.Dark, QColor(35, 35, 35))
+                darkPalette.setColor(QPalette.Shadow, QColor(20, 20, 20))
+                darkPalette.setColor(QPalette.Button, QColor(53, 53, 53))
+                darkPalette.setColor(QPalette.ButtonText, Qt.white)
+                darkPalette.setColor(QPalette.Disabled, QPalette.ButtonText, QColor(127, 127, 127))
+                darkPalette.setColor(QPalette.BrightText, Qt.red)
+                darkPalette.setColor(QPalette.Link, QColor(42, 130, 218))
+                darkPalette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+                darkPalette.setColor(QPalette.Disabled, QPalette.Highlight, QColor(80, 80, 80))
+                darkPalette.setColor(QPalette.HighlightedText, Qt.white)
+                darkPalette.setColor(QPalette.Disabled, QPalette.HighlightedText, QColor(127, 127, 127), )
+
+                return darkPalette
+
+            if distro_name and distro_name.startswith("porteus"):
                 # # set dark theme for consistent appearance
                 # # print("Available styles:", QtWidgets.QStyleFactory.keys())
-                # # app.setStyle("Fusion")
+                # app.setStyle("Fusion")
+                # app.setStyleSheet("""
+                #     QWidget {
+                #         background: #2b2b2b;
+                #         color: white;
+                #     }
+                # """)
+                app.setPalette(get_darkModePalette(app))
+
                 # palette = QPalette()
                 # # # window background
                 # palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
