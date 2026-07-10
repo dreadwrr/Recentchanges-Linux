@@ -18,7 +18,7 @@ CSZE = 1024 * 1024  # when to cache created files
 
 
 def emit_write(output_file, CACHE_F, cdir, size, out_data, cache_data, lockfile, log_q, logger):
-    payload = (output_file, CACHE_F, size, out_data, cache_data)
+    payload = (output_file, CACHE_F, cdir, size, out_data, cache_data)
     if log_q is not None:
         log_q.put(("write", payload))
     else:
@@ -224,7 +224,7 @@ def pair_handle(action, event, path, created_seen, log_q, logger):
     # mod_time = stat_info.st_mtime
 
     # unconventional or maybe some other app? creation event write partial in place -> move event dest but dest isnt in created_seen src is.
-    if src in created_seen:
+    if src in created_seen and path not in created_seen:
         # log unusual event
         emit_log("DEBUG", f"handle_file {action} unusual src was in created_seen on move after created file. src: {src} dest or file: {path}", log_q, logger=logger)
         del created_seen[src]

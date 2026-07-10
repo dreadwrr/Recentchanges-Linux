@@ -46,27 +46,58 @@ class SCalculator(QtWidgets.QWidget):
     FLOAT_SIG_DIGITS = 14
     DECIMAL_DIGITS = 55
     DECIMAL_MAX = 150
-    OUTPUT_LIMIT = 57  # 57 chars at font size 35 scientific. 24 chars at font size 25 regular
+    OUTPUT_LIMIT = 60  # Linux
+    #                    57 chars at font size 35 scientific. 24 chars at font size 25 regular Windows
 
     SCI_THRESHOLD = 10
 
     MAX_FONT_SIZE = 100
-    MIN_FONT_SIZE = 25  # 25 for scientific # 30 for regular
+    MIN_FONT_SIZE = 20  # 20 for scientific ? for regular Linux
+    #                     25 for scientific 30 for regular Windows
 
     # it was found that linear sizing didnt work as smaller text fits more digits than before
     # so need to use two maps one for regular and one for scientific
 
+    # FONT_SIZE_RANGES = [
+    #     (9, 9, 90),
+    #     (10, 10, 80),
+    #     (11, 11, 75),
+    #     (12, 12, 70),
+    #     (13, 13, 65),
+    #     (14, 14, 55),
+    #     (15, 16, 50),
+    #     (17, 20, 40),
+    #     (21, 23, 35),
+    #     (24, 24, 30),
+    # Windows
+    # ]
+    # FONT_SIZE_RANGES_MP = [
+    #     (9, 9, 90),
+    #     (10, 10, 80),
+    #     (11, 11, 75),
+    #     (12, 12, 70),
+    #     (13, 13, 65),
+    #     (14, 28, 60),
+    #     (29, 30, 55),
+    #     (31, 33, 50),
+    #     (34, 37, 45),
+    #     (38, 41, 40),
+    #     (42, 47, 35),
+    #     (48, 56, 30),
+    #     (57, 57, 25),
+    # Windows
+    # ]
+
     FONT_SIZE_RANGES = [
-        (9, 9, 90),
-        (10, 10, 80),
-        (11, 11, 75),
-        (12, 12, 70),
-        (13, 13, 65),
-        (14, 14, 55),
+        (9, 9, 85),
+        (10, 10, 75),
+        (11, 12, 65),
+        (13, 14, 55),
         (15, 16, 50),
         (17, 20, 40),
-        (21, 23, 35),
-        (24, 24, 30),
+        (21, 22, 35),
+        (23, 24, 30),
+        (25, 27, 25),
 
     ]
 
@@ -76,14 +107,15 @@ class SCalculator(QtWidgets.QWidget):
         (11, 11, 75),
         (12, 12, 70),
         (13, 13, 65),
-        (14, 28, 60),
-        (29, 30, 55),
-        (31, 33, 50),
-        (34, 37, 45),
-        (38, 41, 40),
-        (42, 47, 35),
-        (48, 56, 30),
-        (57, 57, 25),
+        (14, 26, 60),
+        (27, 29, 55),
+        (30, 31, 50),
+        (32, 36, 45),
+        (37, 39, 40),
+        (40, 45, 35),
+        (46, 53, 30),
+        (54, 57, 25),
+        (64, 75, 20)
     ]
 
     ANGLE_MODES = ["DEG", "RAD", "GRAD"]
@@ -164,7 +196,7 @@ class SCalculator(QtWidgets.QWidget):
 
         if mode == "regular":
             self.OUTPUT_LIMIT = 24
-            self.MIN_FONT_SIZE = 30
+            self.MIN_FONT_SIZE = 24  # Linux # 30 Windows
             ranges = self.FONT_SIZE_RANGES
 
         else:
@@ -238,6 +270,13 @@ class SCalculator(QtWidgets.QWidget):
             icon = QtGui.QIcon(conf[0])
             btn.setIcon(icon)
             btn.setIconSize(QtCore.QSize(conf[1], conf[1]))
+
+        """ prevent buttons from defaulting which would break the enter key since it would not call equals """
+        for btn in self.ui.button_frame.findChildren(QtWidgets.QPushButton):
+            btn.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+            # btn.setAutoDefault(False)
+            # btn.setDefault(False)
+
         self.setFocus()
         self.ui.negateButton.setCheckable(True)
         self.ui.negateButton.setChecked(False)
@@ -859,11 +898,13 @@ class SCalculator(QtWidgets.QWidget):
             self.last_expression = None
             self.del_locked = False
             self.ui.negateButton.setChecked(False)
+
         # or append
         else:
             if char == "." and "." in self.text:
                 return
             curr_text = self.output.text().replace(",", "")
+
             if len(curr_text) >= self.OUTPUT_LIMIT:
                 return
             self.text = curr_text + char

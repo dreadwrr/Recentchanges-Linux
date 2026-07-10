@@ -20,6 +20,7 @@ from .pyfunctions import ap_decode
 from .pyfunctions import epoch_to_date
 from .pyfunctions import escf_py
 from .pyfunctions import parse_datetime
+from .qtfunctions import return_terminal
 from .rntchangesfunctions import removefile
 # 07/10/2026
 
@@ -131,6 +132,12 @@ def _fk_process(pattern):
 # end linux
 
 
+def build_terminal_cmd(terminal, cmd):
+    if os.path.basename(terminal) == "gnome-terminal":
+        return [terminal, "--"] + cmd
+    return [terminal, "-e"] + cmd
+
+
 def strup(script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, pid_file, lockfile, log_file, ll_level, _time, escaped_user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, logger, platform):
 
     app = str(appdata_local / "main.py")
@@ -173,6 +180,8 @@ def strup(script_dir, script, appdata_local, home_dir, inotify_creation_file, CA
 
         kwargs = {"cwd": script_dir}
 
+        cmd = [dispatch] + args
+
         if platform == "windows":
             kwargs["creationflags"] = (
                 subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE
@@ -181,8 +190,11 @@ def strup(script_dir, script, appdata_local, home_dir, inotify_creation_file, CA
             )
         else:
             kwargs["start_new_session"] = True
+            if debug_mode:
+                terminal = return_terminal()
+                if terminal:
+                    cmd = build_terminal_cmd(terminal, cmd)
 
-        cmd = [dispatch] + args
         subprocess.Popen(cmd, **kwargs)
 
         logger.debug("strup completed successfully")
@@ -449,7 +461,7 @@ def trim_tout(log_file, time_back=6, trim_to=9, min_span_hours=0, logger=logging
 
 def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gnupg_home, cfr, xRC, _time, checksum, user, moduleNAME, log_file, ll_level, supbrwLIST, platform="Linux"):
 
-    debug_mode = False  # open debug console if using qt
+    debug_mode = True  # open debug console if using qt
     inotify_log_file = "file_creation_log.txt"
 
     logger = logging.getLogger("INITRECENTCHANGES")
@@ -588,7 +600,8 @@ def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gn
 
         # first start
         elif checksum and xRC:
-
+            if platform == "linux":
+                os.makedirs(cdir, mode=0o700, exist_ok=True)
             strup(
                 script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, watchdog_pid_file, lockfile,
                 log_file, ll_level, _time, user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, logger,
