@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 get_vrn(){
 if [ "$1" = "-v" ]; then
-   echo "version 6.1.2 h&k enterprisez 06/16/2026"
+   echo "version 6.2.0 h&k enterprisez 07/10/2026"
    echo
    echo "recentchanges aka Developer buddy"
    echo
