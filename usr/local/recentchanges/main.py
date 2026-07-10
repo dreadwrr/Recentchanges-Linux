@@ -3358,7 +3358,8 @@ class MainWindow(QMainWindow):
 
 def start_main_window():
 
-    print("\a", flush=True)
+    DARK_MODE = True
+    # print("\a", flush=True)
 
     os.environ["PYTHONUTF8"] = "1"
     os.environ["PYTHONIOENCODING"] = "utf-8"  # for ansi characyers
@@ -3584,7 +3585,7 @@ def start_main_window():
 
                 return darkPalette
 
-            if distro_name and distro_name.startswith("porteus"):
+            if DARK_MODE and distro_name and distro_name.startswith("porteus"):
                 # # set dark theme for consistent appearance
                 # # print("Available styles:", QtWidgets.QStyleFactory.keys())
                 # app.setStyle("Fusion")
