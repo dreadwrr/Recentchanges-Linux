@@ -396,6 +396,10 @@ class MainWindow(QMainWindow):
         self.initialize_ui(is_startup=True)  # load extensions from database. if no database create one. fill combos
         # end one time items
 
+        # loose ends set initial state before finished loading
+        if not self.chistory:
+            self.ui.actionHistoryv.setEnabled(False)
+
         if self.pageIDX == 2:
             self.show_page_2()
         elif self.pageIDX == 1:
