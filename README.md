@@ -1,4 +1,4 @@
-Check in next month for these features which is part of adding finish to recentchanges: <br>
+Repo is updated to 6.2.0 with new changes and will release after testing: <br>
 Python watchdog service <br>
 Default dark theme for porteus <br>
 Scientific calculator in the menu bar <br><br>
