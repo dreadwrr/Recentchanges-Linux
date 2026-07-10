@@ -327,39 +327,6 @@ def has_log_data(dbopt, logger, parent=None):
     return False
 
 
-def commit_note(logger, notes, email, query):
-    try:
-        encrypted_data = encrypt_to_text(notes, email)
-        if encrypted_data is None:
-            print("Problem encrypting notes aborting")
-            return False
-        # gpg = gnupg.GPG()
-        # encrypted_data = gpg.encrypt(notes, recipients=[email])
-        # if not encrypted_data.ok:
-        #     print(encrypted_data.stderr)
-        #     print("Problem encrypting notes aborting")
-        #     return False
-            # raise RuntimeError(f"Encryption failed: {encrypted_data.status}")
-        ciphertext = str(encrypted_data)
-
-        query.prepare("""
-            INSERT INTO extn (id, notes)
-            VALUES (1, :notes)
-            ON CONFLICT(id) DO UPDATE SET notes = excluded.notes
-        """)
-        query.bindValue(":notes", ciphertext)
-        if query.exec():
-            return True
-        else:
-            err = query.lastError()
-            if err and err.isValid():
-                logger.appendPlainText(f"commit_note query err: {err.text()}\n")
-            logger.appendPlainText("Failed to save notes to db")
-    except Exception as e:
-        logger.appendPlainText(f"Unable update notes savenote qtfunctions {type(e).__name__} err: {e} \n{traceback.format_exc()}")
-    return False
-
-
 def commit_note_history(logger, notes, saved_history, email, query):
     try:
         encrypted_data = encrypt_to_text(notes, email)
@@ -929,7 +896,7 @@ def user_data_to_database(notes, saved_history, logger, dbopt, dbtarget, email, 
     db = None
     res = False
     try:
-
+        print(notes, saved_history)
         db, err = get_conn(dbopt, "sq_9")
         if err:
             print("Failed to connect to database in save_user_data")
@@ -948,6 +915,7 @@ def user_data_to_database(notes, saved_history, logger, dbopt, dbtarget, email, 
             if not isexit:
                 logger.appendPlainText("Settings saved.")
             return True
+
     window_message(parent, "There was a problem rencrypting notes.", "Status")
     return False
 
