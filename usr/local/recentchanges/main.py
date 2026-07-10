@@ -74,7 +74,7 @@ from src.qtfunctions import add_new_extension
 from src.qtfunctions import available_fonts
 from src.qtfunctions import check_for_updates
 from src.qtfunctions import clear_from_extn_tbl
-from src.qtfunctions import commit_note
+from src.qtfunctions import commit_note_history
 from src.qtfunctions import fill_extensions
 from src.qtfunctions import get_conn
 from src.qtfunctions import get_help
@@ -2777,7 +2777,7 @@ class MainWindow(QMainWindow):
                         self.saved_history = get_history_view(self.saved_history, self.calculator)
 
                         self.nc = cnc(self.dbopt, self.compLVL)
-                        commit_note(self.ui.hudt, notes, self.saved_history, self.email, query)
+                        commit_note_history(self.ui.hudt, notes, self.saved_history, self.email, query)
 
         except Exception as e:
             res = False
