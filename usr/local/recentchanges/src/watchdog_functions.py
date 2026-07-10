@@ -252,3 +252,12 @@ def pair_handle(action, event, path, created_seen, log_q, logger):
             #     return
 
         return True
+
+
+def relativize(path, base):
+    base = str(base).rstrip("/")
+    path = str(path)
+    if path.startswith(base):
+        trimmed = path[len(base):]
+        return trimmed if trimmed.startswith("/") else "/" + trimmed
+    return path
