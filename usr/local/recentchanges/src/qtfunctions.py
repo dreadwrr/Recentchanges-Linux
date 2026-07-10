@@ -23,9 +23,10 @@ from .gpgcrypto import decrypt_from_text
 from .gpgcrypto import encr
 from .gpgcrypto import encrypt_to_text
 from .pyfunctions import is_integer
+from .pysql import clear_conn
 from .rntchangesfunctions import to_bool
 from .rntchangesfunctions import porteus_linux_check
-# 06/17/2026
+# 07/10/2026
 
 
 def polkit_check(action_id="org.freedesktop.set_recent_helper"):
@@ -357,6 +358,44 @@ def commit_note(logger, notes, email, query):
     except Exception as e:
         logger.appendPlainText(f"Unable update notes savenote qtfunctions {type(e).__name__} err: {e} \n{traceback.format_exc()}")
     return False
+
+
+def commit_note_history(logger, notes, saved_history, email, query):
+    try:
+        encrypted_data = encrypt_to_text(notes, email)
+        if encrypted_data is None:
+            print("Problem encrypting notes aborting")
+            return False
+        # gpg = gnupg.GPG()
+        # encrypted_data = gpg.encrypt(notes, recipients=[email])
+        # if not encrypted_data.ok:
+        #     print(encrypted_data.stderr)
+        #     print("Problem encrypting notes aborting")
+        #     return False
+            # raise RuntimeError(f"Encryption failed: {encrypted_data.status}")
+        ciphertext = str(encrypted_data)
+
+        query.prepare("""
+            INSERT INTO extn (id, notes, history)
+            VALUES (1, :notes, :history)
+            ON CONFLICT(id) DO UPDATE SET
+                notes = excluded.notes,
+                history = excluded.history
+        """)
+        query.bindValue(":notes", ciphertext)
+        query.bindValue(":history", saved_history)
+        if query.exec():
+            return True
+        else:
+            err = query.lastError()
+            if err and err.isValid():
+                logger.appendPlainText(f"commit_note query err: {err.text()}\n")
+            logger.appendPlainText("Failed to save notes to db")
+    except Exception as e:
+        logger.appendPlainText(f"Unable update notes savenote qtfunctions {type(e).__name__} err: {e} \n{traceback.format_exc()}")
+    return False
+
+
 # end QSql
 
 
@@ -379,6 +418,39 @@ def clear_cache(conn, cur, cachermPATTERNS, log_fn=print):
         conn.rollback()
         log_fn(f'General failure in query.py clear_cache: {e}')
     return False
+
+
+def clear_from_extn_tbl(dbopt, extn_or_hist, quiet):
+    conn = None
+    cur = None
+    try:
+        conn = sqlite3.connect(dbopt)
+        cur = conn.cursor()
+        if extn_or_hist:
+            out_str = "extn table cleared."
+            cur.execute("DELETE FROM extn WHERE ID != 1")
+        else:
+            out_str = "history cleared."
+            saved_history = ""
+            cur.execute("""
+                INSERT INTO extn (id, history)
+                VALUES (1, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    history = excluded.history;
+            """, (saved_history,))
+
+        conn.commit()
+        if not quiet:
+            print(out_str)
+        return True
+    except Exception as e:
+        print("Reencryption failed extension table clear")
+        if conn:
+            conn.rollback()
+        print(f"failure clear_from_extn_tbl func {type(e).__name__}: {e}")
+        return False
+    finally:
+        clear_conn(conn, cur)
 
 
 def load_gpg(dbopt, dbtarget, user, logger):
@@ -853,8 +925,9 @@ def fill_extensions(combffile, default_extensions, new_extension=None, prev_exte
     return rlt
 
 
-def user_data_to_database(notes, logger, dbopt, dbtarget, email, nc, isexit=False, parent=None):
+def user_data_to_database(notes, saved_history, logger, dbopt, dbtarget, email, nc, isexit=False, parent=None):
     db = None
+    res = False
     try:
 
         db, err = get_conn(dbopt, "sq_9")
@@ -862,17 +935,19 @@ def user_data_to_database(notes, logger, dbopt, dbtarget, email, nc, isexit=Fals
             print("Failed to connect to database in save_user_data")
         else:
             query = QSqlQuery(db)
-            if commit_note(logger, notes, email, query):  # save last used drive index to json
-                if encr(dbopt, dbtarget, email, None, nc, True):
-                    if not isexit:
-                        logger.appendPlainText("Settings saved.")
-                    return True
+            res = commit_note_history(logger, notes, saved_history, email, query)  # save last used drive index to json
 
     except (FileNotFoundError, Exception) as e:
         logger.appendPlainText(f"unable to save user data save_user_data err:{type(e).__name__} {e}")
     finally:
         if db:
             db.close()
+            del db
+    if res:
+        if encr(dbopt, dbtarget, email, nc, True):
+            if not isexit:
+                logger.appendPlainText("Settings saved.")
+            return True
     window_message(parent, "There was a problem rencrypting notes.", "Status")
     return False
 
@@ -880,6 +955,8 @@ def user_data_to_database(notes, logger, dbopt, dbtarget, email, nc, isexit=Fals
 def user_data_from_database(logger, textEdit, combffile, extensions, dbopt, is_startup=False, parent=None):
     query = None
     extension_data = []
+    saved_history = ""
+
     data_name = ""
     try:
         with DBMexec(dbopt, "sq_1", ui_logger=logger) as dmn:
@@ -905,8 +982,10 @@ def user_data_from_database(logger, textEdit, combffile, extensions, dbopt, is_s
                 extension_data = fill_extensions(combffile, extensions, query=query)
             else:
                 logger.appendPlainText("Query failed extn table in user_data_from_database.")
+
+            # get encrypted notes
             data_name = "notes"
-            sql = "SELECT notes FROM extn WHERE id = 1"
+            sql = "SELECT notes, history FROM extn WHERE id = 1"
             query = dmn.execute(sql)
             if query and query.exec() and query.next():
                 if query.value(0):
@@ -937,7 +1016,10 @@ def user_data_from_database(logger, textEdit, combffile, extensions, dbopt, is_s
                         # else:
                         #     logger.appendPlainText(decrypted_data.stderr)
                         #     print("Could not decrypt notes")
-            return extension_data
+                if query.value(1):
+                    saved_history = query.value(1)
+
+            return extension_data, saved_history
     except DBConnectionError as e:
         err = ""
         if query:
@@ -953,3 +1035,12 @@ def user_data_from_database(logger, textEdit, combffile, extensions, dbopt, is_s
         logger.appendPlainText(err_msg)
         logging.error(err_msg, exc_info=True)
     return []
+
+
+def get_history_view(saved_history, calculator):
+    """ fetch results any results to append to saved history """
+    c = calculator
+    if c and c.last_history_view:
+        saved_history = saved_history + c.last_history_view
+        c.last_history_view = ""
+    return saved_history

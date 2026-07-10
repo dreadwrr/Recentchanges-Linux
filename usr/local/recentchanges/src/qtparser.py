@@ -5,15 +5,16 @@ import sys
 from src.dirwalker import main_entry as dirwalker_main
 from src.findfile import main_entry as findfile_main
 from src.gpgkeymanagement import import_key
-from src.recentchangessearch import main as recentchanges_main
-from src.recentchangessearchparser import build_subparser
-from src.rntchanges import main as rntchanges_main
-from src.rntchangesfunctions import display
 from src.qtfunctions import load_file_manager
 from src.qtfunctions import load_konsole
 from src.qtfunctions import kill_process
 from src.qtfunctions import set_clock
-# 06/16/2026
+from src.recentchangessearch import main as recentchanges_main
+from src.recentchangessearchparser import build_subparser
+from src.rntchanges import main as rntchanges_main
+from src.rntchangesfunctions import display
+from scripts.watchdog_linux import main as watchdog_main
+# 07/10/2026
 
 
 def dispatch_internal(argv):
@@ -34,7 +35,8 @@ def dispatch_internal(argv):
                 },
                 "recentchangessearch.py": recentchanges_main,
                 "findfile.py": findfile_main,
-                "import": import_key
+                "import": import_key,
+                "watchdog_linux.py": watchdog_main
             }
 
             entry = DISPATCH_MAP.get(script)
@@ -70,6 +72,8 @@ def dispatch_internal(argv):
                     sys.exit(entry(args))
                 elif script == "import":
                     return entry(args)
+                elif script == "watchdog_linux.py":
+                    sys.exit(entry(*args[1:]))
 
             elif script == "run":
 

@@ -1,7 +1,19 @@
 import logging
 import os
+import psutil
 import re
+import signal
 import subprocess
+import sys
+import time
+try:
+    import fcntl  # linux
+except ImportError:
+    fcntl = None
+try:
+    import msvcrt  # win
+except ImportError:
+    msvcrt = None
 from pathlib import Path
 from .fsearchfunctions import upt_cache
 from .pyfunctions import ap_decode
@@ -9,7 +21,7 @@ from .pyfunctions import epoch_to_date
 from .pyfunctions import escf_py
 from .pyfunctions import parse_datetime
 from .rntchangesfunctions import removefile
-
+# 07/10/2026
 
 # Globals
 QUOTED_RE = re.compile(r'"((?:[^"\\]|\\.)*)"')
@@ -17,6 +29,81 @@ QUOTED_RE = re.compile(r'"((?:[^"\\]|\\.)*)"')
 # xRC functions
 
 
+# cross platform
+def process_by_target(target):
+    for proc in psutil.process_iter(["pid", "cmdline"]):
+        try:
+            cmdline = proc.info["cmdline"] or []
+            if any(target in arg for arg in cmdline):
+                return proc.pid
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    return 0
+
+
+def process_kill(pid, pid_file):
+    try:
+        proc = psutil.Process(pid)
+        proc.terminate()
+        proc.wait(timeout=5)
+        removefile(pid_file)
+        return True
+    except psutil.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+        return True
+    except psutil.NoSuchProcess:
+        return False
+    except psutil.AccessDenied:
+        return False
+
+
+def drop_pid(pid, platform, pid_file):
+    try:
+        if platform == "linux":
+            os.kill(-pid, signal.SIGTERM)
+        else:
+            os.kill(pid, signal.SIGTERM)
+        removefile(pid_file)
+        return True
+    except ProcessLookupError:
+        pass  # already gone
+    except PermissionError:
+        print("shutdown func inotifywait permission error")
+    return False
+# end cross platform
+
+
+def get_pid(pid_file):
+    pid = None
+    if os.path.isfile(pid_file):
+        try:
+            with open(pid_file, "r") as f:
+                pid = int(f.read().strip())
+        except (ValueError, OSError):
+            return None
+    return pid
+
+
+def old_pid_check(watchdog_pid_file, new_pid, platform, logger=logging):
+    """ if there is an old pid file try to kill. """
+
+    pid = get_pid(watchdog_pid_file)
+    if pid:
+        differs = new_pid and new_pid != pid
+        if differs or not new_pid:
+            logger.debug(f"{watchdog_pid_file} stale pid found attempted cleanup new {new_pid} vs old {pid}")
+            if platform == "linux":
+                # process_kill(pid)
+                drop_pid(pid, platform, watchdog_pid_file)
+                # if not res:
+                #   kill by pattern
+                #   fk_success = _fk_process(r'inotifywait.*-e create -e moved_to --format %e\|%w%f%0')  # fk_success = _fk_process('inotifywait -m -r -e create -e moved_to --format %e|%w%f%0')  # original
+            else:
+                process_kill(pid, watchdog_pid_file)
+
+
+# linux
 def process_status(pattern):
     try:
         result = subprocess.run(
@@ -41,35 +128,67 @@ def _fk_process(pattern):
     except Exception as e:
         logging.error(f"_fk_process xRC failure to close process. err: {e} {type(e).__name__} \n", exc_info=True)
     return False
+# end linux
 
 
-def strup(script_dir, home_dir, xdg_runtime, inotify_creation_file, cache_f, checksum, moduleNAME, log_file):
+def strup(script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, pid_file, lockfile, log_file, ll_level, _time, escaped_user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, logger, platform):
 
-    script_path = os.path.join(script_dir, 'start_inotify')
-    cmd = [
+    app = str(appdata_local / "main.py")
+
+    script_path = os.path.join(script_dir, script)
+
+    is_pyinstall = False
+    dispatch = sys.executable
+    if getattr(sys, "frozen", False) or "__compiled__" in globals():
+        is_pyinstall = True
+        dispatch = Path(sys.argv[0]).resolve()
+
+    args = [
+        "watchdog_linux.py",
         script_path,
-        str(inotify_creation_file),
-        moduleNAME,
-        str(cache_f),
-        str(checksum).lower(),
+        str(appdata_local),
         str(home_dir),
-        str(xdg_runtime),
-        "ctime",
-        "3600"
+        str(inotify_creation_file),
+        str(CACHE_F),
+        str(cdir),
+        str(pid_file),
+        str(lockfile),
+        str(log_file),
+        ll_level,
+        str(_time),
+        escaped_user,
+        moduleNAME,
+        str(usrDIR),
+        temp_dir,
+        str(gnupg_home),
+        str(debug_mode).lower(),
+        *supbrwLIST
     ]
+
+    if not is_pyinstall:
+        args = ["-u", app] + args
+
     try:
         script_dir = os.path.dirname(script_path)
-        subprocess.run(cmd, cwd=script_dir, capture_output=True, text=True, check=True)
-        logging.debug("strup completed successfully")
-    except subprocess.CalledProcessError as e:
-        print("xRC unable to start inotify logged to", log_file)
-        logging.error(f"error in strup: {e} {type(e).__name__}", exc_info=True)
-        combined = "\n".join(filter(None, [e.stdout, e.stderr]))
-        if combined:
-            logging.error("[OUTPUT]\n" + combined)
+
+        kwargs = {"cwd": script_dir}
+
+        if platform == "windows":
+            kwargs["creationflags"] = (
+                subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE
+                if debug_mode else
+                subprocess.CREATE_NEW_PROCESS_GROUP
+            )
+        else:
+            kwargs["start_new_session"] = True
+
+        cmd = [dispatch] + args
+        subprocess.Popen(cmd, **kwargs)
+
+        logger.debug("strup completed successfully")
     except Exception as e:
-        print("xRC logged an exception to", log_file)
-        logging.error(f"strup General exception unable to start inotify wait: {e} {type(e).__name__}", exc_info=True)
+        print("xRC unable to start watchdog logged to", log_file)
+        logger.error(f"strup General exception unable to start inotify wait: {e} {type(e).__name__}", exc_info=True)
 
 
 def _to_int_or_none(value, field, line):
@@ -123,7 +242,7 @@ def parse_line(line):
     return [timestamp1, filepath, timestamp2, inode, timestamp3] + rest
 
 
-def parselog(file, checksum):
+def parselog(file, checksum, logger):
 
     results = []
 
@@ -131,7 +250,7 @@ def parselog(file, checksum):
         try:
             inputln = parse_line(line)
             if not inputln or not inputln[1].strip():
-                logging.debug("parselog missing line or filename from input. skipping.. record: %s", line)
+                logger.debug("parselog missing line or filename from input. skipping.. record: %s", line)
                 continue
 
             n = len(inputln)
@@ -139,12 +258,12 @@ def parselog(file, checksum):
             if checksum:
                 if n < 15:
                     print("parselog checksum, input out of boundaries skipping")
-                    logging.debug("record length less than required 15. skipping.. record: %s", line)
+                    logger.debug("record length less than required 15. skipping.. record: %s", line)
                     continue
             else:
                 if n < 10:
                     print("parselog no checksum, input out of boundaries skipping")
-                    logging.debug("record length less than required 10. skipping.. record: %s", line)
+                    logger.debug("record length less than required 10. skipping.. record: %s", line)
                     continue
 
             timestamp = inputln[0]
@@ -173,7 +292,7 @@ def parselog(file, checksum):
                 try:
                     target = os.readlink(filename)
                 except OSError:
-                    logging.error("skipped error resolving symlink target, file: %s", filename)
+                    logger.error("skipped error resolving symlink target, file: %s", filename)
                     continue
 
             inode = _to_int_or_none(ino, "inode", line)
@@ -194,7 +313,7 @@ def parselog(file, checksum):
 
         except Exception as e:
             print(f'Problem detected in parser parselog for line {line} err: {type(e).__name__}: {e} \n skipping..')
-            logging.error("General error parselog , line: %s \n error: %s", line, type(e).__name__, exc_info=True)
+            logger.error("General error parselog , file %s  line: %s \n error: %s", file, line, type(e).__name__, exc_info=True)
 
     return results
 
@@ -242,7 +361,7 @@ def rotate_cache(cfr, cache_f):
         removefile(rotated)
 
 
-def parse_tout(log_file, checksum):
+def parse_tout(log_file, checksum, logger):
     tout_files = []
     all_files = []
 
@@ -256,50 +375,227 @@ def parse_tout(log_file, checksum):
         tout_files = f.readlines()
 
     if tout_files:
-        all_files = parselog(tout_files, checksum)
+        all_files = parselog(tout_files, checksum, logger)
 
     removefile(rotated)
     return all_files
 
 
-def init_recentchanges(script_dir, home_dir, xdg_runtime, inotify_creation_file, cfr, xRC, checksum, moduleNAME, log_path):
+def time_extract(line, tout_file, logger):
+    parts = line.split(maxsplit=2)
+    if len(parts) < 2:
+        logger.error("trim_tout time_extract while parsing log impartial line couldnt get mtime. skipping.. record: %s file: %s", line, tout_file)
+        return 0
+    if parts[0] == "None" or parts[1] == "None":
+        logger.error("trim_tout time_extract while parsing log impartial line couldnt get mtime. skipping.. record: %s file: %s", line, tout_file)
+        return 0
+    dt = parse_datetime(f"{parts[0]} {parts[1]}")
+    return dt.timestamp() if dt else 0
+
+
+def trim_tout(log_file, time_back=6, trim_to=9, min_span_hours=0, logger=logging):
+    """ trim created log file.
+        by span trim the borderline.
+        or by rolling waterline """
+
+    cutoff_time = time.time()
+
+    if os.path.isfile(log_file):
+
+        try:
+
+            with log_file.open('r') as f:
+                tout_files = f.readlines()
+
+            if tout_files:
+
+                first_ts = time_extract(tout_files[0], log_file, logger)
+
+                # by span
+                if min_span_hours:
+                    # get the last file and get the span
+                    last_ts = time_extract(tout_files[-1], log_file, logger)
+                    span = (last_ts - first_ts) / 3600  # hours
+
+                    if span > min_span_hours:
+                        removefile(log_file)
+                        return True
+
+                # by rolling. trim to low water
+                elif trim_to:
+                    # is it at high water
+                    trim = (cutoff_time - first_ts) > (trim_to * 3600)
+
+                    if trim:
+                        if trim_to < time_back:
+                            print("trim_tout low water was higher than high water defaulting to high water", trim_to)
+                            time_back = trim_to
+                        cutoff_time = cutoff_time - (time_back * 3600)
+                        kept = [line for line in tout_files if time_extract(line, log_file, logger) >= cutoff_time]
+                        if kept:
+                            with open(log_file, 'w') as f:
+                                f.writelines(kept)
+                        else:
+                            removefile(log_file)
+                        return True
+
+        except Exception as e:
+            print(f'trim_tout problem detected in parser parselog err: {type(e).__name__}: {e} \n skipping..')
+            logger.error("trim_tout General error parselog , file %s \n error: %s", log_file, type(e).__name__, exc_info=True)
+            return None
+
+    return False
+
+
+def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gnupg_home, cfr, xRC, _time, checksum, user, moduleNAME, log_file, ll_level, supbrwLIST, platform="Linux"):
+
+    debug_mode = False  # open debug console if using qt
+    inotify_log_file = "file_creation_log.txt"
+
+    logger = logging.getLogger("INITRECENTCHANGES")
+    platform = platform.lower()
+
     try:
-        all_files = []
-        search_pattern = os.path.join(script_dir.name, "inotify")
 
-        if checksum and xRC:
+        if platform == "linux":
 
-            cached = Path("/tmp/dbctimecache/")
+            temp_base = Path("/tmp")
 
-            cache_f = cached / "ctimecache"
+            # inotify_creation_file main output /tmp/file_creation_log.txt
+            # CACHE_F cache output              /tmp/dbctimecache/ctimecache
+            # watchdog_pid_file                 /tmp/inotify_watcher.pid
+            # lockfile                          /tmp/pblk.lock
 
-            os.makedirs(cached, mode=0o700, exist_ok=True)
+            script = search_pattern = "watchdog_linux.py"
+            cdir = temp_base / "dbctimecache"
+            inotify_creation_file = temp_base / inotify_log_file
+            CACHE_F = cdir / "ctimecache"
 
-            if process_status(search_pattern):
-                fk_success = _fk_process('inotifywait -m -r -e create -e moved_to --format %e|%w%f%0')
-                rotate_cache(cfr, cache_f)
+            watchdog_pid_file = os.path.join(temp_base, 'inotify_watcher.pid')
+            lockfile = "/tmp/pblk.lock"
 
-                if os.path.isfile(inotify_creation_file):
-
-                    all_files = parse_tout(inotify_creation_file, checksum)
-
-                open(inotify_creation_file, 'w').close()
-                if fk_success or not process_status(search_pattern):
-                    strup(script_dir, home_dir, xdg_runtime, inotify_creation_file, cache_f, checksum, moduleNAME, log_path)
-                else:
-                    removefile(inotify_creation_file)
-            else:
-                removefile(inotify_creation_file)
-                strup(script_dir, home_dir, xdg_runtime, inotify_creation_file, cache_f, checksum, moduleNAME, log_path)
         else:
-            if process_status(search_pattern):
-                fk_success = _fk_process('inotifywait -m -r -e create -e moved_to --format %e|%w%f%0')
+
+            # inotify_creation_file main output \\scripts\\file_creation_log.txt
+            # CACHE_F cache output              \\scripts\\ctimecache
+            # watchdog_pid_file                 \\scripts\\inotify_watcher.pid
+            # lockfile                          \\scripts\\ctime.lock
+
+            script = search_pattern = "watchdog_win.py"
+            cdir = script_dir
+            inotify_creation_file = cdir / inotify_log_file
+            CACHE_F = cdir / "ctimecache"
+
+            watchdog_pid_file = os.path.join(cdir, 'inotify_watcher.pid')
+            lockfile = cdir / "ctime.lock"
+
+        # lock_ = False
+        fk_success = True
+
+        pid = process_by_target(search_pattern)
+        old_pid_check(watchdog_pid_file, pid, platform, logger)
+
+        if pid:
+
+            if platform == "linux":
+
+                # inotify wait is running wait until it is finished if it is in the middle of a write
+
+                # fd = os.open(lockfile, os.O_WRONLY | os.O_CREAT, 0o644)
+                # os.dup2(fd, 200)
+                # os.close(fd)
+
+                # lock_fd = 200
+                # try:
+                # fcntl.flock(lock_fd, fcntl.LOCK_EX)
+                # lock_ = True
+
+                # kill inotify wait process results and restart
+                if checksum and xRC:
+
+                    os.makedirs(cdir, mode=0o700, exist_ok=True)
+
+                    fk_success = process_kill(pid, watchdog_pid_file)
+
+                    # a partial write could occur but would get parsed out and is insignificant this avoids the use of locks currently
+
+                    rotate_cache(cfr, CACHE_F, logger)
+
+                    # if os.path.isfile(inotify_creation_file):
+                    #   all_files = parse_tout(inotify_creation_file, checksum, logger)
+                    # open(inotify_creation_file, 'w').close()
+
+                    if fk_success and not process_by_target(search_pattern):
+                        strup(
+                            script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, watchdog_pid_file, lockfile,
+                            log_file, ll_level, _time, user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, logger,
+                            platform
+                        )
+                    else:
+                        if fk_success:
+                            logger.debug("init_recentchanges inotifywait was already running continuing")  # log unusual event
+
+                # the setting was turned off kill inotify wait
+                else:
+
+                    fk_success = process_kill(pid, watchdog_pid_file)
+
                 if not fk_success:
-                    logging.debug("init_recentchanges _fk_process did not report success for inotifywait termination")
-                removefile(inotify_creation_file)
-        return all_files
+                    logger.debug("init_recentchanges _fk_process did not report success for inotifywait termination")  # log second unusual event
+                # except OSError as e:
+                #     logger.error(f"Failed to acquire lock: {e}")
+                # finally:
+                #     if lock_:
+                #         fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                #     os.close(lock_fd)
+
+            elif platform == "windows":
+
+                # lock_file = open(lockfile, "w")
+
+                # try:
+
+                # msvcrt.locking(lock_file.fileno(), msvcrt.LK_LOCK, 1)
+                # lock_ = True
+                if checksum and xRC:
+
+                    fk_success = process_kill(pid, watchdog_pid_file)
+
+                    rotate_cache(cfr, CACHE_F, logger)
+
+                    if fk_success and not process_by_target(search_pattern):
+                        strup(
+                            script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, watchdog_pid_file, lockfile,
+                            log_file, ll_level, _time, user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, logger,
+                            platform
+                        )
+                    else:
+                        if fk_success:
+                            logger.debug("init_recentchanges inotifywait was already running continuing")
+
+                else:
+
+                    fk_success = process_kill(pid, watchdog_pid_file)
+
+                if not fk_success:
+                    logger.debug("init_recentchanges _fk_process did not report success for inotifywait termination")
+                # except OSError as e:
+                #     logger.error(f"Failed to acquire lock: {e}")
+                # finally:
+                #     if lock_:
+                #         msvcrt.locking(lock_file.fileno(), msvcrt.LK_UNLCK, 1)
+                #     lock_file.close()
+
+        # first start
+        elif checksum and xRC:
+
+            strup(
+                script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, watchdog_pid_file, lockfile,
+                log_file, ll_level, _time, user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, logger,
+                platform
+            )
+
     except Exception as e:
-        logging.error(f"Error in xRC error: {e} {type(e).__name__}", exc_info=True)
-    return []
+        logger.error(f"Error in xRC error: {e} {type(e).__name__}", exc_info=True)
 
 # end xRC functions

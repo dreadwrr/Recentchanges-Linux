@@ -14,7 +14,7 @@ from .pyfunctions import escf_py
 # Find Parallel sortcomplete search and  ctime hashing
 
 
-def process_line(line, checksum, file_type, search_start_dt, cache_f, logger=None):
+def process_line(line, checksum, search_start_dt, cache_f, logger=None):
 
     label = "Sortcomplete"
     fmt = "%Y-%m-%d %H:%M:%S"
@@ -45,12 +45,6 @@ def process_line(line, checksum, file_type, search_start_dt, cache_f, logger=Non
         return ("Nosuchfile", mt, mt, escf_path), log_entries
     ctime = epoch_to_date(change_time)
     if mtime is None:
-        return None, log_entries
-
-    if not ctime and file_type == "ctime":
-        return None, log_entries
-
-    if not (file_type == "ctime" and ctime is not None and ctime > mtime) and file_type != "main":
         return None, log_entries
 
     try:
@@ -105,9 +99,7 @@ def process_line(line, checksum, file_type, search_start_dt, cache_f, logger=Non
         emit_log("DEBUG", f"process line no mtime from calculate checksum: {file_path} mtime={mtime}", logs.WORKER_LOG_Q, logger=logger)
         return None, log_entries
 
-    if file_type == "ctime":
-        if ctime is None or ctime <= mtime:
-            return None, log_entries
+    if ctime and ctime > mtime:
         lastmodified = mtime
         mtime = ctime
         cam = "y"

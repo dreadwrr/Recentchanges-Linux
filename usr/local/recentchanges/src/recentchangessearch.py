@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#   Porteus                                                                           06/16/2026
+#   Porteus                                                                           07/10/2026
 #   recentchanges. Developer buddy      recentchanges/ recentchanges search
 #   Provide ease of pattern finding ie what files to block we can do this a number of ways
 #   1) if a file was there (many as in more than a few) and another search lists them as deleted its either a sys file or not but unwanted nontheless
@@ -28,7 +28,6 @@ import sys
 import tempfile
 import time
 from datetime import datetime, timedelta
-from pathlib import Path
 from . import processha
 from .config import dump_toml
 from .config import load_toml
@@ -39,6 +38,8 @@ from .dirwalkerfunctions import get_base_folders
 from .dirwalkerfunctions import get_relavant_mounts
 from .dirwalkerfunctions import MOUNT_FOLDERS
 from .filterhits import update_filter_csv
+from .fsearch import process_line
+from .fsearchparallel import process_lines
 from .gpgcrypto import decr_ctime
 from .gpgcrypto import encr_cache
 from .inotifyfunctions import init_recentchanges
@@ -128,7 +129,6 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
     toml_file, json_file, home_dir, xdg_config, xdg_runtime, usr, uid, gid = get_config(appdata_local, usr, platform="Linux")
 
     script_dir = appdata_local / "scripts"
-    inotify_creation_file = Path("/tmp/file_creation_log.txt")
     pst_data = home_dir / ".local" / "share" / "recentchanges"
     flth_frm = pst_data / "flth.csv"  # filter hits
     dbtarget_frm = pst_data / "recent.gpg"
@@ -170,6 +170,7 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
     log_file = config['logs']['userLOG'] if usr != "root" else root_log_file
     exclDIRS = user_path(config['search']['exclDIRS'], usr)
     xRC = config['search']['xRC']
+    _time = config['search']['_time']
     driveTYPE_frm = config['search']['driveTYPE']
     python = config['search']['python']
     # email_name = config['backend']['name']
@@ -256,12 +257,12 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
     tmpoutput = []  # holding
     # Searches
     recent = []  # main results
-    tout = []  # ctime results
+    # tout = []  # ctime results # formerly seperate ctime search
     sortcomplete = []  # combined
     tmpopt = []  # filtered from sortcomplete
 
     # NSF
-    complete_1, complete_2 = [], []
+    complete_1 = []
     complete = []  # combined
 
     # Diff file
@@ -385,7 +386,9 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
 
         # load ctime or files created or copied with preserved metadata.
         # if xRC
-        tout = init_recentchanges(script_dir, home_dir, xdg_runtime, inotify_creation_file, cfr, xRC, checksum, moduleNAME, log_file)
+
+        init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, tempwork, gnupg_home, cfr, xRC, _time, checksum,
+                           usr, moduleNAME, log_file, ll_level, supbrwLIST, platform="Linux")
 
         if argone != "search":
             thetime = argone
@@ -461,68 +464,44 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
             )
 
         else:
-            secondary = []
-            if tout:
-                mmin = ["-mmin", f"-{search_time}"]
 
-                find_command_mmin = F + prune + mmin + TAIL
-                if search_list:
-                    if mounts:
-                        secondary = ["find", *mounts] + mmin + TAIL
+            records = []
+            mmin = ["-mmin", f"-{search_time}"]
+            cmin = ["-cmin", f"-{search_time}"]
+            current_time = datetime.now()
 
-                    search_paths = 'Running command:' + ' '.join(["find"] + search_list + mmin + TAIL)
+            find_command = F + prune + ["("] + mmin + ["-o"] + cmin + [")"] + TAIL
+            if search_list:
 
-                init = True
-                endval += 30
+                search_paths = 'Running command:' + ' '.join(["find"] + search_list + ["("] + mmin + ["-o"] + cmin + [")"] + TAIL)
 
-                recent, complete_1, recentnul, end, cstart = find_files(
-                    find_command_mmin, secondary, search_paths, "main", recent, complete_1, recentnul, init, cfr,
-                    search_start_dt, user_setting, logging_values, end, cstart, iqt=iqt, logger=logger, strt=proval,
-                    endp=endval
-                )
+            init = True
+            # def find_files(find_command, search_paths, recentnul, feedback):
+            records, recentnul = find_files(find_command, search_paths, records, recentnul, feedback)
+            _end = time.time()
 
-            else:
-                cmin = ["-cmin", f"-{search_time}"]
-                current_time = datetime.now()
+            if mounts:
 
-                find_command_cmin = F + prune + cmin + TAIL
-                if search_list:
-                    if mounts:
-                        secondary = ["find", *mounts] + cmin + TAIL
-
-                    search_paths = 'Running command:' + ' '.join(["find"] + search_list + cmin + TAIL)
-
-                init = True
-
-                tout, complete_2, recentnul, end, cstart = find_files(
-                    find_command_cmin, secondary, search_paths, "ctime", tout, complete_2, recentnul, init, cfr,
-                    search_start_dt, user_setting, logging_values, end, cstart, iqt=iqt, strt=proval,
-                    endp=endval, logger=logger
-                )
-
-                cmin_end = time.time()
-                cmin_start = current_time.timestamp()
-                cmin_offset = time_convert(cmin_end - cmin_start, 60, 2)
+                _start = current_time.timestamp()
+                find_offset = time_convert(_end - _start, 60, 2)
                 check_stop(stopf)
 
-                mmin = ["-mmin", f"-{search_time + cmin_offset:.2f}"]
+                mmin = ["-mmin", f"-{search_time + find_offset:.2f}"]
+                cmin = ["-cmin", f"-{search_time + find_offset:.2f}"]
 
-                find_command_mmin = F + prune + mmin + TAIL
-                if search_list:
-                    if mounts:
-                        secondary = ["find", *mounts] + mmin + TAIL
+                find_command = ["find", *mounts] + ["("] + mmin + ["-o"] + cmin + [")"] + TAIL
 
-                    search_paths = 'Running command:' + ' '.join(["find"] + search_list + mmin + TAIL)
+                records, recentnul = find_files(find_command, search_paths, records, recentnul, feedback)
+            end = time.time()
 
-                proval += 10
-                endval += 30
-                init = False
+            proval += 10
+            endval += 30
 
-                recent, complete_1, recentnul, end, cstart = find_files(
-                    find_command_mmin, secondary, search_paths, "main", recent, complete_1, recentnul, init, cfr,
-                    search_start_dt, user_setting, logging_values, end, cstart, iqt=iqt, strt=proval,
-                    endp=endval, logger=logger
-                )
+            if init and checksum:
+                cstart = time.time()
+                cprint.cyan("Running checksum")
+
+            recent, complete_1 = process_lines(process_line, records, search_start_dt, 'FSEARCH', user_setting, logging_values, cfr, iqt=iqt, strt=proval, endp=endval)
 
         cend = time.time()
 
@@ -530,30 +509,24 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
 
         # end Main search
 
-        if recent is None or tout is None:
-            return 1
-
-        # end Main search
+        if recent is None:
+            sys.exit(1)
 
         check_stop(stopf)
-        if cfr and (recent or tout):
+        if cfr and recent:
             encr_cache(cfr, cache_f, email, usr, compLVL)
             # change_perm(cache_f, uid, gid)
 
         if not recent:
-            if not tout:
-                cprint.cyan("No new files found")
-                if iqt:
-                    print("Progress: 100.00%")
-                return 0
-            # for entry in tout:
+            cprint.cyan("No new files found")
+            if iqt:
+                print("Progress: 100.00%")
+            return 0
+            # for entry in recent:
             #     tss = entry[0].strftime(fmt)
             #     fp = entry[1]
             #     print(f'{tss} {fp}')
-            recent = tout[:]
-            tout = []
 
-        complete = complete_1 + complete_2  # nsf append to rout in pstsrg before stat insert
         proval = 60  # current progress
         endval = 90  # next
 
@@ -563,14 +536,6 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
 
         srttime = sortcomplete[0][0]  # store the start time
         merged = sortcomplete[:]
-
-        for entry in tout:
-            if not entry:
-                continue
-            tout_dt = entry[0]
-            if tout_dt >= srttime:
-                merged.append(entry)
-        merged.sort(key=lambda x: x[0])
 
         seen = {}
 

@@ -13,7 +13,7 @@ from .pyfunctions import escf_py
 # Find Parallel sortcomplete search and  ctime hashing
 
 
-def process_scan(line, checksum, file_type, search_start_dt, cache_f, logger=None):
+def process_scan(line, checksum, search_start_dt, cache_f, logger=None):
 
     label = "Sortcomplete"
     fmt = "%Y-%m-%d %H:%M:%S"
