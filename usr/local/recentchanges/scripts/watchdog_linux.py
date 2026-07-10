@@ -58,7 +58,7 @@ class CreatedHandler(FileSystemEventHandler):
     MAX_JOBS = 8
     IDLE = MAX_JOBS // 2
 
-    def __init__(self, output_file, CACHE_F, cdir, lockfile, moduleNAME, debug_file, inclusions, exclusions, supbrwLIST, logger, parent=None):
+    def __init__(self, base, output_file, CACHE_F, cdir, lockfile, moduleNAME, debug_file, inclusions, exclusions, supbrwLIST, logger, parent=None):
         super().__init__()
 
         localappdata = inclusions[0]
@@ -76,6 +76,7 @@ class CreatedHandler(FileSystemEventHandler):
         if not output_file:
             output_file = Path(__file__).resolve().parent / file
 
+        self.base = base
         self.output_file = output_file
         self.CACHE_F = CACHE_F
         self.cdir = cdir
@@ -109,12 +110,13 @@ class CreatedHandler(FileSystemEventHandler):
         # add other regexes
 
         self.inclusion = get_runtime_exclude_list(
-            localappdata, usrDIR, moduleNAME, flth, dbtarget, cache_f, cache_s,
+            usrDIR, moduleNAME, inclusions[3], flth, dbtarget, cache_f, cache_s,
             gnupg_home, str(debug_file), str(log_path)
         )
 
         self.excluded = EXCLUSIONS.copy()
-        self.excluded.append(output_file)
+        output_file_rel = os.path.join(base, output_file.lstrip('/'))
+        self.excluded.append(output_file_rel)  # output_file
         self.excluded.extend(exclusions)
 
         self.suffixes = TEMP_SUFFIXES.copy()
@@ -160,6 +162,7 @@ class CreatedHandler(FileSystemEventHandler):
             return
 
         path = str(entry)
+        path_rel = wf.relativize(path, self.base)
 
         if entry.is_file():
 
@@ -167,10 +170,14 @@ class CreatedHandler(FileSystemEventHandler):
 
             match_found = False
 
-            if is_excluded(self.webb, path):
+            if is_excluded(self.webb, path_rel):  # path
                 match_found = True
             if not match_found:
-                path_lower = path.lower()
+                path_lower = path_rel.lower()  # path.lower()
+                # if wf.DEBUG:
+                #     print("astr", path_lower)
+                #     for rel in self.inclusion:
+                #         print(rel)
                 if any(path_lower.startswith(excl) for excl in self.inclusion):
                     match_found = True
 
@@ -301,6 +308,7 @@ class WatchdogService:
 
         self.observer = None
         self.handler = CreatedHandler(
+            base,
             output_file,
             CACHE_F,
             cdir,
