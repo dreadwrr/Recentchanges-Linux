@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import sys
@@ -93,10 +94,11 @@ class CreatedHandler(FileSystemEventHandler):
         self.log_queue = None
 
         self.webb = suppress_list(escaped_user, supbrwLIST)  # regexes
-        
-        # eg dir_pth = os.path.join(localappdata, f"{moduleNAME}_MDY_*") folders that get files moved some time after this script is started by qt main app
+
+        # eg os.path.join(localappdata, f"{moduleNAME}_MDY_*") folders that get files moved some time after this script is started by qt main app
         # eg /tmp/rntfiles_MDY_07-05-26-TIME_20_30_40/rntfilesxSystemDiffFromLastSearch5.txt
-        pattern = f"{moduleNAME}x_MDY_[^/]*/{moduleNAME}x.+$"
+
+        pattern = f"{moduleNAME}_MDY_[^/]*/{moduleNAME}x.+$"
         self.webb.append(pattern)
 
         # eg the db is extracted to /tmp/*/dbopt.db
@@ -157,18 +159,19 @@ class CreatedHandler(FileSystemEventHandler):
 
             return
 
+        path = str(entry)
+
         if entry.is_file():
 
             emit_log("DEBUG", f"watchdog found checking for matches {entry}", log_q, logger=self.logger)
 
-            path = str(entry)
             match_found = False
 
             if is_excluded(self.webb, path):
                 match_found = True
             if not match_found:
                 path_lower = path.lower()
-                if any(path_lower.startswith(excl) for excl in self.exclude_patterns):
+                if any(path_lower.startswith(excl) for excl in self.inclusion):
                     match_found = True
 
             if wf.is_excl_dir(entry, self.excluded):
@@ -446,7 +449,8 @@ def main(appdata_local, home_dir, output_file, CACHE_F, cdir, pid_file, lockfile
     inclusions = (appdata_local, usrDIR, temp_dir, user, flth, dbtarget, cache_f, cache_s, log_path, gnupg_home)
 
     debug_file = home_dir / ".local" / "state" / "recentchanges" / "logs" / "watchdog.log"
-    logger = setup_logger(debug_file, ll_level, "WATCHDOG")
+    logging.getLogger('watchdog').setLevel(logging.WARNING)
+    logger = setup_logger(str(debug_file), ll_level, "WATCHDOG")
 
     app = QApplication(sys.argv)
 
@@ -466,11 +470,11 @@ def main(appdata_local, home_dir, output_file, CACHE_F, cdir, pid_file, lockfile
 
     tray = TrayApp(service, pid_file, _time, logger)
 
-    # import traceback
-    # def hook(exctype, value, tb):
-    #     with open("/tmp/crash.txt", "a") as f:
-    #         f.write("".join(traceback.format_exception(exctype, value, tb)))
-    # sys.excepthook = hook
+    import traceback
+    def hook(exctype, value, tb):
+        with open("/tmp/crash.txt", "a") as f:
+            f.write("".join(traceback.format_exception(exctype, value, tb)))
+    sys.excepthook = hook
     res = app.exec()
     removefile(pid_file)
     sys.exit(res)
