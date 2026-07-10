@@ -224,7 +224,7 @@ class MainWindow(QMainWindow):
         self.usrDIR = os.path.join(home_dir, "Downloads")
         self.lclhome = appdata_local
         self.lclscripts = appdata_local / "scripts"
-        self.inotify_creation_file = self.lclscripts / "file_creation_log.txt"  # 07/10/2026
+        self.inotify_creation_file = "/tmp/file_creation_log.txt"  # 07/10/2026
         self.resources = appdata_local / "Resources"
         # self.resources = appdata_local / "Resources" Windows alarm clock <---- 06/13/2026 linux uses /home/{user}/.local/share/recentchanges/Resources
         self.user_resources = pst_data / "Resources"
@@ -510,10 +510,20 @@ class MainWindow(QMainWindow):
         self.ui.actionQuick1.triggered.connect(lambda: display(self.dspEDITOR, self.command_file, self.dspPATH, True))
         self.ui.actionDiag1.triggered.connect(self.show_status)
 
-        args = ["run", "filemanager", str(self.lclscripts)]
-        args = args if self.is_pyinstall else [sys.executable, self.app] + args
+        # 07/10/2026
+        # top open watchdog directory <app install>/scripts
+        # argstwo = ["run", "filemanager", str(self.lclscripts), str(self.lclscripts)]
+        # argstwo = argsd if self.is_pyinstall else [sys.executable, self.app] + argstwo
+        # self.ui.actionWatchdog.triggered.connect(lambda: run_set_helper(self.dispatch, argstwo, self.is_polkit))  # self.ui.actionWatchdog.triggered.connect(lambda: load_explorer(self.lclscripts))
+        # end to open watchdog directory
 
-        self.ui.actionWatchdog.triggered.connect(lambda: run_set_helper(self.dispatch, args, self.is_polkit))  # self.ui.actionWatchdog.triggered.connect(lambda: load_explorer(self.lclscripts))
+        # instead open the file_creation_log.txt
+        # self.ui.actionWatchdog.triggered.connect(lambda: display(self.dspEDITOR, self.inotify_creation_file, self.dspPATH, True))  # non root
+
+        args = ["run", "display", str(self.dspEDITOR), str(self.inotify_creation_file), str(self.dspPATH)]
+        args = args if self.is_pyinstall else [sys.executable, self.app] + args
+        self.ui.actionWatchdog.triggered.connect(lambda _checked=False, args=args: run_set_helper(self.dispatch, args, self.is_polkit))
+        # end instead open the file_creation_log.txt
 
         self.ui.actionLogging.triggered.connect(lambda: display(self.dspEDITOR, self.log_path, self.dspPATH, True))
 
