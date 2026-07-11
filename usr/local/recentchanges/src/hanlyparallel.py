@@ -86,7 +86,7 @@ def logger_process(results, sys_records, sys_tables, rout, scr, cerr, dbopt, ps,
                                         mod_time = timestamp.strftime(fmt)
                                         # lexographic compare
                                         if changetime and changetime > mod_time:
-                                            rout.append(f'Copy {timestamp} {changetime} {label}')
+                                            rout.append(f'Casmod {timestamp} {changetime} {label}')
 
                             else:
                                 log.debug("Skipping dcp message due to insufficient length: %s", msg)
