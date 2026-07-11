@@ -117,7 +117,7 @@ class CreatedHandler(FileSystemEventHandler):
         )
 
         self.excluded = EXCLUSIONS.copy()
-        output_file_rel = os.path.join(base, output_file.lstrip('/'))
+        output_file_rel = os.path.join(base, str(output_file).lstrip('/'))
         self.excluded.append(output_file_rel)  # output_file
         self.excluded.extend(exclusions)
 
@@ -203,7 +203,7 @@ class CreatedHandler(FileSystemEventHandler):
 
                 if action == "moved":
 
-                    if wf.pair_handle(action, event, entry, path, self.start_time, self.created_seen, self.pending_files, log_q, self.logger):
+                    if wf.pair_handle(action, event, entry, path, self.start_time, self.created_seen, log_q, self.logger):
                         return
                 
                 else:
