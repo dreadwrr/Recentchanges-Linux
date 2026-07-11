@@ -3,6 +3,7 @@ import psutil
 import signal
 import stat
 import subprocess
+import time
 from pathlib import Path
 from src.dirwalkerfunctions import get_stat
 from src.logs import emit_log
@@ -219,7 +220,7 @@ def is_temp_file(path: Path, temp_suffixes) -> bool:
     return path.suffix.lower() in temp_suffixes
 
 
-def pair_handle(action, event, entry, path, start_time, created_seen, log_q, logger):
+def pair_handle(action, event, entry, path, start_time, created_seen, pending_files, log_q, logger):
 
     src = str(Path(event.src_path).resolve())
     stat_info = get_stat(entry, log_q, logger=logger)
@@ -240,9 +241,9 @@ def pair_handle(action, event, entry, path, start_time, created_seen, log_q, log
 
         del created_seen[path]
 
-        # size = stat_info.st_size
-        # key = (path, size, mod_time)
-        # self.pending_files[key] = time.time()
+        size = stat_info.st_size
+        key = (path, size, mod_time)
+        pending_files[key] = time.time()
 
     else:
 
