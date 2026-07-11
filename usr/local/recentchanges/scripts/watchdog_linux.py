@@ -203,7 +203,7 @@ class CreatedHandler(FileSystemEventHandler):
 
                 if action == "moved":
 
-                    if wf.pair_handle(action, event, entry, path, self.start_time, self.created_seen, log_q, self.logger):
+                    if wf.pair_handle(action, event, entry, path, self.start_time, self.created_seen, self.pending_files, log_q, self.logger):
                         return
                 
                 else:
@@ -236,11 +236,14 @@ class CreatedHandler(FileSystemEventHandler):
 
                         if size == 0:
                             emit_log("DEBUG", f"watchdog size stabilized looks like a download 0 bytes. could return for move event but processing anyway. file: {path}", log_q, logger=self.logger)     
-                        #     return
+                            # return
                         if stable:
                             emit_log("DEBUG", f"watchdog size stabilized for handle_file {path}", log_q, logger=self.logger)
                         else:
                             emit_log("DEBUG", f"timed out waiting for stable size, proceeding anyway (checksum will self-guard): {path}", log_q, logger=self.logger)
+
+                        if path not in self.created_seen:
+                            return
 
                 res = wf.get_specs(entry, path, self.output_file, self.CACHE_F, self.cdir, self.lockfile, log_q, self.logger)
                 if res:
@@ -362,7 +365,9 @@ class TrayApp:
         
         self.pid = os.getpid()
 
-        # old_pid_check(self.watchdog_pid_file, pid, logging, "linux")  # can be called in qt but then permission problems as that runs non root
+        # can be called in qt but then permission problems as that runs non root
+        # old_pid_check(self.watchdog_pid_file, pid, logging, "linux")  
+
         # the pid file should not be there normally. If it is try to kill it to attempt to auto rectify
         wf.old_pid_check(pid_file, self.pid, logger, "linux")  
 
@@ -398,7 +403,7 @@ class TrayApp:
         QTimer.singleShot(0, self.start_watch)
 
     def write_pid(self):
-        # with open(self.pid_file, "w") as f:  # original
+        # with open(self.pid_file, "w") as f:  # original this could close a reused pid?
         #     f.write(str(self.pid) + '\n')
 
         proc = psutil.Process(self.pid)
@@ -424,6 +429,7 @@ class TrayApp:
         # elif reason == QSystemTrayIcon.Context:  # right click
         #     print("Right click")
 
+        # This can be used to give an alert. but if something goes wrong the indication is just quit and launcher disapears **
         # self.tray.showMessage(
         #     "Watchdog",
         #     "Monitor is running",
