@@ -186,6 +186,9 @@ class MainWindow(QMainWindow):
         self.is_xzm_profile = self.xzm if self.suffix == "/" else False
         self.exclDIRS = user_path(config['search']['exclDIRS'], usr)
         self.xRC = config['search']['xRC']
+        self.high_water = config['search']['high_water']
+        self.low_water = config['search']['low_water']
+        self.min_span = config['search']['min_span']
         zipPROGRAM = config['compress']['zipPROGRAM']
         self.zipPROGRAM = zipPROGRAM.lower()
         self.zipPATH = config['compress']['zipPATH']
@@ -216,6 +219,7 @@ class MainWindow(QMainWindow):
 
         # Vars
         self.app_version = "6.2.0"
+        base_temp = Path("/tmp")
         self.pwd = os.getcwd()
         self.home_dir = home_dir
         config_local = home_dir / ".config" / "recentchanges"
@@ -224,7 +228,9 @@ class MainWindow(QMainWindow):
         self.usrDIR = os.path.join(home_dir, "Downloads")
         self.lclhome = appdata_local
         self.lclscripts = appdata_local / "scripts"
-        self.inotify_creation_file = "/tmp/file_creation_log.txt"  # 07/10/2026
+        self.inotify_creation_file = base_temp / "file_creation_log.txt"  # 07/10/2026
+        self.search_pattern = "watchdog_linux.py"
+        self.watchdog_pid_file = base_temp / "inotify_watcher.pid"
         self.resources = appdata_local / "Resources"
         # self.resources = appdata_local / "Resources" Windows alarm clock <---- 06/13/2026 linux uses /home/{user}/.local/share/recentchanges/Resources
         self.user_resources = pst_data / "Resources"
@@ -844,8 +850,7 @@ class MainWindow(QMainWindow):
 
     def manage_file_creation_log(self):
         pid = process_by_target(self.search_pattern)
-        # def old_pid(pid_file, new_pid, logger, platform):
-        old_pid_check(self.watchdog_pid_file, pid, logging, "linux")
+
         if not pid:
             trim_tout(self.inotify_creation_file, self.low_water, self.high_water, self.min_span)
 
@@ -1116,6 +1121,9 @@ class MainWindow(QMainWindow):
                 python = updated_config['search']['python']
                 exclDIRS = user_path(updated_config['search']['exclDIRS'], self.usr)
                 xRC = updated_config['search']['xRC']
+                high_water = updated_config['search']['high_water']
+                low_water = updated_config['search']['low_water']
+                min_span = updated_config['search']['min_span']
                 basedir = updated_config['search']['drive']
                 extensions = updated_config['search']['extension']
                 proteusEXTN = updated_config['shield']['proteusEXTN']
@@ -1357,6 +1365,9 @@ class MainWindow(QMainWindow):
                 self.is_xzm_profile = xzm if self.basedir == "/" else False
                 self.exclDIRS = exclDIRS
                 self.xRC = xRC
+                self.high_water = high_water
+                self.low_water = low_water
+                self.min_span = min_span
                 self.zipPROGRAM = zipPROGRAM
                 self.zipPATH = zipPATH
                 self.extensions = extensions
