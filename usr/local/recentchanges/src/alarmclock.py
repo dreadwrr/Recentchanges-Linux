@@ -688,10 +688,11 @@ class AlarmClock(QWidget):
 
     def set_format(self, theme):
 
-        if theme or theme == "":
-            self.ui.lcdNumber.setStyleSheet("")
-            self.ui.lcdNumber.setPalette(self.style().standardPalette())
-        else:
+        self.ui.lcdNumber.setStyleSheet("")
+        self.ui.lcdNumber.setStyleSheet("border: 1px solid #808080;")  # self.ui.lcdNumber.setStyleSheet("border: 1px solid transparent;")  # self.ui.lcdNumber.setStyleSheet("")
+        # if theme or theme == "":
+        # self.ui.lcdNumber.setPalette(self.style().standardPalette())
+        if not theme or theme == "":
             return
         palette = self.ui.lcdNumber.palette()
         if theme == "redblack":

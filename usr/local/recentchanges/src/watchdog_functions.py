@@ -3,7 +3,6 @@ import psutil
 import signal
 import stat
 import subprocess
-import time
 from pathlib import Path
 from src.dirwalkerfunctions import get_stat
 from src.logs import emit_log
@@ -220,7 +219,7 @@ def is_temp_file(path: Path, temp_suffixes) -> bool:
     return path.suffix.lower() in temp_suffixes
 
 
-def pair_handle(action, event, entry, path, start_time, created_seen, pending_files, log_q, logger):
+def pair_handle(action, event, entry, path, start_time, created_seen, log_q, logger):
 
     src = str(Path(event.src_path).resolve())
     stat_info = get_stat(entry, log_q, logger=logger)
@@ -229,21 +228,22 @@ def pair_handle(action, event, entry, path, start_time, created_seen, pending_fi
 
     mod_time = stat_info.st_mtime
 
+    # firefox and others normal for downloaded file. creation event makes final file src 0 bytes -> writes a partial -> move event dest atomic with full file
+    if path in created_seen:
+
+        del created_seen[path]
+
+        # if using another index could store a key
+        # size = stat_info.st_size
+        # key = (path, size, mod_time)
+        # pending_files[key] = time.time()
+
     # unconventional or maybe some other app? creation event write partial in place -> move event dest but dest isnt in created_seen src is.
-    if src in created_seen and path not in created_seen:
+    elif src in created_seen:
         # log unusual event
         emit_log("DEBUG", f"handle_file {action} unusual src was in created_seen on move after created file. src: {src} dest or file: {path}", log_q, logger=logger)
 
         del created_seen[src]
-
-    # firefox and others normal for downloaded file. creation event makes final file src 0 bytes -> writes a partial -> move event dest atomic with full file
-    elif path in created_seen:
-
-        del created_seen[path]
-
-        size = stat_info.st_size
-        key = (path, size, mod_time)
-        pending_files[key] = time.time()
 
     else:
 
