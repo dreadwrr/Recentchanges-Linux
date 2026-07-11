@@ -42,12 +42,13 @@ def process_by_target(target):
     return 0
 
 
-def process_kill(pid, pid_file):
+def process_kill(pid, pid_file=None):
     try:
         proc = psutil.Process(pid)
         proc.terminate()
         proc.wait(timeout=5)
-        removefile(pid_file)
+        if pid_file:
+            removefile(pid_file)
         return True
     except psutil.TimeoutExpired:
         proc.kill()
@@ -59,13 +60,15 @@ def process_kill(pid, pid_file):
         return False
 
 
-def drop_pid(pid, platform, pid_file):
+# formerly named shutdown
+def drop_pid(pid, platform, pid_file=None):
     try:
         if platform == "linux":
             os.kill(-pid, signal.SIGTERM)
         else:
             os.kill(pid, signal.SIGTERM)
-        removefile(pid_file)
+        if pid_file:
+            removefile(pid_file)
         return True
     except ProcessLookupError:
         pass  # already gone
@@ -73,35 +76,6 @@ def drop_pid(pid, platform, pid_file):
         print("shutdown func inotifywait permission error")
     return False
 # end cross platform
-
-
-def get_pid(pid_file):
-    pid = None
-    if os.path.isfile(pid_file):
-        try:
-            with open(pid_file, "r") as f:
-                pid = int(f.read().strip())
-        except (ValueError, OSError):
-            return None
-    return pid
-
-
-def old_pid_check(watchdog_pid_file, new_pid, platform, logger=logging):
-    """ if there is an old pid file try to kill. """
-
-    pid = get_pid(watchdog_pid_file)
-    if pid:
-        differs = new_pid and new_pid != pid
-        if differs or not new_pid:
-            logger.debug(f"{watchdog_pid_file} stale pid found attempted cleanup new {new_pid} vs old {pid}")
-            if platform == "linux":
-                # process_kill(pid)
-                drop_pid(pid, platform, watchdog_pid_file)
-                # if not res:
-                #   kill by pattern
-                #   fk_success = _fk_process(r'inotifywait.*-e create -e moved_to --format %e\|%w%f%0')  # fk_success = _fk_process('inotifywait -m -r -e create -e moved_to --format %e|%w%f%0')  # original
-            else:
-                process_kill(pid, watchdog_pid_file)
 
 
 # linux
@@ -132,15 +106,14 @@ def _fk_process(pattern):
 # end linux
 
 
-def build_terminal_cmd(terminal, cmd):
-    """ wrapper function for debug below working off of return_terminal
-        so linux can have a debug terminal """
-    if os.path.basename(terminal) == "gnome-terminal":
-        return [terminal, "--"] + cmd
-    return [terminal, "-e"] + cmd
-
-
 def strup(script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, pid_file, lockfile, log_file, ll_level, _time, escaped_user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, logger, platform):
+
+    def build_terminal_cmd(terminal, cmd):
+        """ wrapper function for debug below working off of return_terminal
+            so linux can have a debug terminal """
+        if os.path.basename(terminal) == "gnome-terminal":
+            return [terminal, "--"] + cmd
+        return [terminal, "-e"] + cmd
 
     app = str(appdata_local / "main.py")
 
@@ -507,7 +480,6 @@ def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gn
         fk_success = True
 
         pid = process_by_target(search_pattern)
-        old_pid_check(watchdog_pid_file, pid, platform, logger)
 
         if pid:
 
@@ -529,7 +501,7 @@ def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gn
 
                     os.makedirs(cdir, mode=0o700, exist_ok=True)
 
-                    fk_success = process_kill(pid, watchdog_pid_file)
+                    fk_success = process_kill(pid, pid_file=None)
 
                     # a partial write could occur but would get parsed out and is insignificant this avoids the use of locks currently
 
@@ -552,7 +524,7 @@ def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gn
                 # the setting was turned off kill inotify wait
                 else:
 
-                    fk_success = process_kill(pid, watchdog_pid_file)
+                    fk_success = process_kill(pid, pid_file=None)
 
                 if not fk_success:
                     logger.debug("init_recentchanges _fk_process did not report success for inotifywait termination")  # log second unusual event
@@ -573,7 +545,7 @@ def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gn
                 # lock_ = True
                 if checksum and xRC:
 
-                    fk_success = process_kill(pid, watchdog_pid_file)
+                    fk_success = process_kill(pid, pid_file=None)
 
                     rotate_cache(cfr, CACHE_F, logger)
 
