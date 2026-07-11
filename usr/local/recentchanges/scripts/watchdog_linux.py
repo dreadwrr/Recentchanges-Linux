@@ -1,9 +1,11 @@
 import logging
 import os
+import psutil
 import re
 import sys
 import time
 import threading
+import traceback
 from datetime import datetime
 from pathlib import Path
 # flake8: noqa: E402
@@ -254,6 +256,9 @@ class CreatedHandler(FileSystemEventHandler):
                 self.active_jobs += 1
             try:
                 return fn(*args)
+            # this can be commented out but it is better to shutdown to indicate there is an exception somewhere
+            except Exception:
+                sys.excepthook(*sys.exc_info())
             finally:
                 with self.active_lock:
                     self.active_jobs -= 1
@@ -350,9 +355,11 @@ class TrayApp:
         self.pid_file = pid_file
         self._time = _time
         self.logger = logger
-
+        
         self.pid = os.getpid()
+        wf.old_pid_check(pid_file, self.pid, logger, "linux")  # the pid file should not be there normally. If it is try to kill it to attempt to auto rectify
         self.write_pid()
+
         self.running = False
 
         self.tray = QSystemTrayIcon()
@@ -383,8 +390,12 @@ class TrayApp:
         QTimer.singleShot(0, self.start_watch)
 
     def write_pid(self):
+        # with open(self.pid_file, "w") as f:  # original
+        #     f.write(str(self.pid) + '\n')
+
+        proc = psutil.Process(self.pid)
         with open(self.pid_file, "w") as f:
-            f.write(str(self.pid) + '\n')
+            f.write(f"{self.pid}|{proc.create_time()}\n")
 
     def on_tray_activated(self, reason):
         # print("reason =", reason)  # probe
@@ -461,32 +472,46 @@ def main(appdata_local, home_dir, output_file, CACHE_F, cdir, pid_file, lockfile
     logging.getLogger('watchdog').setLevel(logging.WARNING)  # turn off the intercepted watchdog logging
     logger = setup_logger(str(debug_file), ll_level, "WATCHDOG")
 
-    app = QApplication(sys.argv)
+    try:
+        app = QApplication(sys.argv)
 
-    service = WatchdogService(
-        base,
-        output_file,
-        CACHE_F,
-        cdir,
-        lockfile,
-        moduleNAME,
-        debug_file,
-        exclDIRS,
-        inclusions,
-        supbrwLIST,
-        logger
-    )
+        service = WatchdogService(
+            base,
+            output_file,
+            CACHE_F,
+            cdir,
+            lockfile,
+            moduleNAME,
+            debug_file,
+            exclDIRS,
+            inclusions,
+            supbrwLIST,
+            logger
+        )
 
-    tray = TrayApp(service, pid_file, _time, logger)
+        tray = TrayApp(service, pid_file, _time, logger)
 
-    # import traceback
-    # def hook(exctype, value, tb):
-    #     with open("/tmp/crash.txt", "a") as f:
-    #         f.write("".join(traceback.format_exception(exctype, value, tb)))
-    # sys.excepthook = hook
-    res = app.exec()
-    removefile(pid_file)
-    sys.exit(res)
+        # This can be commented out. But if an exception happens write it to a file and quit Watchdog this is to
+        # indicate that there is problem with the code.
+        def hook(exctype, value, tb):
+            sys.__excepthook__(exctype, value, tb)
+            with open("/tmp/crash.txt", "a") as f:
+                f.write("".join(traceback.format_exception(exctype, value, tb)))
+            print(f"Unhandled exception {exctype.__name__} stack trace logged to: /tmp/crash.txt")
+            app = QApplication.instance()
+            if app is not None:
+                app.quit()
+        sys.excepthook = hook
+
+        res = app.exec()
+        removefile(pid_file)
+        sys.exit(res)
+    except Exception as e:
+        em = "Failed to initialize Watchdog service:"
+        print(f"{em} {type(e).__name__} err: {e} \n {traceback.format_exc()}")
+        # QMessageBox.critical(None, "Error", f"{e}")
+        logging.error(em, exc_info=True)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
