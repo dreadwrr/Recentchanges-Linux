@@ -36,7 +36,6 @@ from src.gpgcrypto import test_gpg_agent
 from src.gpgkeymanagement import genkey
 from src.gpgkeymanagement import iskey
 from src.imageraster import raised_image
-from src.inotifyfunctions import old_pid_check
 from src.inotifyfunctions import process_by_target
 from src.inotifyfunctions import trim_tout
 from src.logs import check_log_perms
@@ -112,6 +111,7 @@ from src.rntchangesfunctions import removefile
 from src.rntchangesfunctions import resolve_editor
 from src.rntchangesfunctions import time_convert
 from src.ui_mainwindow import Ui_MainWindow
+from src.watchdog_functions import old_pid_check
 from src.xzmprofile import XzmProfile
 
 
@@ -844,7 +844,8 @@ class MainWindow(QMainWindow):
 
     def manage_file_creation_log(self):
         pid = process_by_target(self.search_pattern)
-        old_pid_check(self.watchdog_pid_file, pid, "windows")
+        # def old_pid(pid_file, new_pid, logger, platform):
+        old_pid_check(self.watchdog_pid_file, pid, logging, "linux")
         if not pid:
             trim_tout(self.inotify_creation_file, self.low_water, self.high_water, self.min_span)
 
