@@ -177,7 +177,8 @@ class CreatedHandler(FileSystemEventHandler):
             if not match_found:
                 path_lower = path_rel.lower()  # path.lower()
                 # if wf.DEBUG:
-                #     print("astr", path_lower)
+                #     print("match", path_lower)
+                #     print("to")
                 #     for rel in self.inclusion:
                 #         print(rel)
                 if any(path_lower.startswith(excl) for excl in self.inclusion):
@@ -202,7 +203,7 @@ class CreatedHandler(FileSystemEventHandler):
 
                 if action == "moved":
 
-                    if wf.pair_handle(action, event, path, self.created_seen, log_q, self.logger):
+                    if wf.pair_handle(action, event, entry, path, self.start_time, self.created_seen, log_q, self.logger):
                         return
                 
                 else:
@@ -234,8 +235,8 @@ class CreatedHandler(FileSystemEventHandler):
                             last_size = size
 
                         if size == 0:
-                            emit_log("DEBUG", f"watchdog size stabilized looks like a download 0 bytes. returning for move event. file: {path}", log_q, logger=self.logger)     
-                            return
+                            emit_log("DEBUG", f"watchdog size stabilized looks like a download 0 bytes. could return for move event but processing anyway. file: {path}", log_q, logger=self.logger)     
+                        #     return
                         if stable:
                             emit_log("DEBUG", f"watchdog size stabilized for handle_file {path}", log_q, logger=self.logger)
                         else:
@@ -258,7 +259,10 @@ class CreatedHandler(FileSystemEventHandler):
                 return fn(*args)
             # this can be commented out but it is better to shutdown to indicate there is an exception somewhere
             except Exception:
-                sys.excepthook(*sys.exc_info())
+                # sys.excepthook(*sys.exc_info())
+                with open("/tmp/crash.txt", "a") as f:
+                    f.write(traceback.format_exc())
+                os._exit(1)
             finally:
                 with self.active_lock:
                     self.active_jobs -= 1
@@ -357,7 +361,11 @@ class TrayApp:
         self.logger = logger
         
         self.pid = os.getpid()
-        wf.old_pid_check(pid_file, self.pid, logger, "linux")  # the pid file should not be there normally. If it is try to kill it to attempt to auto rectify
+
+        # old_pid_check(self.watchdog_pid_file, pid, logging, "linux")  # can be called in qt but then permission problems as that runs non root
+        # the pid file should not be there normally. If it is try to kill it to attempt to auto rectify
+        wf.old_pid_check(pid_file, self.pid, logger, "linux")  
+
         self.write_pid()
 
         self.running = False
@@ -498,9 +506,9 @@ def main(appdata_local, home_dir, output_file, CACHE_F, cdir, pid_file, lockfile
             with open("/tmp/crash.txt", "a") as f:
                 f.write("".join(traceback.format_exception(exctype, value, tb)))
             print(f"Unhandled exception {exctype.__name__} stack trace logged to: /tmp/crash.txt")
-            app = QApplication.instance()
-            if app is not None:
-                app.quit()
+            # app = QApplication.instance()
+            # if app is not None:
+            #     app.quit()
         sys.excepthook = hook
 
         res = app.exec()
