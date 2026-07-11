@@ -485,6 +485,7 @@ def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gn
 
             if platform == "linux":
 
+                # if multiple processes
                 # inotify wait is running wait until it is finished if it is in the middle of a write
 
                 # fd = os.open(lockfile, os.O_WRONLY | os.O_CREAT, 0o644)

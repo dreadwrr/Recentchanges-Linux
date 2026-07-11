@@ -219,44 +219,51 @@ def is_temp_file(path: Path, temp_suffixes) -> bool:
     return path.suffix.lower() in temp_suffixes
 
 
-def pair_handle(action, event, path, created_seen, log_q, logger):
+def pair_handle(action, event, entry, path, start_time, created_seen, log_q, logger):
 
     src = str(Path(event.src_path).resolve())
-    # stat_info = get_stat(entry, log_q, logger=self.logger)
-    # if not stat_info:
-    #     return None
+    stat_info = get_stat(entry, log_q, logger=logger)
+    if not stat_info:
+        return None
 
-    # mod_time = stat_info.st_mtime
+    mod_time = stat_info.st_mtime
 
     # unconventional or maybe some other app? creation event write partial in place -> move event dest but dest isnt in created_seen src is.
     if src in created_seen and path not in created_seen:
         # log unusual event
         emit_log("DEBUG", f"handle_file {action} unusual src was in created_seen on move after created file. src: {src} dest or file: {path}", log_q, logger=logger)
+
         del created_seen[src]
 
-        return False
+    # firefox and others normal for downloaded file. creation event makes final file src 0 bytes -> writes a partial -> move event dest atomic with full file
+    elif path in created_seen:
+
+        del created_seen[path]
+
+        # size = stat_info.st_size
+        # key = (path, size, mod_time)
+        # self.pending_files[key] = time.time()
 
     else:
-        # firefox and others normal for downloaded file. creation event makes final file src 0 bytes -> writes a partial -> move event dest atomic with full file
-        if path in created_seen:
-            del created_seen[path]
 
-            # size = stat_info.st_size
-            # key = (path, size, mod_time)
-            # self.pending_files[key] = time.time()
+        # a moved file wouldnt have a creation event or the creation event could have been missed
+
+        emit_log("DEBUG", f"handle_file {action} did not have a creation event checking if ctime >= mtime for file: {path}", log_q, logger=logger)
+        change_time = stat_info.st_ctime
+
+        # gated on regular moves. ctime >= mtime and since watch start are files of interest so process anyway
+        # on linux this increases noise but is better to include than exclude and can adjust where necessary
+
+        # does it look like a creation event?
+        if change_time >= mod_time or change_time >= start_time:
+            return False
+        # its a regular move dont process
         else:
-
-            # a moved file wouldnt have a creation event or the creation event could have been missed
-
-            emit_log("DEBUG", f"handle_file {action} did not have a creation event checking if ctime >= mtime for file: {path}", log_q, logger=logger)
-            # change_time = stat_info.stat_info.st_ctime
-            # gated on regular moves. otherwise ctime >= mtime and since watch start, they are files of interest so process anyway
-            # on linux this increases noise but is better to include than exclude and can adjust where necessary
-            # if change_time < mod_time or change_time < self.start_time:
-            #     emit_log("DEBUG", f"handle_file {action} it was a regular move. skipping.. file: {path}", log_q, logger=self.logger)
-            #     return
+            emit_log("DEBUG", f"handle_file {action} it was a regular move. skipping.. file: {path}", log_q, logger=logger)
 
         return True
+
+    return False
 
 
 def relativize(path, base):
