@@ -111,7 +111,6 @@ from src.rntchangesfunctions import removefile
 from src.rntchangesfunctions import resolve_editor
 from src.rntchangesfunctions import time_convert
 from src.ui_mainwindow import Ui_MainWindow
-from src.watchdog_functions import old_pid_check
 from src.xzmprofile import XzmProfile
 
 
