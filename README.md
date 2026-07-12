@@ -80,7 +80,9 @@ python-pyudev <br>
 python-psutil <br>
 python-magic <br>
 python-pillow <br>
-python-tomlkit <br><br>
+python-tomlkit <br>
+python-mpmath <br>
+python-watchdog <br><br>
 may require packaging and requests package see requirements.txt if needing to adjust <br><br>
 python main.py <br><br>
 tested on nemesis and xcb-util was needed for qt <br>
