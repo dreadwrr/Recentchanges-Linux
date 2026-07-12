@@ -38,7 +38,9 @@ recentchanges reset <br><br>
 
 ## Installation instructions
 
-on first activation log out and log back in to see menu icon. then to add polkit policies without needing to reboot <br>
+on first activation log out and log back in to see menu icon. <br>
+or you can try alt-f2 and r then press enter. <br><br>
+then to add polkit policies without needing to reboot <br>
 pkill polkitd
 
 1. note the following step wasnt needed for nemesis but is for porteus <br><br>
