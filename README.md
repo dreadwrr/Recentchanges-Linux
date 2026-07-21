@@ -1,3 +1,5 @@
+version 6.5.0 is currently in testing but will add blake2d, shannon entropy, file and target change detection <br><br>
+
 Released 6.2.0! <br><br>
 Python watchdog service <br>
 ![Alt text](https://i.imgur.com/Wvi4JrH.png) <br>
