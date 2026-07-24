@@ -5,19 +5,13 @@ Python watchdog service <br>
 ![Alt text](https://i.imgur.com/Wvi4JrH.png) <br>
 when xRC is on all new files are listed in /tmp/file_creation_log.txt <br>
 
-Default dark theme for porteus <br>
-Scientific calculator in the menu bar <br><br>
-
-6.1.2
-
-Added LCD alarm clock <br>
-Changed the way the find command is run and other ease of use improvements
-
 ![Alt text](https://i.imgur.com/gqbO4HB.png) <br>
 
 Linux file search application with hybrid analysis <br>
 
 <p>
+Scientific calculator in the menu bar <br>
+LCD alarm clock <br>
 Check for hash collisions during search <br>
 Save encrypted notes <br>
 Quick commands displays saved commands for easy reference <br>
