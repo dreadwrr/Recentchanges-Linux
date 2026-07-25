@@ -29,7 +29,7 @@ from src.rntchangesfunctions import name_of
 from src.rntchangesfunctions import to_bool
 from src.rntchangesfunctions import removefile
 import src.watchdog_functions as wf
-# 07/10/2026
+# 07/24/2026
 # This watchdog script was made from an inotify script that was a result of needing to watch basedir for created files that
 # could have preserved metadata and may not show in regular searches. As well as cache files over 1 MB for the 
 # ctimecache.gpg.
@@ -60,7 +60,7 @@ class CreatedHandler(FileSystemEventHandler):
     MAX_JOBS = 8
     IDLE = MAX_JOBS // 2
 
-    def __init__(self, base, output_file, CACHE_F, cdir, lockfile, moduleNAME, debug_file, inclusions, exclusions, supbrwLIST, logger, parent=None):
+    def __init__(self, base, output_file, CACHE_F, cdir, lockfile, algo, moduleNAME, debug_file, inclusions, exclusions, supbrwLIST, logger, parent=None):
         super().__init__()
 
         localappdata = inclusions[0]
@@ -83,6 +83,7 @@ class CreatedHandler(FileSystemEventHandler):
         self.CACHE_F = CACHE_F
         self.cdir = cdir
         self.lockfile = lockfile
+        self.algo = algo
         self.moduleNAME = moduleNAME
         self.log_file = debug_file
         self.logger = logger
@@ -152,7 +153,8 @@ class CreatedHandler(FileSystemEventHandler):
                 print(f"{action} not moved or created")
             return
 
-        current = self.active_jobs
+        with self.active_lock:
+            current = self.active_jobs
         log_q = self.log_queue
 
         emit_log("DEBUG", f"File event: {action} file: {entry}", log_q, logger=self.logger)
@@ -203,7 +205,7 @@ class CreatedHandler(FileSystemEventHandler):
 
                 if action == "moved":
 
-                    if wf.pair_handle(action, event, entry, path, self.start_time, self.created_seen, log_q, self.logger):
+                    if wf.shandle(action, event, entry, path, self.start_time, self.created_seen, log_q, self.logger):
                         return
                 
                 else:
@@ -221,31 +223,35 @@ class CreatedHandler(FileSystemEventHandler):
                                 size = entry.stat().st_size
                             except FileNotFoundError:
                                 return
-
-                            if size == last_size:
+                            except PermissionError:
+                                size = last_size 
+                            if size == 0:
+                                if retried >= self.LIMIT:
+                                    stable = True
+                                    break
+                                i += 1
                                 retried += 1
+                            elif size == last_size:
                                 if retried >= self.LIMIT:
                                     stable = True
                                     break
                                 i = 0
+                                retried += 1
                             else:
-                                retried = 0
                                 i += 1
+                                retried = 0
 
                             last_size = size
 
-                        if size == 0:
-                            emit_log("DEBUG", f"watchdog size stabilized looks like a download 0 bytes. could return for move event but processing anyway. file: {path}", log_q, logger=self.logger)     
-                            # return
                         if stable:
-                            emit_log("DEBUG", f"watchdog size stabilized for handle_file {path}", log_q, logger=self.logger)
+                            if size == 0:
+                                emit_log("DEBUG", f"watchdog size stabilized looks like a download 0 bytes. file: {path}", log_q, logger=self.logger)
+                            else:
+                                emit_log("DEBUG", f"watchdog size stabilized for handle_file {path}", log_q, logger=self.logger)
                         else:
                             emit_log("DEBUG", f"timed out waiting for stable size, proceeding anyway (checksum will self-guard): {path}", log_q, logger=self.logger)
 
-                        if path not in self.created_seen:
-                            return
-
-                res = wf.get_specs(entry, path, self.output_file, self.CACHE_F, self.cdir, self.lockfile, log_q, self.logger)
+                res = wf.get_specs(action, entry, path, self.output_file, self.CACHE_F, self.cdir, self.lockfile, self.algo, self.created_seen, log_q, self.logger)
                 if res:
                     emit_log("ERROR", f"Unknown status: {res} returned for file: {path}", log_q, logger=self.logger)
 
@@ -305,7 +311,7 @@ class CreatedHandler(FileSystemEventHandler):
                 del self.created_seen[path]
 
 class WatchdogService:
-    def __init__(self, base, output_file, CACHE_F, cdir, lockfile, moduleNAME, debug_file, exclDIRS, inclusions, supbrwLIST, logger):
+    def __init__(self, base, output_file, CACHE_F, cdir, lockfile, algo, moduleNAME, debug_file, exclDIRS, inclusions, supbrwLIST, logger):
         self.output_file = output_file
         self.CACHE_F = CACHE_F
         self.logger = logger
@@ -325,6 +331,7 @@ class WatchdogService:
             CACHE_F,
             cdir,
             lockfile,
+            algo,
             moduleNAME,
             debug_file,
             inclusions,
@@ -348,13 +355,16 @@ class WatchdogService:
             self.observer.stop()
             self.observer.join()
             self.observer = None
-            
+
+    def shutdown(self):
+        self.stop()
         if self.handler.executor:
             self.handler.executor.shutdown(wait=True)
-            if self.handler.log_queue is not None:
-                self.handler.log_queue.put(wf.SENTINEL)
-                self.handler.log_thread.join(timeout=1)
-
+            self.handler.executor = None
+        if self.handler.log_queue is not None:
+            self.handler.log_queue.put(wf.SENTINEL)
+            self.handler.log_thread.join(timeout=1)
+            self.handler.log_queue = None
 
 class TrayApp:
     def __init__(self, service, pid_file, _time, logger):
@@ -369,7 +379,9 @@ class TrayApp:
         # old_pid_check(self.watchdog_pid_file, pid, logging, "linux")  
 
         # the pid file should not be there normally. If it is try to kill it to attempt to auto rectify
-        wf.old_pid_check(pid_file, self.pid, logger, "linux")  
+        if not wf.old_pid_check(pid_file, self.pid, logger, "linux"):
+            logging.error(f"Process from pid file: {pid_file} is running and was unable to kill quiting")
+            sys.exit(1)
 
         self.write_pid()
 
@@ -401,6 +413,8 @@ class TrayApp:
 
         # optional delayed auto-start
         QTimer.singleShot(0, self.start_watch)
+        FLBRAND = datetime.now().strftime("MDY_%m-%d-%y-TIME_%H_%M_%S")
+        emit_log("DEBUG", f"{FLBRAND} inotify started", self.service.handler.log_queue, logger=self.logger)
 
     def write_pid(self):
         # with open(self.pid_file, "w") as f:  # original this could close a reused pid?
@@ -438,8 +452,6 @@ class TrayApp:
         # )
 
     def start_watch(self):
-        FLBRAND = datetime.now().strftime("MDY_%m-%d-%y-TIME_%H_%M_%S")
-        emit_log("DEBUG", f"{FLBRAND} inotify started", self.service.handler.log_queue, logger=self.logger)
         if not self.running:
             self.service.start()
             self.running = True
@@ -455,15 +467,18 @@ class TrayApp:
     def exit_app(self):
         self.stop_watch()
         self.timer.stop()
+        self.service.shutdown()
         # for t in threading.enumerate():
         #     print(t.name, t.daemon, t.is_alive())
         QApplication.quit()
         
 
-def main(appdata_local, home_dir, output_file, CACHE_F, cdir, pid_file, lockfile, log_path, ll_level, _time, user, moduleNAME, usrDIR, temp_dir, gnupg_home, debug_mode, *supbrwLIST):
+def main(appdata_local, home_dir, output_file, CACHE_F, cdir, pid_file, lockfile, log_path, ll_level, _time, algo, user, moduleNAME, usrDIR, temp_dir, gnupg_home, debug_mode, *supbrwLIST):
 
     debug_mode = to_bool(debug_mode)
     wf.DEBUG = debug_mode
+    if debug_mode:
+        print("=== DEBUG ===")
 
     _time = int(_time)
     base = "/mnt/live/memory/changes"  # if not found switches to /
@@ -495,6 +510,7 @@ def main(appdata_local, home_dir, output_file, CACHE_F, cdir, pid_file, lockfile
             CACHE_F,
             cdir,
             lockfile,
+            algo,
             moduleNAME,
             debug_file,
             exclDIRS,
