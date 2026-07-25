@@ -180,6 +180,7 @@ class MainWindow(QMainWindow):
         self.proteusEXTN = ["[no extension]" if p == "" else p for p in proteusEXTN]
         self.proteusPATH = config['shield']['proteusPATH']
         self.checksum = config['diagnostics']['checkSUM']
+        self.checkMETHOD = config['diagnostics']['checkMETHOD']
         self.proteusSHIELD = config['shield']['proteusSHIELD']
         self.xzm = config['shield']['xzm']
         self.is_xzm_profile = self.xzm if self.suffix == "/" else False
@@ -1112,6 +1113,7 @@ class MainWindow(QMainWindow):
                 zipPATH = updated_config['compress']['zipPATH']
                 zipPROGRAM = updated_config['compress']['zipPROGRAM'].lower()
                 checksum = updated_config['diagnostics']['checkSUM']
+                checkMETHOD = updated_config['diagnostics']['checkMETHOD']
                 hudCOLOR = updated_config['display']['hudCOLOR']
                 hudSZE = updated_config['display']['hudSZE']
                 hudFNT = updated_config['display']['hudFNT']
@@ -1152,6 +1154,10 @@ class MainWindow(QMainWindow):
                 randintMAX = updated_config['calculator']['randintMAX']
                 randintMIN = updated_config['calculator']['randintMIN']
                 clogLEVEL = updated_config['calculator']['logLEVEL']
+
+                # added 07/24/2026
+                if checkMETHOD != self.checkMETHOD:
+                    self.ui.hudt.appendPlainText(f"checkMETHOD changed to {checkMETHOD} use recentchanges reset to start new db")
 
                 ll_level = self.config['logs']['logLEVEL']
                 new_ll_level = updated_config['logs']['logLEVEL']
@@ -1359,6 +1365,7 @@ class MainWindow(QMainWindow):
                 self.proteusEXTN = ["[no extension]" if p == "" else p for p in proteusEXTN]
                 self.proteusPATH = proteusPATH
                 self.checksum = checksum
+                self.checkMETHOD = checkMETHOD
                 self.proteusSHIELD = proteusSHIELD
                 self.xzm = xzm
                 self.is_xzm_profile = xzm if self.basedir == "/" else False
