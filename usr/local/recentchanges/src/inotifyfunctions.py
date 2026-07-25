@@ -180,14 +180,27 @@ def strup(script_dir, script, appdata_local, home_dir, inotify_creation_file, CA
         logger.error(f"strup General exception unable to start inotify wait: {e} {type(e).__name__}", exc_info=True)
 
 
-def to_int_or_not(value, field, line):
+def to_float_or_not(value, field, line):
+    """ for entropy value can be None so not unusual just return None. anything else log as DEBUG """
     if value in ("", "None", None):
         return None
     try:
-        return int(value)
+        return float(value)
     except (TypeError, ValueError) as e:
         logging.debug(
-            "parselog invalid integer %s: %r line: %s err; %s",
+            "parselog not a float %s: %r line: %s err: %s",
+            field, value, line, e
+        )
+        return None
+
+
+def to_int_or_not(value, field, line):
+    """ anything else None is not usual for value log it as ERROR if it fails """
+    try:
+        return int(value)
+    except (TypeError, ValueError) as e:
+        logging.error(
+            "parselog invalid integer %s: %r line: %s err: %s",
             field, value, line, e
         )
         return None
@@ -286,17 +299,8 @@ def parselog(file, checksum, logger):
                     logger.error("skipped error resolving symlink target, file: %s", filename)
                     continue
 
-            if entropy:
-                try:
-                    entropy = float(entropy)
-                except (TypeError, ValueError) as e:
-                    entropy = None
-                    logging.debug(
-                        "parselog not a float %s: %r line: %s err: %s",
-                        "entropy", entropy, line, e
-                    )
-
             inode = to_int_or_not(ino, "inode", line)
+            entropy = to_float_or_not(entropy, "entropy", line) if checksum else entropy
             filesize = to_int_or_not(sze, "filesize", line) if checksum else sze
             usec = to_int_or_not(us, "usec", line) if checksum else us
             hardlink_count = to_int_or_not(hardlink, "hardlink_count", line) if checksum else hardlink
