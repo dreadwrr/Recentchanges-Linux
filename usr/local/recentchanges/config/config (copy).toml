@@ -242,9 +242,10 @@ alarm_24hr = true
                                 # ""
                                 # redblack
                                 # red
+                                # green
                                 # blue
                                 # black
-alarmCOLOR = ""
+alarmCOLOR = "green"
 
 # Place .mp3 or .wav in .\\Resources\\ and specify filename here
                                 # "alarm.mp3"
@@ -264,7 +265,7 @@ checkSUM = true
 
 # default is md5 if blake2 is used hash collisions wont be checked
                         # md5
-                        # blake2 
+                        # blake2
 checkMETHOD = "md5"
 
 # check for hash collisions
