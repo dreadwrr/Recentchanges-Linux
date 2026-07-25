@@ -1,7 +1,8 @@
 version 6.5.0 <br>
 supports blake2b <br>
 entropy, mime and target change detection added <br>
-added green lcd <br><br>
+added green lcd <br>
+tweaked watchdog script <br><br>
 
 Python watchdog service <br>
 ![Alt text](https://i.imgur.com/Wvi4JrH.png) <br>
