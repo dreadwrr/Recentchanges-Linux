@@ -217,7 +217,7 @@ class MainWindow(QMainWindow):
         # QTimer.singleShot(5000, self.display_db)
 
         # Vars
-        self.app_version = "6.2.0"
+        self.app_version = "6.5.0"
         base_temp = Path("/tmp")
         self.pwd = os.getcwd()
         self.home_dir = home_dir
@@ -2123,10 +2123,10 @@ class MainWindow(QMainWindow):
         postop = self.ui.diffchka.checkState() == Qt.CheckState.Checked
         showDiff = self.ui.diffchkc.isChecked()
 
-        if postop:
-            doctrine = os.path.join(self.usrDIR, "doctrine.tsv")
-            if os.path.exists(doctrine):
-                self.ui.hudt.appendPlainText("A file doctrine already exists skipping")
+        # if postop:
+        #     doctrine = os.path.join(self.usrDIR, "doctrine.tsv")
+        #     if os.path.exists(doctrine):
+        #         self.ui.hudt.appendPlainText("A file doctrine already exists skipping")
 
         self.proc = ProcessHandler(self.lclhome, self.xdg_runtime, self.ui.dbmainlabel.text(), self.is_polkit)
         self.open_proc(360000)
