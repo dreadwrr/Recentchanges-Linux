@@ -7,7 +7,7 @@ from .logs import emit_log
 from .dirwalkerfunctions import scandir_meta
 
 
-def build_index(chunk, i, num_chunks, show_progress=False, strt=0, endp=100):
+def build_index(chunk, i, num_chunks, show_progress=False, algo='md5', strt=0, endp=100):
 
     # delta_v = endp - strt
     # rec_count = 0
@@ -60,7 +60,7 @@ def build_index(chunk, i, num_chunks, show_progress=False, strt=0, endp=100):
                 target = record[4]
                 found = record[5]
 
-                rlt, status = scandir_meta(file_path, hash_path, st, sym, target, found, sys_data, logs.WORKER_LOG_Q)
+                rlt, status = scandir_meta(file_path, hash_path, st, sym, target, found, sys_data, algo, logs.WORKER_LOG_Q)
 
                 if not rlt:
                     if rlt is False and status == "Nosuchfile":

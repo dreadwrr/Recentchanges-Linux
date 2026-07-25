@@ -14,6 +14,7 @@ try:
     import msvcrt  # win
 except ImportError:
     msvcrt = None
+from datetime import datetime
 from pathlib import Path
 from .fsearchfunctions import upt_cache
 from .pyfunctions import ap_decode
@@ -22,7 +23,7 @@ from .pyfunctions import escf_py
 from .pyfunctions import parse_datetime
 from .qtfunctions import return_terminal
 from .rntchangesfunctions import removefile
-# 07/10/2026
+# 07/24/2026
 
 # Globals
 QUOTED_RE = re.compile(r'"((?:[^"\\]|\\.)*)"')
@@ -47,12 +48,12 @@ def process_kill(pid, pid_file=None):
         proc = psutil.Process(pid)
         proc.terminate()
         proc.wait(timeout=5)
-        if pid_file:
-            removefile(pid_file)
+        removefile(pid_file)
         return True
     except psutil.TimeoutExpired:
         proc.kill()
         proc.wait()
+        removefile(pid_file)
         return True
     except psutil.NoSuchProcess:
         return False
@@ -106,7 +107,7 @@ def _fk_process(pattern):
 # end linux
 
 
-def strup(script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, pid_file, lockfile, log_file, ll_level, _time, escaped_user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, logger, platform):
+def strup(script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, pid_file, lockfile, log_file, ll_level, _time, escaped_user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, algo, logger, platform):
 
     def build_terminal_cmd(terminal, cmd):
         """ wrapper function for debug below working off of return_terminal
@@ -138,6 +139,7 @@ def strup(script_dir, script, appdata_local, home_dir, inotify_creation_file, CA
         str(log_file),
         ll_level,
         str(_time),
+        algo,
         escaped_user,
         moduleNAME,
         str(usrDIR),
@@ -178,15 +180,15 @@ def strup(script_dir, script, appdata_local, home_dir, inotify_creation_file, CA
         logger.error(f"strup General exception unable to start inotify wait: {e} {type(e).__name__}", exc_info=True)
 
 
-def _to_int_or_none(value, field, line):
+def to_int_or_not(value, field, line):
     if value in ("", "None", None):
         return None
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as e:
         logging.debug(
-            "parselog invalid integer %s: %r line: %s",
-            field, value, line
+            "parselog invalid integer %s: %r line: %s err; %s",
+            field, value, line, e
         )
         return None
 
@@ -243,14 +245,14 @@ def parselog(file, checksum, logger):
             n = len(inputln)
 
             if checksum:
-                if n < 15:
+                if n < 18:
                     print("parselog checksum, input out of boundaries skipping")
-                    logger.debug("record length less than required 15. skipping.. record: %s", line)
+                    logger.debug("file: %s record length less than required 18. skipping.. record: %s", file, line)
                     continue
             else:
                 if n < 10:
                     print("parselog no checksum, input out of boundaries skipping")
-                    logger.debug("record length less than required 10. skipping.. record: %s", line)
+                    logger.debug("file %s record length less than required 10. skipping.. record: %s", file, line)
                     continue
 
             timestamp = inputln[0]
@@ -262,17 +264,19 @@ def parselog(file, checksum, logger):
             ino = None if inputln[3] in ("", "None") else inputln[3]
             accesstime = inputln[4]
             checks = None if n > 5 and inputln[5] in ("", "None") else (inputln[5] if n > 5 else None)
-            sze = None if n > 6 and inputln[6] in ("", "None") else (inputln[6] if n > 6 else None)
-            sym = None if n <= 7 or inputln[7] in ("", "None") else inputln[7]
-            onr = None if n <= 8 or inputln[8] in ("", "None") else inputln[8]
-            gpp = None if n <= 9 or inputln[9] in ("", "None") else inputln[9]
-            pmr = None if n <= 10 or inputln[10] in ("", "None") else inputln[10]
-            cam = None if n <= 11 or inputln[11] in ("", "None") else inputln[11]
-            timestamp1 = None if n <= 12 or inputln[12] in ("", "None") else inputln[12]
-            timestamp2 = None if n <= 13 or inputln[13] in ("", "None") else inputln[13]
+            entropy = None if n > 6 and inputln[6] in ("", "None") else (inputln[6] if n > 6 else None)
+            mime = None if n > 7 and inputln[7] in ("", "None") else (inputln[7] if n > 7 else None)
+            sze = None if n > 8 and inputln[8] in ("", "None") else (inputln[8] if n > 8 else None)
+            sym = None if n <= 9 or inputln[9] in ("", "None") else inputln[9]
+            onr = None if n <= 10 or inputln[10] in ("", "None") else inputln[10]
+            gpp = None if n <= 11 or inputln[11] in ("", "None") else inputln[11]
+            pmr = None if n <= 12 or inputln[12] in ("", "None") else inputln[12]
+            cam = None if n <= 13 or inputln[13] in ("", "None") else inputln[13]
+            timestamp1 = None if n <= 14 or inputln[14] in ("", "None") else inputln[14]
+            timestamp2 = None if n <= 15 or inputln[15] in ("", "None") else inputln[15]
             lastmodified = None if not timestamp1 or not timestamp2 else f"{timestamp1} {timestamp2}"
-            hardlink = None if n <= 14 or inputln[14] in ("", "None") else inputln[14]
-            us = None if n <= 15 or inputln[15] in ("", "None") else inputln[15]
+            hardlink = None if n <= 16 or inputln[16] in ("", "None") else inputln[16]
+            us = None if n <= 17 or inputln[17] in ("", "None") else inputln[17]
 
             target = None
             if sym == 'y':
@@ -282,19 +286,47 @@ def parselog(file, checksum, logger):
                     logger.error("skipped error resolving symlink target, file: %s", filename)
                     continue
 
-            inode = _to_int_or_none(ino, "inode", line)
-            filesize = _to_int_or_none(sze, "filesize", line) if checksum else sze
-            usec = _to_int_or_none(us, "usec", line) if checksum else us
-            hardlink_count = _to_int_or_none(hardlink, "hardlink_count", line) if checksum else hardlink
+            if entropy:
+                try:
+                    entropy = float(entropy)
+                except (TypeError, ValueError) as e:
+                    entropy = None
+                    logging.debug(
+                        "parselog not a float %s: %r line: %s err: %s",
+                        "entropy", entropy, line, e
+                    )
+
+            inode = to_int_or_not(ino, "inode", line)
+            filesize = to_int_or_not(sze, "filesize", line) if checksum else sze
+            usec = to_int_or_not(us, "usec", line) if checksum else us
+            hardlink_count = to_int_or_not(hardlink, "hardlink_count", line) if checksum else hardlink
+
+            # changetime = inputln[2]
+            # ino = None if inputln[3] in ("", "None") else inputln[3]
+            # accesstime = inputln[4]
+            # checks = None if n > 5 and inputln[5] in ("", "None") else (inputln[5] if n > 5 else None)
+            # entropy = None if n > 6 and inputln[6] in ("", "None") else (inputln[6] if n > 6 else None)
+            # mime = None if n > 7 and inputln[7] in ("", "None") else (inputln[7] if n > 7 else None)
+            # sze = None if n > 8 and inputln[8] in ("", "None") else (inputln[8] if n > 8 else None)
+            # sym = None if n <= 9 or inputln[9] in ("", "None") else inputln[9]
+            # onr = None if n <= 10 or inputln[10] in ("", "None") else inputln[10]
+            # gpp = None if n <= 11 or inputln[11] in ("", "None") else inputln[11]
+            # pmr = None if n <= 12 or inputln[12] in ("", "None") else inputln[12]
+            # cam = None if n <= 13 or inputln[13] in ("", "None") else inputln[13]
+            # timestamp1 = None if n <= 14 or inputln[14] in ("", "None") else inputln[14]
+            # timestamp2 = None if n <= 15 or inputln[15] in ("", "None") else inputln[15]
+            # lastmodified = None if not timestamp1 or not timestamp2 else f"{timestamp1} {timestamp2}"
+            # hardlink = None if n <= 16 or inputln[16] in ("", "None") else inputln[16]
+            # us = None if n <= 17 or inputln[17] in ("", "None") else inputln[17]
 
             if not checksum:
                 cam = checks
-                timestamp1 = filesize
-                timestamp2 = sym
+                timestamp1 = entropy
+                timestamp2 = mime
                 lastmodified = None if not timestamp1 or not timestamp2 else f"{timestamp1} {timestamp2}"
-                usec = onr
-                hardlink_count = gpp
-                checks = filesize = sym = onr = gpp = None
+                usec = sze
+                hardlink_count = sym
+                checks = entropy = mime = filesize = sym = onr = gpp = None
 
             results.append((timestamp, filename, changetime, inode, accesstime, checks, filesize, sym, onr, gpp, pmr, cam, target, lastmodified, hardlink_count, usec, escf_path))
 
@@ -306,6 +338,7 @@ def parselog(file, checksum, logger):
 
 
 def rotate_cache(cfr, cache_f):
+    created = {}
     if cache_f.is_file():
         rotated = cache_f.with_name(cache_f.name + ".old")
         if rotated.exists():
@@ -319,7 +352,7 @@ def rotate_cache(cfr, cache_f):
                     logging.debug("Skipping possibly empty line from cache file: %s", line)
                     continue
                 try:
-                    metadata, checksum, filepath = line.split("\t", maxsplit=2)
+                    metadata, checksum, entropy, mime, filepath = line.split("\t", maxsplit=4)
                     filepath = filepath.strip()
                     if not filepath:
                         logging.debug("Skipping malformed line in cache file with empty filepath: %s", line)
@@ -342,13 +375,24 @@ def rotate_cache(cfr, cache_f):
                     time_stamp = time_stamp_frm.replace(microsecond=0)
                     logging.debug("Inserting %s %s %s %s %s", checksum, size, time_stamp, mtime_epoch, filepath)
                     upt_cache(cfr, checksum, size, time_stamp, mtime_epoch, filepath)
+
+                    cache_data = {
+                        'checksum': checksum,
+                        'entropy': entropy,
+                        'mime': mime
+                    }
+
+                    created[filepath] = cache_data
                 else:
                     print("xRC invalid time_stamp or format detected in cache file.")
                     logging.debug("xRC Invalid timestamp in cache file line: %s", line)
         removefile(rotated)
+    return created
 
 
+# file_creation_log.txt
 def parse_tout(log_file, checksum, logger):
+    """ unused """
     tout_files = []
     all_files = []
 
@@ -380,9 +424,20 @@ def time_extract(line, tout_file, logger):
     return dt.timestamp() if dt else 0
 
 
+def time_extract_str(line, tout_file, logger):
+    parts = line.split(maxsplit=2)
+    if len(parts) < 2:
+        logger.error("trim_tout time_extract while parsing log impartial line couldnt get mtime. skipping.. record: %s file: %s", line, tout_file)
+        return ""
+    if parts[0] == "None" or parts[1] == "None":
+        logger.error("trim_tout time_extract while parsing log impartial line couldnt get mtime. skipping.. record: %s file: %s", line, tout_file)
+        return ""
+    return f"{parts[0]} {parts[1]}"
+
+
 def trim_tout(log_file, time_back=6, trim_to=9, min_span_hours=0, logger=logging):
     """ trim created log file.
-        by span trim the borderline.
+        by span trim the borderline. if exceeded clear file_creation_log.txt
         or by rolling waterline """
 
     cutoff_time = time.time()
@@ -418,7 +473,9 @@ def trim_tout(log_file, time_back=6, trim_to=9, min_span_hours=0, logger=logging
                             print("trim_tout low water was higher than high water defaulting to high water", trim_to)
                             time_back = trim_to
                         cutoff_time = cutoff_time - (time_back * 3600)
-                        kept = [line for line in tout_files if time_extract(line, log_file, logger) >= cutoff_time]
+                        fmt = "%Y-%m-%d %H:%M:%S"
+                        cutoff_str = datetime.fromtimestamp(cutoff_time).strftime(fmt)
+                        kept = [line for line in tout_files if time_extract_str(line, log_file, logger) >= cutoff_str]
                         if kept:
                             with open(log_file, 'w') as f:
                                 f.writelines(kept)
@@ -434,13 +491,15 @@ def trim_tout(log_file, time_back=6, trim_to=9, min_span_hours=0, logger=logging
     return False
 
 
-def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gnupg_home, cfr, xRC, _time, checksum, user, moduleNAME, log_file, ll_level, supbrwLIST, platform="Linux"):
+def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gnupg_home, cfr, xRC, _time, checksum, user, moduleNAME, log_file, ll_level, supbrwLIST, algo='md5', platform="Linux"):
 
     debug_mode = False  # open debug console if using qt
     inotify_log_file = "file_creation_log.txt"
 
     logger = logging.getLogger("INITRECENTCHANGES")
     platform = platform.lower()
+
+    created = {}
 
     try:
 
@@ -506,7 +565,7 @@ def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gn
 
                     # a partial write could occur but would get parsed out and is insignificant this avoids the use of locks currently
 
-                    rotate_cache(cfr, CACHE_F, logger)
+                    created = rotate_cache(cfr, CACHE_F, logger)
 
                     # if os.path.isfile(inotify_creation_file):
                     #   all_files = parse_tout(inotify_creation_file, checksum, logger)
@@ -515,8 +574,8 @@ def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gn
                     if fk_success and not process_by_target(search_pattern):
                         strup(
                             script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, watchdog_pid_file, lockfile,
-                            log_file, ll_level, _time, user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, logger,
-                            platform
+                            log_file, ll_level, _time, user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, algo,
+                            logger, platform
                         )
                     else:
                         if fk_success:
@@ -548,13 +607,13 @@ def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gn
 
                     fk_success = process_kill(pid, pid_file=None)
 
-                    rotate_cache(cfr, CACHE_F, logger)
+                    created = rotate_cache(cfr, CACHE_F, logger)
 
                     if fk_success and not process_by_target(search_pattern):
                         strup(
                             script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, watchdog_pid_file, lockfile,
-                            log_file, ll_level, _time, user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, logger,
-                            platform
+                            log_file, ll_level, _time, user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, algo,
+                            logger, platform
                         )
                     else:
                         if fk_success:
@@ -579,11 +638,12 @@ def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gn
                 os.makedirs(cdir, mode=0o700, exist_ok=True)
             strup(
                 script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, watchdog_pid_file, lockfile,
-                log_file, ll_level, _time, user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, logger,
-                platform
+                log_file, ll_level, _time, user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, algo,
+                logger, platform
             )
 
     except Exception as e:
         logger.error(f"Error in xRC error: {e} {type(e).__name__}", exc_info=True)
 
+    return created
 # end xRC functions

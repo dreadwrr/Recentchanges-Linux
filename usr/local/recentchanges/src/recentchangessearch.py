@@ -29,7 +29,6 @@ import tempfile
 import time
 from datetime import datetime, timedelta
 from . import processha
-from .config import dump_toml
 from .config import load_toml
 from .configfunctions import check_config
 from .configfunctions import find_install
@@ -155,6 +154,7 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
     cachermPATTERNS = config['backend']['cachermPATTERNS']  # cache clear patterns
     cachermPATTERNS = cache_clear_patterns(usr, cachermPATTERNS)
     checksum = config['diagnostics']['checkSUM']
+    checkMETHOD = config['diagnostics']['checkMETHOD']
     cdiag = config['diagnostics']['cdiag']
     suppress_browser = config['diagnostics']['supbrw']
     supbrwLIST = config['diagnostics']['supbrwLIST']
@@ -244,6 +244,7 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
         'feedback': feedback,
         'analytics': analytics,
         'checksum': checksum,
+        'checkMETHOD': checkMETHOD,
         'ps': ps,
         'cdiag': cdiag,
         'compLVL': compLVL
@@ -387,8 +388,11 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
         # load ctime or files created or copied with preserved metadata.
         # if xRC
 
-        init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, tempwork, gnupg_home, cfr, xRC, _time, checksum,
-                           usr, moduleNAME, log_file, ll_level, supbrwLIST, platform="Linux")
+        created = init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, tempwork, gnupg_home, cfr, xRC, _time, checksum,
+                                     usr, moduleNAME, log_file, ll_level, supbrwLIST, algo=checkMETHOD, platform="Linux")
+
+        # init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, tempwork, gnupg_home, cfr, xRC, _time, checksum,
+        #                     usr, moduleNAME, log_file, ll_level, supbrwLIST, platform="Linux")
 
         if argone != "search":
             thetime = argone
@@ -601,7 +605,7 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
         for entry in sortcomplete:
             if len(entry) >= 17:
                 ts_str = entry[0]
-                filepath = entry[16]
+                filepath = entry[18]
                 filtered_lines.append((ts_str, filepath))
 
         tmpopt = filtered_lines  # human readable
@@ -742,7 +746,7 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
             # Backend
 
             dbopt, data = pst_srg(
-                dbopt, dbtarget, sortcomplete, complete, rout, cachermPATTERNS, user_setting, logging_values,
+                dbopt, dbtarget, sortcomplete, complete, rout, created, cachermPATTERNS, user_setting, logging_values,
                 total_time, total_files, dcr=dcr, iqt=iqt, strt=proval, endp=endval
             )
             # dbopt return from pst_srg is either path, encr_error, new_profile or None
@@ -776,19 +780,17 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
             # File doctrine
             if postop:
                 outpath = os.path.join(usrDIR, tsv_doc)
-                if not os.path.isfile(outpath):
-
-                    # run_doctrine(appdata_local, usrDIR, sortcomplete, tmpopt, logf, rout, toml_file, escaped_user, method, fmt)
-                    # cprint.green(f"File doctrine.tsv created {usrDIR}/{tsv_doc}")
-                    # change_perm(outpath, uid, gid)
-
-                    if build_tsv(sortcomplete, tmpopt, logf, rout, escaped_user, outpath, method, fmt):
-                        change_perm(outpath, uid, gid)
-                        cprint.green(f"File doctrine.tsv created {usrDIR}/{tsv_doc}")
-                elif not iqt:
-                    # update_toml_values({'diagnostics': {'postop': False}}, toml_file)  # if one was already made disable the setting
-                    config['diagnostics']['postop'] = False
-                    dump_toml(None, config, toml_file)
+                # if not os.path.isfile(outpath):
+                # run_doctrine(appdata_local, usrDIR, sortcomplete, tmpopt, logf, rout, toml_file, escaped_user, method, fmt)
+                # cprint.green(f"File doctrine.tsv created {usrDIR}/{tsv_doc}")
+                # change_perm(outpath, uid, gid)
+                if build_tsv(sortcomplete, tmpopt, logf, rout, created, escaped_user, outpath, method, fmt):
+                    change_perm(outpath, uid, gid)
+                    cprint.green(f"File doctrine.tsv created {usrDIR}/{tsv_doc}")
+                # elif not iqt:
+                    # # update_toml_values({'diagnostics': {'postop': False}}, toml_file)  # if one was already made disable the setting
+                    # config['diagnostics']['postop'] = False
+                    # dump_toml(None, config, toml_file)
 
             # Terminal output process scr/cer
             if not csum and not suppress:

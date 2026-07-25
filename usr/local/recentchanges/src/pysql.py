@@ -9,6 +9,8 @@ COLUMNS = [
     'inode INTEGER',
     'accesstime TEXT',
     "checksum TEXT",
+    'entropy REAL',
+    'mime_id INTEGER',
     'filesize INTEGER',
     'symlink TEXT',
     'owner TEXT',
@@ -158,6 +160,14 @@ def create_db(database, sys_tables, action=None):
 
     tables = [
         '''
+        CREATE TABLE mime_types (
+            id INTEGER PRIMARY KEY,
+            mime TEXT UNIQUE NOT NULL,
+            mime_primary TEXT,
+            mime_subtype TEXT
+        )
+        ''',
+        '''
         CREATE TABLE IF NOT EXISTS stats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             action TEXT,
@@ -249,8 +259,9 @@ def insert(log, conn, c, table, last_column, add_column=None):  # Log
 
     columns = [
         'timestamp', 'filename', 'changetime', 'inode', 'accesstime',
-        'checksum', 'filesize', 'symlink', 'owner', '`group`', 'permissions',
-        'casmod', 'target', 'lastmodified', 'hardlinks', last_column
+        'checksum', 'entropy', 'mime_id', 'filesize', 'symlink',
+        'owner', '`group`', 'permissions', 'casmod', 'target',
+        'lastmodified', 'hardlinks', last_column
     ]
     if add_column:
         columns.append(add_column)
@@ -330,6 +341,8 @@ def get_sys_changes(cursor, sys_a, sys_b):
         inode,
         accesstime,
         checksum,
+        entropy,
+        mime_id,
         filesize,
         symlink,
         owner,
@@ -354,6 +367,8 @@ def get_sys_changes(cursor, sys_a, sys_b):
         a.inode,
         a.accesstime,
         a.checksum,
+        a.entropy,
+        a.mime_id,
         a.filesize,
         a.symlink,
         a.owner,
@@ -523,6 +538,7 @@ def clear_table(table, conn, cur, quiet=False):
 
 
 def dbclear_table(dbopt, table_name):
+    """ Template not currently used """
     fn = "dbclear_table"
     conn = None
     cur = None
@@ -564,11 +580,11 @@ def collision_check(xdata, cerr, sys_tables, c, ps):
 
     current_rows = set()
     for record in xdata:
-        if not record or len(record) < 7:
+        if not record or len(record) < 9:
             continue
         filename = record[1]
         file_hash = record[5]
-        file_size = record[6]
+        file_size = record[8]
         if not (filename and file_hash and file_size):
             continue
 
@@ -677,6 +693,38 @@ def collision(cursor, is_sys, sys_tables=None):
     return cursor.fetchall()
 
 
+# def collisions(xdata, cerr, c, ps):
+#     """ return collisions from the database. see above not used currently """
+#     reported = set()
+#     csum = False
+#     colcheck = collision(c, ps)
+
+#     if colcheck:
+
+#         collision_map = defaultdict(set)
+#         for a_filename, b_filename, file_hash, size_a, size_b in colcheck:
+#             collision_map[a_filename, file_hash].add((b_filename, file_hash, size_a, size_b))
+#             collision_map[b_filename, file_hash].add((a_filename, file_hash, size_b, size_a))
+#         try:
+#             with open(cerr, "a", encoding="utf-8") as f:
+#                 for record in xdata:
+#                     filename = record[1]
+#                     checks = record[5]
+#                     size_non_zero = record[6]
+#                     if size_non_zero:
+#                         key = (filename, checks)
+#                         if key in collision_map:
+#                             for other_file, file_hash, size1, size2 in collision_map[key]:
+#                                 pair = tuple(sorted([filename, other_file]))
+#                                 if pair not in reported:
+#                                     csum = True
+#                                     print(f"COLLISION: {filename} {size1} vs {other_file} {size2} | Hash: {file_hash}", file=f)
+#                                     reported.add(pair)
+#         except IOError as e:
+#             print(f"Failed to write collisions: {e} {type(e).__name__}  \n{traceback.format_exc()}")
+#     return collision_map, csum
+
+
 def detect_copy(filename, inode, checksum, sys_tables, cursor, ps):
     if ps:
         sys_a, sys_b = sys_tables
@@ -711,8 +759,9 @@ def detect_copy(filename, inode, checksum, sys_tables, cursor, ps):
 def get_recent_changes(filename, cursor, table, e_cols=None):
     columns = [
         "timestamp", "filename", "changetime", "inode",
-        "accesstime", "checksum", "filesize", "symlink", "owner",
-        "`group`", "permissions", "casmod", "target"
+        "accesstime", "checksum", "entropy", "mime_id",
+        "filesize", "symlink", "owner", "`group`",
+        "permissions", "casmod", "target"
     ]
     if e_cols:
         if isinstance(e_cols, str):
@@ -737,8 +786,9 @@ def get_recent_sys(filename, cursor, sys_tables, e_cols=None):
 
     columns = [
         "timestamp", "filename", "changetime", "inode",
-        "accesstime", "checksum", "filesize", "symlink", "owner",
-        "`group`", "permissions", "casmod", "target"
+        "accesstime", "checksum", "entropy", "mime_id",
+        "filesize", "symlink", "owner", "`group`",
+        "permissions", "casmod", "target"
     ]
     if e_cols:
         if isinstance(e_cols, str):
@@ -773,9 +823,9 @@ def increment_f(conn, c, sys_tables, records, logger=None):
     sql_insert = f"""
         INSERT OR IGNORE INTO {sys_b} (
             timestamp, filename, changetime, inode, accesstime, checksum,
-            filesize, symlink, owner, `group`, permissions, casmod, target, lastmodified,
-            hardlinks, count, mtime_us
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            entropy, mime_id, filesize, symlink, owner, `group`, permissions,
+            casmod, target, lastmodified, hardlinks, count, mtime_us
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
     try:
 
@@ -793,6 +843,35 @@ def increment_f(conn, c, sys_tables, records, logger=None):
         if logger:
             logger.error(err, exc_info=True)
     return None
+
+
+def get_mime_map(cur):
+
+    mime_to_info = {}
+    id_to_info = {}
+    cur.execute("SELECT id, mime, mime_primary, mime_subtype FROM mime_types")
+
+    for row in cur:
+        info = {
+            "id": row[0],
+            "mime": row[1],
+            "primary": row[2],
+            "subtype": row[3],
+        }
+
+        mime_to_info[row[1]] = info
+        id_to_info[row[0]] = info
+
+    return mime_to_info, id_to_info
+
+
+def insert_mimes(cur, new_mime_rows):
+    if not new_mime_rows:
+        return
+    cur.executemany(
+        "INSERT INTO mime_types (id, mime, mime_primary, mime_subtype) VALUES (?, ?, ?, ?)",
+        new_mime_rows
+    )
 
 
 def get_unique_files(c):

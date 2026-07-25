@@ -4,7 +4,7 @@ from .logs import emit_log
 from .dirwalkerfunctions import meta_sys
 
 
-def scan_index(chunk, is_sym, i, num_chunks, show_progress=False, strt=0, endp=100):
+def scan_index(chunk, id_to_mime, is_sym, i, num_chunks, show_progress=False, algo='md5', strt=0, endp=100):
     # the checksum could change on live system checksum is verified with retries
     c = r = 0
     # t_fold = 0
@@ -17,7 +17,7 @@ def scan_index(chunk, is_sym, i, num_chunks, show_progress=False, strt=0, endp=1
         steps = sorted(set(int((i / 10) * t_fold) for i in range(1, 11)))
         step_len = len(steps)
 
-    sys_data, link_data, nsf_records, log_entries = [], [], [], []
+    sys_data, link_data, ent_data, mime_data, nsf_records, log_entries = [], [], [], [], [], []
 
     x, y = 0, 0
 
@@ -54,12 +54,15 @@ def scan_index(chunk, is_sym, i, num_chunks, show_progress=False, strt=0, endp=1
             if os.path.isfile(file_path):
                 x += 1
                 previous_md5 = record[5]
-                previous_symlink = record[7]
-                previous_target = record[12]
-                previous_count = record[15]
+                previous_entropy = record[6]
+                previous_mime_id = record[7]
+                previous_symlink = record[9]
+                previous_target = record[14]
+                previous_count = record[17]
                 if not previous_symlink and not previous_md5:
                     emit_log("DEBUG", f"Previous hash was missing attempting to run checksum. file:  {file_path}", logs.WORKER_LOG_Q)
-                rlt, status = meta_sys(file_path, previous_md5, previous_symlink, previous_target, previous_count, is_sym, sys_data, link_data, logs.WORKER_LOG_Q)  # append meta data to sys_data
+                rlt, status = meta_sys(file_path, previous_md5, previous_entropy, previous_mime_id, previous_symlink, previous_target, previous_count,
+                                       is_sym, sys_data, link_data, ent_data, mime_data, id_to_mime, algo, logs.WORKER_LOG_Q)  # append meta data to sys_data
                 if not rlt:
                     if rlt is False and status == "Nosuchfile":
                         x -= 1
@@ -84,4 +87,4 @@ def scan_index(chunk, is_sym, i, num_chunks, show_progress=False, strt=0, endp=1
 
     if dbit and current_step <= len(steps) - 1:
         emit_log("prog", r, logs.WORKER_LOG_Q)
-    return sys_data, link_data, nsf_records, log_entries, x, y, c
+    return sys_data, link_data, ent_data, mime_data, nsf_records, log_entries, x, y, c

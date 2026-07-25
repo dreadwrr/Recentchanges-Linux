@@ -12,10 +12,10 @@ from .logs import emit_log
 from .logs import init_process_worker
 from .logs import logs_to_queue
 from .logs import logging_worker
-# Get metadata hash of files and return array 03/27/2026
+# Get metadata hash of files and return array 07/20/2026
 
 
-def process_line_worker(search_fn, chunk, checksum, search_start_dt, cache_f, show_progress=False, logger=None, strt=20, endp=60):
+def process_line_worker(search_fn, chunk, checksum, search_start_dt, cache_f, show_progress=False, algo="md5", logger=None, strt=20, endp=60):
 
     results = []
     log_entries = []
@@ -36,7 +36,7 @@ def process_line_worker(search_fn, chunk, checksum, search_start_dt, cache_f, sh
     for i, line in enumerate(chunk):
         try:
 
-            result, log_ = search_fn(line, checksum, search_start_dt, cache_f, logger)
+            result, log_ = search_fn(line, checksum, search_start_dt, cache_f, algo, logger)
 
             if result is not None:
                 results.append(result)
@@ -78,6 +78,7 @@ def process_lines(search_fn, lines, search_start_dt, process_label, user_setting
 
     drive_type = user_setting['driveTYPE']
     checksum = user_setting['checksum']
+    algo = user_setting['checkMETHOD']
 
     ck_results = []
 
@@ -102,7 +103,7 @@ def process_lines(search_fn, lines, search_start_dt, process_label, user_setting
             # tlog = threading.Thread(target=logging_worker, args=(log_q, len_lines, strt, endp, show_progress, logger), daemon=True)
             # tlog.start()
             init_process_worker(None)
-            ck_results, _, _ = process_line_worker(search_fn, lines, checksum, search_start_dt, cache_f, show_progress, logger, strt, endp)
+            ck_results, _, _ = process_line_worker(search_fn, lines, checksum, search_start_dt, cache_f, show_progress, algo, logger, strt, endp)
             # if log_entries:
             #     logs_to_queue(log_entries, log_q)
         except Exception as e:
@@ -136,7 +137,7 @@ def process_lines(search_fn, lines, search_start_dt, process_label, user_setting
             ) as executor:
                 futures = [
                     executor.submit(
-                        process_line_worker, search_fn, chunk, checksum, search_start_dt, cache_f, show_progress
+                        process_line_worker, search_fn, chunk, checksum, search_start_dt, cache_f, show_progress,  algo
 
                     )
                     for idx, chunk in enumerate(chunks)
@@ -199,12 +200,14 @@ def process_results(results, cache_f):
                 time_stamp = res[0].strftime("%Y-%m-%d %H:%M:%S")
                 # file_path = res[1]
                 checks = res[5]
-                file_size = res[6]
-                # user = res[8]
-                # group = res[9]
-                mtime_epoch = res[15]
-                epath = res[16]
-                upt_cache(cache_f, checks, file_size, time_stamp, mtime_epoch, epath)
+                entropy = res[6]
+                mime = res[7]
+                file_size = res[8]
+                # user = res[10]
+                # group = res[11]
+                mtime_epoch = res[17]
+                epath = res[18]
+                upt_cache(cache_f, checks, entropy, mime, file_size, time_stamp, mtime_epoch, epath)
 
     except Exception as e:
         msg = f'Error updating cache: {type(e).__name__}: {e}'

@@ -13,7 +13,7 @@ from .pyfunctions import escf_py
 # Find Parallel sortcomplete search and  ctime hashing
 
 
-def process_scan(line, checksum, search_start_dt, cache_f, logger=None):
+def process_scan(line, checksum, search_start_dt, cache_f, algo="md5", logger=None):
 
     label = "Sortcomplete"
     fmt = "%Y-%m-%d %H:%M:%S"
@@ -21,7 +21,7 @@ def process_scan(line, checksum, search_start_dt, cache_f, logger=None):
 
     log_entries = []
 
-    checks = cam = lastmodified = None
+    checks = entropy = mime = cam = lastmodified = None
     target = None
     cached = status = None
     file_st = None
@@ -53,7 +53,7 @@ def process_scan(line, checksum, search_start_dt, cache_f, logger=None):
         if size > CSZE:
             cached = get_cached(cache_f, size, mtime_us, file_path)
             if cached is None:
-                checks, file_dt, file_us, file_st, status = calculate_checksum(file_path, mtime, mtime_us, inode, size, retry=1, cacheable=True, log_q=logs.WORKER_LOG_Q, logger=logger)
+                checks, entropy, mime, file_dt, file_us, file_st, status = calculate_checksum(file_path, mtime, mtime_us, inode, size, algo=algo, retry=1, cacheable=True, log_q=logs.WORKER_LOG_Q, logger=logger)
                 if checks is not None:
                     if status == "Retried":
                         checks, mtime, st, mtime_us, ctime, inode, size = set_stat(line, checks, file_dt, file_st, file_us, inode, logs.WORKER_LOG_Q, logger=logger)
@@ -67,9 +67,11 @@ def process_scan(line, checksum, search_start_dt, cache_f, logger=None):
                         return ("Deleted", mt, mt, escf_path), log_entries
             else:
                 checks = cached.get("checksum")
+                entropy = cached.get("entropy")
+                mime = cached.get("mime")
 
         else:
-            checks, file_dt, file_us, file_st, status = calculate_checksum(file_path, mtime, mtime_us, inode, size, retry=1, cacheable=False, log_q=logs.WORKER_LOG_Q, logger=logger)
+            checks, entropy, mime, file_dt, file_us, file_st, status = calculate_checksum(file_path, mtime, mtime_us, inode, size, algo=algo, retry=1, cacheable=False, log_q=logs.WORKER_LOG_Q, logger=logger)
             if checks is not None:
                 if status == "Retried":
                     checks, mtime, st, mtime_us, ctime, inode, size = set_stat(line, checks, file_dt, file_st, file_us, inode, logs.WORKER_LOG_Q, logger=logger)
@@ -106,6 +108,8 @@ def process_scan(line, checksum, search_start_dt, cache_f, logger=None):
         inode,
         atime.strftime(fmt) if atime is not None else None,
         checks,
+        entropy,
+        mime,
         size,
         sym,
         user,

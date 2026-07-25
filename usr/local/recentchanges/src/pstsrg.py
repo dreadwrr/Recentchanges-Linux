@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# pstsrg.py - Process and store logs in a SQLite database, encrypting the database       06/17/2026
+# pstsrg.py - Process and store logs in a SQLite database, encrypting the database       07/24/2026
 import os
 import sqlite3
 import sys
@@ -9,16 +9,19 @@ from .dirwalker import index_system
 from .gpgcrypto import decr
 from .gpgcrypto import encr
 from .hanlyparallel import hanly_parallel
+from .pyfunctions import convert_mime_to_int
 from .pyfunctions import cprint
 from .pyfunctions import unescf_py
 from .pysql import clear_conn
 from .pysql import collision_check
 from .pysql import create_db
+from .pysql import get_mime_map
 from .pysql import get_unique_files
 from .pysql import get_lifetime_throughput
 from .pysql import insert
 from .pysql import insert_files_time
 from .pysql import insert_if_not_exists
+from .pysql import insert_mimes
 from .pysql import table_has_data
 from .qtdrivefunctions import get_idx_tables
 from .query import blank_count
@@ -26,7 +29,7 @@ from .pyfunctions import cnc
 from .rntchangesfunctions import removefile
 
 
-def main(dbopt, dbtarget, xdata, complete, rout, cachermPATTERNS, user_setting, logging_values, total_time, total_files, dcr=False, iqt=False, strt=65, endp=90):
+def main(dbopt, dbtarget, xdata, complete, rout, created, cachermPATTERNS, user_setting, logging_values, total_time, total_files, dcr=False, iqt=False, strt=65, endp=90):
 
     # tempwork = logging_values[3]  # the script temp directory
     scr = logging_values[4]
@@ -42,6 +45,7 @@ def main(dbopt, dbtarget, xdata, complete, rout, cachermPATTERNS, user_setting, 
     model_type = user_setting['driveTYPE']
     analytics = user_setting['analytics']
     checksum = user_setting['checksum']
+    checkMETHOD = user_setting['checkMETHOD']
     cdiag = user_setting['cdiag']
     ps = user_setting['ps']
     compLVL = user_setting['compLVL']
@@ -136,6 +140,11 @@ def main(dbopt, dbtarget, xdata, complete, rout, cachermPATTERNS, user_setting, 
             goahead = False
             new_database = True
 
+        # 07/20/2026
+        mime_hashmap, id_to_mime = get_mime_map(c)
+        # map mime str to an int for database
+        xdata, new_mime_rows, _ = convert_mime_to_int(xdata, mime_hashmap, id_to_mime)
+
         # Log
         if xdata:
 
@@ -145,25 +154,27 @@ def main(dbopt, dbtarget, xdata, complete, rout, cachermPATTERNS, user_setting, 
                     if iqt:
                         print(f"Progress: {strt}", flush=True)
 
-                    csum, ha_total_time, logger_total_time = hanly_parallel(model_type, rout, scr, cerr, xdata, cachermPATTERNS, checksum, cdiag, dbopt, is_ps, user, logging_values, sys_tables, iqt, strt, endp)
+                    csum, ha_total_time, logger_total_time = hanly_parallel(model_type, rout, created, scr, cerr, xdata, id_to_mime, cachermPATTERNS, checksum, cdiag, dbopt, is_ps, user, logging_values, sys_tables, iqt, strt, endp)
 
                 except Exception as e:
                     print(f"hanlydb failed to process : {type(e).__name__} : {e} \n{traceback.format_exc().strip()}", file=sys.stderr)
 
-            for record in xdata:
-                parsed.append(record[:16])  # trim escf_path from end sortcomplete
+        for record in xdata:
+            parsed.append(record[:18])  # trim escf_path from end sortcomplete
 
         if parsed:
             try:
 
                 insert(parsed, conn, c, "logs", "mtime_us")
 
+                insert_mimes(c, new_mime_rows)
+
                 count = blank_count(c)
 
                 if count % 10 == 0:
                     print(f'{count} searches in gpg database')
 
-                if checksum and cdiag:
+                if checkMETHOD != "blake2" and checksum and cdiag:
                     if collision_check(xdata, cerr, sys_tables, c, ps):
                         csum = True
 

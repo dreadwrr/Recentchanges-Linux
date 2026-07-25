@@ -22,7 +22,7 @@ from .pysql import increment_f
 
 
 # tfile
-def logger_process(results, sys_records, sys_tables, rout, scr, cerr, dbopt, ps, logger=None):
+def logger_process(results, sys_records, sys_tables, rout, scr, cerr, created, dbopt, ps, logger=None):
     # append rout messages to the rout list from hanly
     # if there are sys_records add them to the database sys changes sys_b
     #
@@ -81,6 +81,8 @@ def logger_process(results, sys_records, sys_tables, rout, scr, cerr, dbopt, ps,
                                     # windows if creation time is greater than modified time it could be a copy, a download or a created file
                                     # this differs from linux that has no creation time but casmod or change as mod can be put instead
                                     # change as modified means it is significant in that it could be a downloaded file with preserved metadata
+                                    elif filepath in created:
+                                        rout.append(f'Created {timestamp} {changetime} {label}')
                                     else:
                                         # mod_time = timestamp  # if not datetime
                                         mod_time = timestamp.strftime(fmt)
@@ -122,7 +124,7 @@ def logger_process(results, sys_records, sys_tables, rout, scr, cerr, dbopt, ps,
                     log.error(em, exc_info=True)
 
 
-def hanly_parallel(drive_type, rout, scr, cerr, parsed, cachermPATTERNS, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, iqt=False, strt=65, endp=90):
+def hanly_parallel(drive_type, rout, created, scr, cerr, parsed, id_to_mime, cachermPATTERNS, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, iqt=False, strt=65, endp=90):
 
     all_results = []
     batch_incr = []
@@ -132,9 +134,10 @@ def hanly_parallel(drive_type, rout, scr, cerr, parsed, cachermPATTERNS, checksu
     if len_parsed == 0:
         return False
 
+    is_error = False
     csum = False
 
-    cprint.green('Hybrid analysis on')
+    ha_total_time = 0
 
     logger = logging.getLogger("HANLY")
 
@@ -155,7 +158,7 @@ def hanly_parallel(drive_type, rout, scr, cerr, parsed, cachermPATTERNS, checksu
         # tlog.start()
 
         init_process_worker(None)
-        all_results, batch_incr, log_entries, csum = hanly(parsed, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, cachermPATTERNS, show_progress, logger, strt, endp)
+        all_results, batch_incr, log_entries, csum = hanly(parsed, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, id_to_mime, cachermPATTERNS, show_progress, logger, strt, endp)
         # if log_entries:
         #     logs_to_queue(log_entries, log_q)
 
@@ -182,7 +185,7 @@ def hanly_parallel(drive_type, rout, scr, cerr, parsed, cachermPATTERNS, checksu
             ) as executor:
                 futures = [
                     executor.submit(
-                        hanly, chunk, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, cachermPATTERNS, show_progress, None, strt, endp
+                        hanly, chunk, checksum, cdiag, dbopt, ps, user, logging_values, sys_tables, id_to_mime, cachermPATTERNS, show_progress, None, strt, endp
                     )
                     for chunk in chunks
                 ]
@@ -221,13 +224,17 @@ def hanly_parallel(drive_type, rout, scr, cerr, parsed, cachermPATTERNS, checksu
             log_q.join_thread()
 
     end = time.perf_counter()
-    ha_total_time = end - start
+
+    if not is_error and len(all_results) > 0:
+        ha_total_time = end - start
+        cprint.green('Hybrid analysis on')
 
     print("processing results", flush=True)
     logger = logging.getLogger("HANLYLOGGER")
-    logger_process(all_results, batch_incr, sys_tables, rout, scr, cerr, dbopt, ps, logger)
+    logger_process(all_results, batch_incr, sys_tables, rout, scr, cerr, created, dbopt, ps, logger)
 
     lend = time.perf_counter()
     logger_total_time = lend - end
+
     gc.collect()
     return csum, ha_total_time, logger_total_time

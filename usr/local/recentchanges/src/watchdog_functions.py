@@ -22,8 +22,8 @@ DEBUG = False  # switch to serial so more rudimentary operation and added verbos
 CSZE = 1024 * 1024  # when to cache created files
 
 
-def emit_write(output_file, CACHE_F, cdir, size, out_data, cache_data, lockfile, log_q, logger):
-    payload = (output_file, CACHE_F, cdir, size, out_data, cache_data)
+def emit_write(output_file, CACHE_F, checks, cdir, size, out_data, cache_data, lockfile, log_q, logger):
+    payload = (output_file, CACHE_F, checks, cdir, size, out_data, cache_data)
     if log_q is not None:
         log_q.put(("write", payload))
     else:
@@ -35,19 +35,20 @@ def emit_write(output_file, CACHE_F, cdir, size, out_data, cache_data, lockfile,
 
 def file_lineout(payload, lockfile, logger):
     """ linux version """
-    output_file, CACHE_F, cdir, size, out_data, cache_data = payload
+    output_file, CACHE_F, checks, cdir, size, out_data, cache_data = payload
     # lock_fd = os.open(lockfile, os.O_WRONLY | os.O_CREAT, 0o644)
     # lock_ = False
     # try:
     #     fcntl.flock(lock_fd, fcntl.LOCK_EX)
     #     lock_ = True
-    if size > CSZE and CACHE_F:
+    if checks and size and size > CSZE:
         os.makedirs(cdir, mode=0o700, exist_ok=True)
         with open(CACHE_F, 'a') as f:
             f.write(cache_data + '\n')
-    if output_file:
-        with open(output_file, 'a') as f:
-            f.write(" ".join(map(str, out_data)) + '\n')
+
+    with open(output_file, 'a') as f:
+        f.write(" ".join(map(str, out_data)) + '\n')
+
     # except OSError as e:
     #     logs.emit_log("ERROR", f"Failed to acquire lock: {e}", logger=logger)
     # finally:
@@ -99,7 +100,7 @@ def log_lineout(log_q, logger, path, status, message):
     return is_error
 
 
-def get_specs(entry, path, output_file, CACHE_F, cdir, lockfile, log_q, logger):
+def get_specs(action, entry, path, output_file, CACHE_F, cdir, lockfile, algo, created_seen, log_q, logger):
     fmt = "%Y-%m-%d %H:%M:%S"
     sym = cam = last_modified = None
 
@@ -131,7 +132,14 @@ def get_specs(entry, path, output_file, CACHE_F, cdir, lockfile, log_q, logger):
 
     mode = oct(stat.S_IMODE(stat_info.st_mode))[2:]
 
-    if sym != "y" and size:
+    if action == "created":
+        if path not in created_seen:
+            return
+        elif not size:
+            return
+        del created_seen[path]
+
+    if sym != "y":
 
         owner, group = file_owner(path, stat_info, log_q, logger=logger)
 
@@ -144,7 +152,7 @@ def get_specs(entry, path, output_file, CACHE_F, cdir, lockfile, log_q, logger):
 
         # or can be used for debug output line = ', '.join(map(str, file_info)) and would have to be updated after set_stat
 
-        checks, file_dt, file_us, file_st, status = calculate_checksum(path, mtime, mtime_us, inode, size, retry=2, cacheable=True, log_q=log_q, logger=logger)
+        checks, entropy, mime, file_dt, file_us, file_st, status = calculate_checksum(path, mtime, mtime_us, inode, size, algo=algo, retry=2, cacheable=True, log_q=log_q, logger=logger)
 
         if checks is not None:  # if status in ("Returned", "Retried"):
             if status == "Retried":
@@ -173,6 +181,9 @@ def get_specs(entry, path, output_file, CACHE_F, cdir, lockfile, log_q, logger):
                 last_modified = m_time
                 m_time = c_time
 
+        if not size:
+            checks = None
+
         # Output results
 
         emit_log("DEBUG", f"change time: {c_epoch} and mtime: {m_epoch} , get_specs passed processed line", log_q, logger=logger)
@@ -184,7 +195,7 @@ def get_specs(entry, path, output_file, CACHE_F, cdir, lockfile, log_q, logger):
         #
         #                                              timestamp   mtime_us
         # the check in this app uses - checksum|size|modified_time|modified_ep|root
-        out_str = f"{inode}|{size}|{mtime_us}\t{checks}\t{z}"
+        out_str = f"{inode}|{size}|{mtime_us}\t{checks}\t{entropy}\t{mime}\t{z}"
 
         #
         # always write to output_file so can diagnose
@@ -194,12 +205,12 @@ def get_specs(entry, path, output_file, CACHE_F, cdir, lockfile, log_q, logger):
         # adtcmd="$check_sum $fs $sl $wnr $grp $pmn"  # pblk
 
         data = [
-            m_time, f'"{y}"', c_time, inode, a_time,
-            checks, size, sym, owner, group, mode,
+            m_time, f'"{y}"', c_time, inode, a_time, checks,
+            entropy, mime, size, sym, owner, group, mode,
             cam, last_modified, hardlink, mtime_us
         ]
 
-        emit_write(output_file, CACHE_F, cdir, size, data, out_str, lockfile, log_q, logger)
+        emit_write(output_file, CACHE_F, checks, cdir, size, data, out_str, lockfile, log_q, logger)
 
 
 def is_excl_dir(path: Path, exclusions: list) -> bool:
@@ -219,50 +230,43 @@ def is_temp_file(path: Path, temp_suffixes) -> bool:
     return path.suffix.lower() in temp_suffixes
 
 
-def pair_handle(action, event, entry, path, start_time, created_seen, log_q, logger):
+def shandle(action, event, entry, path, start_time, created_seen, log_q, logger):
+    """ formerly phandle returns false meaning process the event """
 
-    src = str(Path(event.src_path).resolve())
+    # if using another index could store a key
+    # size = stat_info.st_size
+    # key = (path, size, mod_time)
+    # pending_files[key] = time.time()
+
+    # a moved file wouldnt have a creation event or the creation event could have been missed
     stat_info = get_stat(entry, log_q, logger=logger)
     if not stat_info:
         return None
 
     mod_time = stat_info.st_mtime
 
-    # firefox and others normal for downloaded file. creation event makes final file src 0 bytes -> writes a partial -> move event dest atomic with full file
-    if path in created_seen:
-
-        del created_seen[path]
-
-        # if using another index could store a key
-        # size = stat_info.st_size
-        # key = (path, size, mod_time)
-        # pending_files[key] = time.time()
-
-    # unconventional or maybe some other app? creation event write partial in place -> move event dest but dest isnt in created_seen src is.
-    elif src in created_seen:
-        # log unusual event
-        emit_log("DEBUG", f"handle_file {action} unusual src was in created_seen on move after created file. src: {src} dest or file: {path}", log_q, logger=logger)
+    src = str(Path(event.src_path).resolve())
+    # the unusual. maybe some other app? creation event write partial in place -> move event dest but dest isnt in created_seen src is.
+    if src in created_seen:
 
         del created_seen[src]
 
-    else:
+        emit_log("DEBUG", f"handle_file {action} unusual src was in created_seen on move after created file. src: {src} dest or file: {path}", log_q, logger=logger)
 
-        # a moved file wouldnt have a creation event or the creation event could have been missed
+    # firefox and others normal for downloaded file. creation event makes final file src 0 bytes -> writes a partial -> move event dest atomic with full file
+    elif path in created_seen:
+
+        del created_seen[path]
+
+    else:
+        # does it look like a creation event?
 
         emit_log("DEBUG", f"handle_file {action} did not have a creation event checking if ctime >= mtime for file: {path}", log_q, logger=logger)
+
         change_time = stat_info.st_ctime
-
-        # gated on regular moves. ctime >= mtime and since watch start are files of interest so process anyway
-        # on linux this increases noise but is better to include than exclude and can adjust where necessary
-
-        # does it look like a creation event?
-        if change_time >= mod_time or change_time >= start_time:
-            return False
-        # its a regular move dont process
-        else:
+        if change_time < mod_time or change_time < start_time:
             emit_log("DEBUG", f"handle_file {action} it was a regular move. skipping.. file: {path}", log_q, logger=logger)
-
-        return True
+            return True
 
     return False
 
@@ -278,7 +282,7 @@ def relativize(path, base):
 
 def old_pid_check(pid_file, new_pid, logger, platform):
     """ if there is an old pid file try to kill. """
-    res = False
+    res = True
 
     if os.path.isfile(pid_file):
         with open(pid_file) as f:
@@ -309,8 +313,8 @@ def old_pid_check(pid_file, new_pid, logger, platform):
                             #   fk_success = _fk_process(r'inotifywait.*-e create -e moved_to --format %e\|%w%f%0')  # fk_success = _fk_process('inotifywait -m -r -e create -e moved_to --format %e|%w%f%0')  # original
                         elif platform == "windows":
                             res = process_kill(stored_pid, pid_file=pid_file)
-                        if res:
-                            return True  # In the rare case it wasnt previously shutdown prevented having two before starting this watchdog process
+                        if not res:
+                            return False  # In the rare case it wasnt previously shutdown prevented having two before starting this watchdog process
                         # else:
                         # alternative
                         # try:
