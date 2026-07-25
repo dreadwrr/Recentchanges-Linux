@@ -1,6 +1,7 @@
 version 6.5.0 in repo and testing before release
+add entropy, mime and target change detection
+added green lcd
 
-Released 6.2.0! <br><br>
 Python watchdog service <br>
 ![Alt text](https://i.imgur.com/Wvi4JrH.png) <br>
 when xRC is on all new files are listed in /tmp/file_creation_log.txt <br>
