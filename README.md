@@ -1,4 +1,5 @@
-version 6.5.0 in repo and testing before release <br>
+version 6.5.0 <br>
+supports blake2b <br>
 entropy, mime and target change detection added <br>
 added green lcd <br><br>
 
