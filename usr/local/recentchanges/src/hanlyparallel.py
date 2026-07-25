@@ -14,11 +14,9 @@ from .logs import init_process_worker
 from .logs import logs_to_queue
 from .logs import logging_worker
 from .pyfunctions import cprint
-from .pyfunctions import escf_py
 from .pysql import detect_copy
 from .pysql import increment_f
-
-# 06/15/2026
+# 07/24/2026
 
 
 # tfile
@@ -73,7 +71,8 @@ def logger_process(results, sys_records, sys_tables, rout, scr, cerr, created, d
                                     inode = msg[3]
                                     checksum = msg[5]
 
-                                    label = escf_py(filepath)
+                                    # label = escf_py(filepath)
+                                    label = msg[18]
                                     result = detect_copy(filepath, inode, checksum, sys_tables, c, ps)
                                     if result:
                                         rout.append(f'Copy {timestamp} {changetime} {label}')
@@ -81,7 +80,7 @@ def logger_process(results, sys_records, sys_tables, rout, scr, cerr, created, d
                                     # windows if creation time is greater than modified time it could be a copy, a download or a created file
                                     # this differs from linux that has no creation time but casmod or change as mod can be put instead
                                     # change as modified means it is significant in that it could be a downloaded file with preserved metadata
-                                    elif filepath in created:
+                                    if label in created:
                                         rout.append(f'Created {timestamp} {changetime} {label}')
                                     else:
                                         # mod_time = timestamp  # if not datetime

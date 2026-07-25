@@ -127,7 +127,7 @@ def strup(script_dir, script, appdata_local, home_dir, inotify_creation_file, CA
         dispatch = Path(sys.argv[0]).resolve()
 
     args = [
-        "watchdog_linux.py",
+        script,
         script_path,
         str(appdata_local),
         str(home_dir),
@@ -328,7 +328,7 @@ def parselog(file, checksum, logger):
                 hardlink_count = sym
                 checks = entropy = mime = filesize = sym = onr = gpp = None
 
-            results.append((timestamp, filename, changetime, inode, accesstime, checks, filesize, sym, onr, gpp, pmr, cam, target, lastmodified, hardlink_count, usec, escf_path))
+            results.append((timestamp, filename, changetime, inode, accesstime, checks, entropy, mime, filesize, sym, onr, gpp, pmr, cam, target, lastmodified, hardlink_count, usec, escf_path))
 
         except Exception as e:
             print(f'Problem detected in parser parselog for line {line} err: {type(e).__name__}: {e} \n skipping..')

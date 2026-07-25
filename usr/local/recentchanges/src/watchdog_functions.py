@@ -34,10 +34,10 @@ def emit_write(output_file, CACHE_F, checks, cdir, size, out_data, cache_data, l
 
 
 def file_lineout(payload, lockfile, logger):
-    """ linux version """
     output_file, CACHE_F, checks, cdir, size, out_data, cache_data = payload
     # lock_fd = os.open(lockfile, os.O_WRONLY | os.O_CREAT, 0o644)
     # lock_ = False
+
     # try:
     #     fcntl.flock(lock_fd, fcntl.LOCK_EX)
     #     lock_ = True
@@ -102,6 +102,7 @@ def log_lineout(log_q, logger, path, status, message):
 
 def get_specs(action, entry, path, output_file, CACHE_F, cdir, lockfile, algo, created_seen, log_q, logger):
     fmt = "%Y-%m-%d %H:%M:%S"
+
     sym = cam = last_modified = None
 
     stat_info = get_stat(entry, log_q, logger=logger)

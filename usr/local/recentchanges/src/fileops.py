@@ -7,6 +7,7 @@ import os
 from collections import Counter
 from .logs import emit_log
 from .pyfunctions import epoch_to_date
+# 07/24/2026
 
 
 def find_link_target(file_path, log_q=None, log_entries=None, logger=None):
@@ -111,7 +112,7 @@ def calculate_checksum(file_path, mtime, mod_time, inode, size_int, prev_hash=No
     mime = None
     total_size = 0
     try:
-        hash_func = hashlib.md5()
+        hash_func = get_hash_func(algo)
         with open(file_path, 'rb') as f:
             while chunk := f.read(8192):
                 hash_func.update(chunk)

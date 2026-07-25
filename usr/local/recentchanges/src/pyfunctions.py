@@ -1,7 +1,6 @@
 import fnmatch
 import os
 import re
-# from collections import defaultdict
 from datetime import datetime
 from .configfunctions import not_absolute
 

@@ -14,7 +14,7 @@ from .pyfunctions import parse_datetime
 from .pysql import clear_conn
 from .pysql import get_recent_changes
 from .pysql import get_recent_sys
-# hybrid analysis 11/19/2025 updated 07/24/2026linux Qt
+# hybrid analysis 11/19/2025 updated 07/24/2026 linux Qt
 
 
 def target_change(label, entry, recent_sym, previous_sym, link_target, previous_target):

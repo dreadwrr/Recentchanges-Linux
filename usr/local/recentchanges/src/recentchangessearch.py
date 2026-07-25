@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#   Porteus                                                                           07/10/2026
+#   Porteus                                                                           07/24/2026
 #   recentchanges. Developer buddy      recentchanges/ recentchanges search
 #   Provide ease of pattern finding ie what files to block we can do this a number of ways
 #   1) if a file was there (many as in more than a few) and another search lists them as deleted its either a sys file or not but unwanted nontheless
@@ -387,9 +387,10 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
 
         # load ctime or files created or copied with preserved metadata.
         # if xRC
-
-        created = init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, tempwork, gnupg_home, cfr, xRC, _time, checksum,
-                                     usr, moduleNAME, log_file, ll_level, supbrwLIST, algo=checkMETHOD, platform="Linux")
+        created = init_recentchanges(
+            script_dir, appdata_local, usrDIR, home_dir, tempwork, gnupg_home, cfr, xRC, _time, checksum,
+            usr, moduleNAME, log_file, ll_level, supbrwLIST, algo=checkMETHOD, platform="Linux"
+        )
 
         # init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, tempwork, gnupg_home, cfr, xRC, _time, checksum,
         #                     usr, moduleNAME, log_file, ll_level, supbrwLIST, platform="Linux")
@@ -793,9 +794,36 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
                     # dump_toml(None, config, toml_file)
 
             # Terminal output process scr/cer
+
+            # csum could be and was returned from filter_output in processha but instead is returned from hanly incase scr or cerr
+            # files are stale by somehow being reused
+
+            # terminal output is filtered for browser suppressions or entirely suppressed except for critical events
+            # critical events are Suspect and COLLISION
+
+            # scr feedback
+            #
+            # this is the second filter_output call after cerr in processha
+            #
+            # if there was a critical event nothing gets output to terminal
+            #
+            # primary: Checksum color: blue
+            # other: any color: yellow
+            # scr is added to the end
+
             if not csum and not suppress:
                 if os.path.exists(scr):
                     filter_output(scr, escaped_user, 'Checksum', 'no', 'blue', 'yellow', 'scr', supbrwLIST, suppress_browser, suppress)
+
+            # cerr priority
+            #
+            # can start with Warning file, Warning symlink, Warning high, Suspect and COLLISION
+            #
+            # filter_output output earlier with call in processha
+            #
+            # primary: Warning color: yellow
+            # cricital: Suspect color: red
+            # elevated is added to the end
 
             if csum:
                 if os.path.isfile(cerr):
@@ -806,6 +834,15 @@ def main(argone, argtwo, usr, pwrd, argf="bnk", method="", iqt=False, drive=None
                                 continue
                             dst.write(line)
                     removefile(cerr)
+
+            # summary
+            #
+            # Instead of having more than two colors. Colors are split between scr and cerr. The variety is from the different conditions of the file output
+            # from hanly. Adding too many specific conditions is unnecessary.
+            #
+            # the only sorting is cerr comes before scr. normal output will be blue or yellow from scr. If there is a critical event
+            # output will be yellow or red.
+
             # end Terminal output
 
             if os.path.isfile(result_output) and os.path.getsize(result_output) != 0:
