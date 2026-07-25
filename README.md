@@ -141,7 +141,7 @@ Porteus forums
 https://forum.porteus.org/  <br><br>
 
 This project has helped me learn python and about linux. The primary focus is always
-minimal requirements and custom logic. So check in from time to time as I come up with new features and enhance recent changes.
+minimal requirements and custom logic. So check in from time to time as I come up with new features and enhance recent changes. <br>
 ![Alt text](https://i.imgur.com/bUOpqEl.png) 
 
 ![Alt text](https://i.imgur.com/4jOp3Ry.png) ![Alt text](https://i.imgur.com/T1DpcDM.png) <br><br>
