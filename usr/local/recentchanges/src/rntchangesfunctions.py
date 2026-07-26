@@ -839,17 +839,19 @@ def build_tsv(sortcomplete, tmpopt, logf, rout, created, escaped_user, outpath, 
 
         if rout:
             for line in rout:
-                parts = line.strip().split()
+                parts = line.strip().split(maxsplit=5)
                 if len(parts) < 6:
                     continue
                 action = parts[0]
                 if action in ("Deleted", "Nosuchfile"):
                     continue
+                # full_path = ' '.join(parts[5:])
+                # full_path = unescf_py(parts[5])
                 if action == "Copy":
-                    full_path = ' '.join(parts[5:])
+                    full_path = parts[5:]
                     copy_paths.add(full_path)
                 elif action == "Created":
-                    full_path = ' '.join(parts[5:])
+                    full_path = parts[5:]
                     created_paths.add(full_path)
 
         is_link = any(len(row) > 9 and row[9] == 'y' for row in sortcomplete)
@@ -896,7 +898,7 @@ def build_tsv(sortcomplete, tmpopt, logf, rout, created, escaped_user, outpath, 
             if label in copy_paths:
                 is_copy = "y"
 
-            if label in created:
+            if label in created_paths:
                 is_created = "y"
 
             row = (

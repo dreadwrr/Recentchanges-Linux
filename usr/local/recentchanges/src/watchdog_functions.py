@@ -1,8 +1,6 @@
 import os
 import psutil
-import signal
 import stat
-import subprocess
 from pathlib import Path
 from src.dirwalkerfunctions import get_stat
 from src.logs import emit_log
@@ -333,62 +331,3 @@ def old_pid_check(pid_file, new_pid, logger, platform):
         os.remove(pid_file)  # normal clear the old pid file
 
     return res
-
-
-def oldpid_inotify(pidfile):
-    """ python version and bash inotify version of above read from the stored format the pid file that start inotifywait made """
-    res = False
-
-    if os.path.isfile(pidfile):
-        with open(pidfile) as f:
-            stored_pid, stored_start = f.read().rstrip("\n").split("|", 1)
-
-        current = subprocess.run(
-            ["ps", "-o", "lstart=", "-p", stored_pid],
-            capture_output=True,
-            text=True,
-        ).stdout.strip()
-
-        if current:
-            if current == stored_start:
-                try:
-                    os.killpg(int(stored_pid), signal.SIGTERM)
-                except OSError:
-                    print(f"failed to close old pid {stored_pid} {stored_start}")
-                    res = True
-
-        os.remove(pidfile)
-
-    return res
-
-
-# def get_pid(pid_file):
-#     """ not used as could accidently kill the wrong process """
-#     pid = None
-#     if os.path.isfile(pid_file):
-#         try:
-#             with open(pid_file, "r") as f:
-#                 pid = int(f.read().strip())
-#         except (ValueError, OSError):
-#             return None
-#     return pid
-
-
-# def old_pid_check(watchdog_pid_file, new_pid, platform, logger=logging):
-#     """ no longer used. original if there is an old pid file try to kill.
-#         but if its just the pid could kill the wrong process if its ever
-#         reused. """
-
-#     pid = get_pid(watchdog_pid_file)
-#     if pid:
-#         differs = new_pid and new_pid != pid
-#         if differs or not new_pid:
-#             logger.debug(f"{watchdog_pid_file} stale pid found attempted cleanup new {new_pid} vs old {pid}")
-#             if platform == "linux":
-#                 # process_kill(pid)
-#                 drop_pid(pid, platform, watchdog_pid_file)
-#                 # if not res:
-#                 #   kill by pattern
-#                 #   fk_success = _fk_process(r'inotifywait.*-e create -e moved_to --format %e\|%w%f%0')  # fk_success = _fk_process('inotifywait -m -r -e create -e moved_to --format %e|%w%f%0')  # original
-#             else:
-#                 process_kill(pid, watchdog_pid_file)
