@@ -1,4 +1,4 @@
-While currently going over areas to find stability changes will list any found here to avoid chasing between versions <br>
+Currently going over areas to find stability changes and will list any found here to avoid chasing versions <br>
 Hotfix: <br>
 main.py ln 1054 should be self.save_notes_history(isexit=True) not self.save_notes(isexit=True) <br><br>
 
