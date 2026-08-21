@@ -22,7 +22,7 @@ Linux file search application with hybrid analysis <br>
 <p>
 Scientific calculator in the menu bar <br>
 LCD alarm clock <br>
-Check for hash collisions during search <br>
+Check for hash collisions during search when using md5 <br>
 Save encrypted notes <br>
 Quick commands displays saved commands for easy reference <br>
 Create a custom crest with a .png image file max size 255 x 333 <br>
