@@ -5,7 +5,9 @@ calculator.py ln 862 negate button needs signals blocked <br>
 self.ui.negateButton.blockSignals(True) <br>
 self.ui.negateButton.setChecked(False) <br>
 self.ui.negateButton.blockSignals(False) <br><br>
+
 version 6.5.0 <br>
+Last updated: 07/26/2026 <br>
 supports blake2b <br>
 entropy, mime and target change detection added <br>
 added green lcd <br>
