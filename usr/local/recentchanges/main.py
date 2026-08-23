@@ -571,7 +571,7 @@ class MainWindow(QMainWindow):
 
         # #1 mid ^ Stop Reset defaults button
         self.ui.resetButton.clicked.connect(self.x_action)
-
+        self.ui.stopButton.clicked.connect(self.x_action)
         # Find createdfiles
         self.ui.downloadButton.clicked.connect(lambda: self.find_downloads(self.basedir))
         self.ui.rmvButton.clicked.connect(self.rmv_idx_drive)
@@ -1153,6 +1153,7 @@ class MainWindow(QMainWindow):
                 zipPROGRAM = updated_config['compress']['zipPROGRAM'].lower()
                 checksum = updated_config['diagnostics']['checkSUM']
                 checkMETHOD = updated_config['diagnostics']['checkMETHOD']
+                supbrwLIST = updated_config['diagnostics']['supbrwLIST']
                 dspEDITOR = updated_config['display']['dspEDITOR']
                 popPATH = updated_config['display']['popPATH'].rstrip('/')
                 hudCOLOR = updated_config['display']['hudCOLOR']
@@ -1391,6 +1392,15 @@ class MainWindow(QMainWindow):
                         else:
                             self.ui.hudt.appendPlainText(f"Incorrect setting for driveTYPE: {driveTYPE_frm} restoring current value.")
                             update_toml_values({'search': {'driveTYPE': self.driveTYPE}}, self.toml_file)
+
+                # added 08/23/2026
+                if supbrwLIST != self.supbrwLIST:
+                    escaped_user = re.escape(self.usr)
+                    supbrwLIST = [
+                        p.replace("{{user}}", escaped_user)
+                        for p in supbrwLIST
+                    ]
+                    self.supbrwLIST = supbrwLIST
 
                 self.analytics = analytics
                 self.feedback = feedback
