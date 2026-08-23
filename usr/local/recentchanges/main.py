@@ -1,4 +1,4 @@
-# 08/22/2026              Qt gui linux                 Developer buddy 6.5.0
+# 08/22/2026              Qt gui linux                 Developer buddy 6.5.1
 import glob
 import logging
 import multiprocessing
@@ -218,7 +218,7 @@ class MainWindow(QMainWindow):
         # QTimer.singleShot(5000, self.display_db)
 
         # Vars
-        self.app_version = "6.5.0"
+        self.app_version = "6.5.1"
 
         self.dispatch = appdata_local / "set_recent_helper"  # normal python use see ln 269 for pyinstaller detect
         self.app = str(appdata_local / "main.py")
