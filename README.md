@@ -1,9 +1,7 @@
-version 6.5.0 <br>
-Last updated: 07/26/2026 <br>
-supports blake2b <br>
-entropy, mime and target change detection added <br>
-added green lcd <br>
-tweaked watchdog script <br><br>
+version 6.5.1 <br>
+Last updated: 08/23/2026 <br>
+
+changed to sqlcipher
 
 Python watchdog service <br>
 ![Alt text](https://i.imgur.com/Wvi4JrH.png) <br>
