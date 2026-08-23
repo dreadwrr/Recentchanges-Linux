@@ -1,11 +1,3 @@
-Currently going over areas to find stability changes and will list any found here to avoid chasing versions <br>
-Hotfix: <br>
-main.py ln 1054 should be self.save_notes_history(isexit=True) not self.save_notes(isexit=True) <br>
-calculator.py ln 900 negate button needs signals blocked <br>
-self.ui.negateButton.blockSignals(True) <br>
-self.ui.negateButton.setChecked(False) <br>
-self.ui.negateButton.blockSignals(False) <br><br>
-
 version 6.5.0 <br>
 Last updated: 07/26/2026 <br>
 supports blake2b <br>
