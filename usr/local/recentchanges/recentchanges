@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # first check if pyinstaller and launch. check for any python dependencies or look for venv or prompt to install venv. then launch recentchanges app.
-scroll_term() { while true; do echo press enter to quit ; read -r input ; done ; }
+scroll_term() { echo "Press enter to quit" ; read -r ; }
 export LIBVA_DRIVER_NAME=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 app_install=$SCRIPT_DIR
