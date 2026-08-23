@@ -1,6 +1,5 @@
 version 6.5.1 <br>
 Last updated: 08/23/2026 <br>
-
 changed to sqlcipher
 
 Python watchdog service <br>
