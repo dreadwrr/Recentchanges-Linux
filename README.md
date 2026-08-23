@@ -1,7 +1,7 @@
 version 6.5.1 <br>
 Last updated: 08/23/2026 <br>
 changed to sqlcipher <br>
-Python watchdog service can be started from menubar<br><br>
+Python watchdog service can be started from menubar and more<br><br>
 
 ![Alt text](https://i.imgur.com/Wvi4JrH.png) <br>
 when xRC is on all new files are listed in /tmp/file_creation_log.txt <br>
