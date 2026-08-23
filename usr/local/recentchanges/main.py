@@ -535,10 +535,17 @@ class MainWindow(QMainWindow):
 
         # instead open the file_creation_log.txt
         # self.ui.actionWatchdog.triggered.connect(lambda: display(self.dspEDITOR, self.inotify_creation_file, self.dspPATH, True))  # non root
-        args = ["run", "display", str(self.dspEDITOR), str(self.inotify_creation_file), str(self.dspPATH)]
-        args = args if self.is_pyinstall else [sys.executable, self.app] + args
 
-        self.ui.actionFile_creation_log.triggered.connect(lambda _checked=False, args=args: run_set_helper(self.dispatch, args, self.is_polkit))
+        # args = ["run", "display", str(self.dspEDITOR), str(self.inotify_creation_file), str(self.dspPATH)]
+        # args = args if self.is_pyinstall else [sys.executable, self.app] + args
+        # self.ui.actionFile_creation_log.triggered.connect(lambda _checked=False, args=args: run_set_helper(self.dispatch, args, self.is_polkit))
+
+        if not self.is_pyinstall:
+
+            self.ui.actionFile_creation_log.triggered.connect(lambda _checked=False: run_set_helper(self.dispatch, [sys.executable, self.app, "run", "display", str(self.dspEDITOR), str(self.inotify_creation_file), str(self.dspPATH)], self.is_polkit))
+        else:
+            self.ui.actionFile_creation_log.triggered.connect(lambda _checked=False: run_set_helper(self.dispatch, ["run", "display", str(self.dspEDITOR), str(self.inotify_creation_file), str(self.dspPATH)], self.is_polkit))
+
         # end instead open the file_creation_log.txt
 
         self.ui.actionLogging.triggered.connect(lambda: display(self.dspEDITOR, self.log_path, self.dspPATH, True))
@@ -594,10 +601,29 @@ class MainWindow(QMainWindow):
 
         menu.addSeparator()
 
-        args = ["run", "display", str(self.dspEDITOR), str(self.filter_file), str(self.dspPATH)]
-        args = args if self.is_pyinstall else [sys.executable, self.app] + args
+        # args = ["run", "display", str(self.dspEDITOR), str(self.filter_file), str(self.dspPATH)]
+        # args = args if self.is_pyinstall else [sys.executable, self.app] + args
+        # menu.addAction("Filter", lambda args=args: run_set_helper(self.dispatch, args, self.is_polkit))  # filter is owned by root so use sudo or polkit
 
-        menu.addAction("Filter", lambda args=args: run_set_helper(self.dispatch, args, self.is_polkit))  # filter is owned by root so use sudo or polkit
+        if not self.is_pyinstall:
+            menu.addAction(
+                "Filter",
+                lambda: run_set_helper(
+                    self.dispatch,
+                    [sys.executable, self.app, "run", "display", str(self.dspEDITOR), str(self.filter_file), str(self.dspPATH)],
+                    self.is_polkit,
+                )
+            )
+        else:
+            menu.addAction(
+                "Filter",
+                lambda: run_set_helper(
+                    self.dispatch,
+                    ["run", "display", str(self.dspEDITOR), str(self.filter_file), str(self.dspPATH)],
+                    self.is_polkit,
+                )
+            )
+
         # menu.addAction("Filter", lambda: display(self.dspEDITOR, self.filter_file, self.dspPATH, True))
 
         menu.addAction("Clear Hudt", lambda: self.ui.hudt.clear())
@@ -3237,14 +3263,29 @@ class MainWindow(QMainWindow):
             return
 
         ch = "/mnt/live/memory/changes"
+        INAME = "/mnt/live/memory/images"
+
+        # findmnt -no SOURCE -T /mnt/live/memory/changes # to get the device of changes if CHANGES=
+        # findmnt -n -o TARGET --source /dev/sda3 # to get the mount for the device
+
+        # os.path.isfile("/mnt/live/tmp/changes-exit")  # for porteus if CHANGES=EXIT: is active
+
+        # if changes isnt active just test /mnt/live/memory/changes which would be testing memory speed
+        # if it is active use BASEDIR as the default path to benchmark
 
         basedir = self.basedir
-        is_changes_exit = False
-        if self.basedir == "/" and os.path.isdir(ch):  # and os.path.isfile("/mnt/live/tmp/changes-exit") and os.path.isdir(ch):
-            is_changes_exit = True
+        is_porteus = False
+        if self.basedir == "/" and os.path.isdir(ch):
+            is_porteus = True  # porteus or nemesis
             basedir = ch
+            if os.path.isdir(os.path.join(INAME + "changes")):
+                target = os.environ.get("BASEDIR")
+                if target:
+                    self.ui.hudt.appendPlainText("Changes cheatcode active testing BASEDIR")
+                    self.ui.hudt.appendPlainText("")
+                    basedir = target
 
-        self.ui.hudt.appendPlainText(f"Performing read benchmark for {self.basedir}{f' on {ch}' if is_changes_exit else ''}")
+        self.ui.hudt.appendPlainText(f"Performing read benchmark for {self.basedir}{f' on {basedir}' if is_porteus else ''}")
         self.ui.hudt.appendPlainText("")
 
         self.proc = ProcessHandler(self.lclhome, self.xdg_settings, self.ui.dbmainlabel.text(), self.is_polkit)
