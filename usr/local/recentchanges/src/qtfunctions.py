@@ -4,7 +4,7 @@ import re
 import requests
 import shutil
 import signal
-import sqlite3
+import sqlcipher3
 import subprocess
 import traceback
 import webbrowser
@@ -13,20 +13,20 @@ from packaging import version
 from pathlib import Path
 from PySide6.QtCore import QDateTime
 from PySide6.QtGui import QIcon, QFontDatabase, QImage
-from PySide6.QtSql import QSqlDatabase, QSqlQuery
+from PySide6.QtSql import QSqlDatabase
 from PySide6.QtWidgets import QVBoxLayout, QDialog, QPushButton, QLabel, QInputDialog, QMessageBox, QHBoxLayout
 from .config import update_j_settings
 from .dbmexec import DBConnectionError
 from .dbmexec import DBMexec
 from .gpgcrypto import decr
 from .gpgcrypto import decrypt_from_text
-from .gpgcrypto import encr
 from .gpgcrypto import encrypt_to_text
 from .pyfunctions import is_integer
 from .pysql import clear_conn
+from .pysql import create_conn
 from .rntchangesfunctions import to_bool
 from .rntchangesfunctions import porteus_linux_check
-# 07/10/2026
+# 08/21/2026
 
 
 def polkit_check(action_id="org.freedesktop.set_recent_helper"):
@@ -240,60 +240,48 @@ def get_conn(db_path, conn_name):
     return db, None
 
 
-# if sys table has data prompt before continuing
-# sys  for / sys_n for n drive
-# cache_s for / or cache_sdx for device     directories at time of profile
-# systimeche - systimeche_sdx   these are dirs as cache is updated
-def has_sys_data(dbopt, logger, sys_table, prompt, parent=None):
-    db = query = None
-    conn_nm = "sq_1"
-    db_name = os.path.basename(dbopt)
+def has_sys_data(dbopt, dbtarget, email, logger, sys_table, prompt, parent=None):
+    '''
+        if sys table has data prompt before continuing
+        sys  for / sys_n for n drive
+        cache_s for / or cache_sdx for device     directories at time of profile
+        systimeche - systimeche_sdx   these are dirs as cache is updated '''
+    # db_name = os.path.basename(dbopt)
 
     try:
-        db, err = get_conn(dbopt, conn_nm)
-        if err:
-            logger.appendPlainText(f"could not connect to {db_name} database {err}")
-        else:
-            query = QSqlQuery(db)
-            if sys_table in db.tables():
-                query.prepare(f"SELECT 1 FROM {sys_table} LIMIT 1")
-                if query.exec():
-                    if query.next():
-                        uinpt = window_prompt(parent, "Confirm Action", prompt, "Yes", "No")
-                        if uinpt:
-                            return True
-                        if not uinpt:
-                            return None
-                else:
-                    err = query.lastError()
-                    if err.isValid():
-                        error_message = f"query failed: {query.lastError().text()}"
-                        logger.appendPlainText(error_message)
+        with DBMexec(dbopt, dbtarget, email, ui_logger=logger) as dmn:
+            # logger.appendPlainText(f"could not connect to {db_name} database {err}")
+
+            if sys_table in dmn.tables():
+                sql = f"SELECT 1 FROM {sys_table} LIMIT 1"
+                cursor = dmn.execute(sql)
+                if cursor and cursor.fetchone():
+                    uinpt = window_prompt(parent, "Confirm Action", prompt, "Yes", "No")
+                    if uinpt:
+                        return True
+                    if not uinpt:
                         return None
 
             return False
     except Exception as e:
         mg = f"query error {type(e).__name__}: {e}"
         print(mg)
-        if query:
-            mg = mg + f"{query.lastError().text()}\n"
         logger.appendPlainText(mg)
         logging.error(mg, exc_info=True)
-    finally:
-        if db:
-            db.close()
+
     return None
 
 
 # check if there actually is a table before trying to do anything
-def table_loaded(dbopt, table_nm, logger):
+def table_loaded(dbopt, key_file, email, table_nm, logger):
     try:
         if os.path.isfile(dbopt):
-            with DBMexec(dbopt, "sq_1", ui_logger=logger) as dmn:
+            with DBMexec(dbopt, key_file, email, ui_logger=logger) as dmn:
                 if dmn.table_has_data(table_nm):
                     return True
     except DBConnectionError as e:
         logger.appendPlainText(f"Database table_loaded error: {e}")
+
     except Exception as e:
         emsg = f"err while checking table in table_loaded: {type(e).__name__} {e}"
         logger.appendPlainText(emsg)
@@ -301,14 +289,14 @@ def table_loaded(dbopt, table_nm, logger):
     return False
 
 
-def has_log_data(dbopt, logger, parent=None):
+def has_log_data(dbopt, key_file, email, logger, parent=None):
     try:
-        with DBMexec(dbopt, "sq_1", ui_logger=logger) as dmn:  # dmn.table_has_data(table_nm):
+
+        with DBMexec(dbopt, key_file, email, ui_logger=logger) as dmn:  # dmn.table_has_data(table_nm)
             sql = "SELECT COUNT(*) FROM logs WHERE hardlinks IS NOT NULL AND hardlinks != ''"
-            result = dmn.execute(sql)
-            if result:
-                result.next()
-                count = result.value(0)
+            cur = dmn.execute(sql)
+            if cur:
+                count = cur.fetchone()[0]
                 if count > 0:
                     uinpt = window_prompt(parent, "Confirm Action", "Previous 'hardlinks' data has to be cleared. Continue? (y/n): ", "Yes", "No")
                     if not uinpt:
@@ -327,43 +315,35 @@ def has_log_data(dbopt, logger, parent=None):
     return False
 
 
-def commit_note_history(logger, notes, saved_history, email, query):
+def commit_note_history(logger, notes, saved_history, email, cur):
     try:
+
         encrypted_data = encrypt_to_text(notes, email)
         if encrypted_data is None:
             print("Problem encrypting notes aborting")
             return False
-        # gpg = gnupg.GPG()
-        # encrypted_data = gpg.encrypt(notes, recipients=[email])
-        # if not encrypted_data.ok:
-        #     print(encrypted_data.stderr)
-        #     print("Problem encrypting notes aborting")
-        #     return False
-            # raise RuntimeError(f"Encryption failed: {encrypted_data.status}")
+        # # gpg = gnupg.GPG()
+        # # encrypted_data = gpg.encrypt(notes, recipients=[email])
+        # # if not encrypted_data.ok:
+        # #     print(encrypted_data.stderr)
+        # #     print("Problem encrypting notes aborting")
+        # #     return False
+        #    # raise RuntimeError(f"Encryption failed: {encrypted_data.status}")
         ciphertext = str(encrypted_data)
 
-        query.prepare("""
+        cur.execute("""
             INSERT INTO extn (id, notes, history)
-            VALUES (1, :notes, :history)
+            VALUES (1, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 notes = excluded.notes,
                 history = excluded.history
-        """)
-        query.bindValue(":notes", ciphertext)
-        query.bindValue(":history", saved_history)
-        if query.exec():
-            return True
-        else:
-            err = query.lastError()
-            if err and err.isValid():
-                logger.appendPlainText(f"commit_note query err: {err.text()}\n")
-            logger.appendPlainText("Failed to save notes to db")
+        """, (ciphertext, saved_history))
+        return True
+
     except Exception as e:
         logger.appendPlainText(f"Unable update notes savenote qtfunctions {type(e).__name__} err: {e} \n{traceback.format_exc()}")
+    logger.appendPlainText("Failed to save notes to db")
     return False
-
-
-# end QSql
 
 
 def clear_cache(conn, cur, cachermPATTERNS, log_fn=print):
@@ -378,7 +358,7 @@ def clear_cache(conn, cur, cachermPATTERNS, log_fn=print):
             conn.commit()
         log_fn("Cache files cleared.")
         return True
-    except sqlite3.Error as e:
+    except sqlcipher3.Error as e:
         conn.rollback()
         log_fn(f"cache_clear query.py failed to write to db. on {filename_pattern if filename_pattern else ''} {e} {type(e).__name__}")
     except Exception as e:
@@ -387,11 +367,11 @@ def clear_cache(conn, cur, cachermPATTERNS, log_fn=print):
     return False
 
 
-def clear_from_extn_tbl(dbopt, extn_or_hist, quiet):
+def clear_from_extn_tbl(dbopt, dbtarget, email, extn_or_hist, quiet):
     conn = None
     cur = None
     try:
-        conn = sqlite3.connect(dbopt)
+        conn = create_conn(dbopt, dbtarget, email)
         cur = conn.cursor()
         if extn_or_hist:
             out_str = "extn table cleared."
@@ -826,7 +806,7 @@ def add_new_extension(default_extensions, logger, combffile, dbopt, dbtarget, em
             if ix == -1:
 
                 try:
-                    with DBMexec(dbopt, "sq_1", ui_logger=logger) as dmn:  # dmn.table_has_data(table_nm):
+                    with DBMexec(dbopt, dbtarget, email, ui_logger=logger) as dmn:  # dmn.table_has_data(table_nm):
 
                         ts = QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
                         sql = "INSERT OR IGNORE INTO extn (extension, timestamp) VALUES (:extn, :timestamp)"
@@ -853,24 +833,21 @@ def add_new_extension(default_extensions, logger, combffile, dbopt, dbtarget, em
             else:
                 logger.appendPlainText("Extension already listed")
     if res:
-        if encr(dbopt, dbtarget, email, None, nc, True):
-            return extension_value
-        else:
-            res = False
-            print("Failed to encrypt changes while saving extension. from add_extension qtfunctions")
+        return extension_value
+
     return res
 
 
-def fill_extensions(combffile, default_extensions, new_extension=None, prev_extensions=None, query=None):
+def fill_extensions(combffile, default_extensions, new_extension=None, prev_extensions=None, cur=None):
     rlt = False
     c_text = combffile.currentText()
 
     combffile.clear()
     combffile.addItem("")
-    if query:
+    if cur:
         extns = []
-        while query.next():
-            extension = query.value(0)
+        for row in cur.fetchall():
+            extension = row[0]
             combffile.addItem(extension)
             extns.append(extension)
         combffile.addItems(default_extensions)
@@ -892,75 +869,102 @@ def fill_extensions(combffile, default_extensions, new_extension=None, prev_exte
     return rlt
 
 
-def user_data_to_database(notes, saved_history, logger, dbopt, dbtarget, email, nc, isexit=False, parent=None):
-    db = None
+def user_data_to_database(notes, saved_history, logger, dbopt, dbtarget, email, isexit=False, parent=None):
+    # db = None
     res = False
+    conn = cur = None
     try:
-        print(notes, saved_history)
-        db, err = get_conn(dbopt, "sq_9")
-        if err:
-            print("Failed to connect to database in save_user_data")
-        else:
-            query = QSqlQuery(db)
-            res = commit_note_history(logger, notes, saved_history, email, query)  # save last used drive index to json
 
+        conn = create_conn(dbopt, dbtarget, email)
+        cur = conn.cursor()
+        res = commit_note_history(logger, notes, saved_history, email, cur)  # save last used drive index to json
+        conn.commit()
     except (FileNotFoundError, Exception) as e:
         logger.appendPlainText(f"unable to save user data save_user_data err:{type(e).__name__} {e}")
     finally:
-        if db:
-            db.close()
-            del db
+        clear_conn(conn, cur)
+
     if res:
-        if encr(dbopt, dbtarget, email, nc, True):
-            if not isexit:
-                logger.appendPlainText("Settings saved.")
-            return True
+
+        if not isexit:
+            logger.appendPlainText("Settings saved.")
+        return True
 
     window_message(parent, "There was a problem rencrypting notes.", "Status")
     return False
 
 
-def user_data_from_database(logger, textEdit, combffile, extensions, dbopt, is_startup=False, parent=None):
-    query = None
+def user_data_from_database(logger, textEdit, combffile, extensions, dbopt, key_file, email, is_startup=False, parent=None):
+
     extension_data = []
     saved_history = ""
 
     data_name = ""
     try:
-        with DBMexec(dbopt, "sq_1", ui_logger=logger) as dmn:
 
-            # this is called when the app is started store the current time so later can check if app has been started after system boot
+        with DBMexec(dbopt, key_file, email, ui_logger=logger) as dmn:
+
+            # this is called when the app is started store the current time so later can check if app has not been started since system reboot
+            # so can tell files havent been cached for benchmarking purposes
             if is_startup:
 
-                last_start = int(datetime.now().timestamp())  # to compare later to system start time to see if the app is launched for the first time **
+                # alternative using powershell to get the boottime
+                # (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
+                # result = subprocess.check_output(
+                #     [
+                #         "powershell",
+                #         "-Command",
+                #         "(Get-CimInstance Win32_OperatingSystem).LastBootUpTime.ToString('o')"
+                #     ],
+                #     text=True
+                # ).strip()
+                # boot_time = datetime.fromisoformat(result)
+
+                # boot_time = datetime.fromtimestamp(psutil.boot_time())
+                # print(boot_time)
+
+                # psutil.boot_time() # is directly comparable to what we are inserting
+                last_start = int(datetime.now().timestamp())
+
+                # to compare later to system start time to see if the app is launched for the first time **
+                # if a benchmark was already done since last boot then dont benchmark again.
+
                 sql = """
                     INSERT INTO analytics (id,last_start)
                     VALUES (1, :last_start)
                     ON CONFLICT(id) DO UPDATE SET
                         last_start = excluded.last_start;
                 """
-                query = dmn.execute(sql, {"last_start": str(last_start)})
-                if not query:
+                cur = dmn.execute(sql, {"last_start": str(last_start)})
+                if not cur:
                     logger.appendPlainText("Query failed analytics table in user_data_from_database while starting up")
 
+                # to retrieve later where benchmarking
+                # if cur:
+                #   sql = "SELECT last_start FROM analytics WHERE id = 1"
+                #   row = cur.execute(sql).fetchone()
+                #   last_start = row[0] if row else None
+
+            # get saved extensions skiping the first row which has the encrypted notes
             data_name = "extn"
             sql = "SELECT extension FROM extn WHERE id != 1"
-            query = dmn.execute(sql)
-            if query:
-                extension_data = fill_extensions(combffile, extensions, query=query)
+            cur = dmn.execute(sql)
+            if cur:
+                extension_data = fill_extensions(combffile, extensions, cur=cur)
             else:
                 logger.appendPlainText("Query failed extn table in user_data_from_database.")
 
             # get encrypted notes
             data_name = "notes"
             sql = "SELECT notes, history FROM extn WHERE id = 1"
-            query = dmn.execute(sql)
-            if query and query.exec() and query.next():
-                if query.value(0):
+            cur = dmn.execute(sql)
+            if cur:
+                row = cur.fetchone()
+                if row and row[0]:
                     # if using gnupg package but disabled as not needed for minimum dependencies
                     # logging.getLogger('gnupg').setLevel(logging.CRITICAL)
                     # gpg = gnupg.GPG()
-                    encrypted_blob = query.value(0)
+                    encrypted_blob = row[0]
                     decrypted_data = decrypt_from_text(encrypted_blob)
                     if decrypted_data or decrypted_data == "":
                         notes = str(decrypted_data)
@@ -984,25 +988,19 @@ def user_data_from_database(logger, textEdit, combffile, extensions, dbopt, is_s
                         # else:
                         #     logger.appendPlainText(decrypted_data.stderr)
                         #     print("Could not decrypt notes")
-                if query.value(1):
-                    saved_history = query.value(1)
+                if row and row[1]:
+                    saved_history = row[1]
 
             return extension_data, saved_history
     except DBConnectionError as e:
-        err = ""
-        if query:
-            err = f":{query.lastError().text()}"
-        err_msg = f'Database failed to load user data loading {data_name}  last query error: {err} error : {e}'
+        err_msg = f'Database failed to load user data loading {data_name} error : {e}'
         logger.appendPlainText(err_msg)
         logging.error(err_msg, exc_info=True)
     except Exception as e:
-        err = ""
-        if query:
-            err = f":{query.lastError().text()}"
-        err_msg = f"err while loading user data table extn loading {data_name} fail: {type(e).__name__} {e} query err: {err}"
+        err_msg = f"err while loading user data table loading {data_name} fail: {type(e).__name__} {e}"
         logger.appendPlainText(err_msg)
         logging.error(err_msg, exc_info=True)
-    return []
+    return [], ""
 
 
 def get_history_view(saved_history, calculator):

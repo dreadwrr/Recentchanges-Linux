@@ -15,6 +15,7 @@ from src.pyfunctions import ap_encode
 from src.pyfunctions import epoch_to_date
 from src.pyfunctions import epoch_to_str
 from src.pyfunctions import escf_py
+from src.pyfunctions import fmt
 SENTINEL = None
 DEBUG = False  # switch to serial so more rudimentary operation and added verbosity to print out in key areas so can debug the core for stable operation
 CSZE = 1024 * 1024  # when to cache created files
@@ -99,7 +100,6 @@ def log_lineout(log_q, logger, path, status, message):
 
 
 def get_specs(action, entry, path, output_file, CACHE_F, cdir, lockfile, algo, created_seen, log_q, logger):
-    fmt = "%Y-%m-%d %H:%M:%S"
 
     sym = cam = last_modified = None
 

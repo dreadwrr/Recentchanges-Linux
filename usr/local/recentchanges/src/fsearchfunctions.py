@@ -1,7 +1,7 @@
 import grp
 import pwd
 from .logs import emit_log
-# 03/15/2026
+# 08/21/2026
 
 
 def upt_cache(cfr, checks, entropy, mime, file_size, time_stamp, modified_ep, file_path):
@@ -50,8 +50,8 @@ def get_cached(cfr, file_size, modified_ep, file_path):
     return None
 
 
-# return the last known modified_ep
 def get_last_mtime(cfr, file_path, latest_ep):
+    ''' return the last known modified_ep '''
     if not isinstance(cfr, dict):
         return None
 

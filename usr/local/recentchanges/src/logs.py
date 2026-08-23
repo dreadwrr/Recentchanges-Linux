@@ -85,9 +85,9 @@ def filename_of_handler():
 
 
 def set_logger(root, process_label="MAIN", level=None):
-    fmt = logging.Formatter(f'%(asctime)s [%(name)s] [{process_label}] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')  # [%(levelname)s]
+    ft = logging.Formatter(f'%(asctime)s [%(name)s] [{process_label}] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')  # [%(levelname)s]
     for handler in root.handlers:
-        handler.setFormatter(fmt)
+        handler.setFormatter(ft)
         if level is not None:
             handler.setLevel(level)
 
@@ -128,7 +128,7 @@ def change_logger(log_file, level, process_label):
 
     log_level = LEVEL_MAP.get(str(level).upper(), logging.ERROR)
 
-    fmt = logging.Formatter(
+    ft = logging.Formatter(
         f"%(asctime)s [%(name)s] [{process_label}] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
@@ -140,7 +140,7 @@ def change_logger(log_file, level, process_label):
 
     fh = logging.FileHandler(Path(log_file))
     fh.setLevel(log_level)
-    fh.setFormatter(fmt)
+    fh.setFormatter(ft)
     root.addHandler(fh)
 
     root.setLevel(log_level)
@@ -148,9 +148,9 @@ def change_logger(log_file, level, process_label):
     return root, log_file
 
 
-def check_log_perms(log_path, log_dir):
+def check_log_perms(user, log_path, log_dir):
     try:
-        if log_path.exists():
+        if user != "root" and log_path.exists():
             if log_path.stat().st_uid == 0:
                 log_path.unlink()
         else:

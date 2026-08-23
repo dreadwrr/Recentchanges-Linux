@@ -18,7 +18,7 @@ from .logs import write_logs_to_logger
 from .pyfunctions import epoch_to_str
 
 
-def scan_created(chunk, basedir, exclDIRS_fullpath, filter_tup, cache_s, root_count, i, num_chunks, show_progress=False, logger=None, strt=0, endp=0):
+def scan_created(chunk, basedir, excluded_paths, filter_tup, cache_s, root_count, i, num_chunks, show_progress=False, logger=None, strt=0, endp=0):
 
     sys_data = []
     results = []
@@ -99,7 +99,7 @@ def scan_created(chunk, basedir, exclDIRS_fullpath, filter_tup, cache_s, root_co
                     try:
                         if record.is_dir():
                             is_dir = True
-                            if path in exclDIRS_fullpath:
+                            if path in excluded_paths:
                                 continue
 
                             if root != basedir:

@@ -24,6 +24,7 @@ from .pyfunctions import user_path
 from .rntchangesfunctions import filter_lines_from_list
 from .rntchangesfunctions import get_runtime_exclude_list
 from .rntchangesfunctions import removefile
+from .rntchangesfunctions import set_xdg
 # 06/16/2026
 
 
@@ -302,17 +303,20 @@ def comp_archive(target_files, archive, temp_dir, downloads, arch_exclude, usr, 
     return res
 
 
-def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dspPATH, temp_dir, log_path, cutoffTIME=None, zipPROGRAM=None, zipPATH=None, usrDIR=None, downloads=None):
+def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dspPATH, temp_dir, log_path, xdg_settings="", cutoffTIME=None, zipPROGRAM=None, zipPATH=None, usrDIR=None, downloads=None):
 
     if not (filename or extension):
         print("Invalid input. exiting.")
         return 1
 
+    # setup the environment
+    set_xdg(xdg_settings)
+
     current_time = datetime.now()
 
     localappdata = Path(localappdata)
 
-    toml, json_file, home_dir, xdg_config, xdg_runtime, usr, uid, gid = get_config(localappdata, usr, platform="Linux")
+    toml, json_file, home_dir, xdg_config, xdg_runtime, xdg_state, usr, uid, gid = get_config(localappdata, usr, platform="Linux")
     config = load_toml(toml)
     if not config:
         return 1
@@ -330,7 +334,11 @@ def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dsp
     ziplevel = config['compress']['ziplevel']
     strip = config['compress']['strip']
 
-    log_file = home_dir / ".local" / "state" / "recentchanges" / "logs" / log_file
+    log_dir = home_dir / ".local" / "state" / "recentchanges" / "logs"
+    if xdg_state:
+        log_dir = Path(xdg_state) / "recentchanges" / "logs"
+
+    log_file = log_dir / log_file
 
     archive = moduleNAME
     tgt_file = archive + 'xfindfiles.txt'
@@ -345,17 +353,17 @@ def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dsp
     res = 1
 
     try:
-        exclDIRS_fullpath = [os.path.join(basedir, d) for d in exclDIRS]
+        excluded_paths = [os.path.join(basedir, d) for d in exclDIRS]
 
         if action == "find":
             arge = []
 
             F = ["find", basedir, "-xdev"]
 
-            baselen = len(exclDIRS_fullpath)
+            baselen = len(excluded_paths)
             skipped = [os.path.join(basedir, m) for m in MOUNT_FOLDERS]  # using xdev skip the mount excludes
             PRUNE = ["("]
-            for i, d in enumerate(exclDIRS_fullpath):
+            for i, d in enumerate(excluded_paths):
                 if d in skipped:
                     continue
                 PRUNE += ["-path", d]
@@ -367,13 +375,13 @@ def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dsp
 
             # build the folders that are searched to output to user
 
-            base_folders, _ = get_base_folders(basedir, exclDIRS_fullpath)
+            base_folders, _ = get_base_folders(basedir, excluded_paths)
             for folder in base_folders:
                 # if folder == "/":
                 #     continue
                 search_list.append(folder)
 
-            mounts = get_relavant_mounts(exclDIRS_fullpath)
+            mounts = get_relavant_mounts(excluded_paths)
 
             find_command = F + PRUNE
 
@@ -381,6 +389,7 @@ def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dsp
             if cutoffTIME is not None:
                 if cutoffTIME != '0':
                     find_command += ["-mmin", f"-{tmn}"]
+                    search_list += ["-mmin", f"-{tmn}"]
 
             if filename and not extension:
                 arge = ["-iname", filename + "*", "-print0"]
@@ -543,7 +552,7 @@ def main(localappdata, action, filename, extension, basedir, usr, dspEDITOR, dsp
             feedback = True
             iqt = True
 
-            target_files, _ = files_search(basedir, search_start_dt, feedback, exclDIRS, exclDIRS_fullpath, filename, extension, mode, iqt, logger, strt=0, endp=100)
+            target_files, _ = files_search(basedir, search_start_dt, feedback, exclDIRS, excluded_paths, filename, extension, mode, iqt, logger, strt=0, endp=100)
 
             if target_files:
                 with open(recent_files, "w", encoding="utf-8") as f1:
@@ -614,6 +623,7 @@ def main_entry(argv):
         args.dspPATH,
         args.temp_dir,
         args.log_path,
+        args.xdg_settings,
         args.cutoffTIME,
         args.zipPROGRAM,
         args.zipPATH,

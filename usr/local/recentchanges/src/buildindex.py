@@ -3,7 +3,6 @@
 # formerly scan_f # 07/24/2026
 import os
 from . import logs
-from .logs import emit_log
 from .dirwalkerfunctions import scandir_meta
 
 
@@ -39,7 +38,7 @@ def build_index(chunk, i, num_chunks, show_progress=False, algo='md5', strt=0, e
             if dbit:
                 if current_step < step_len and c >= steps[current_step]:
 
-                    emit_log("prog", x, logs.WORKER_LOG_Q)
+                    logs.emit_log("prog", x, logs.WORKER_LOG_Q)
                     x = 0
                     current_step += 1
                     # prog_i = (current_step + 1) * incr  # single core orig
@@ -64,15 +63,17 @@ def build_index(chunk, i, num_chunks, show_progress=False, algo='md5', strt=0, e
 
                 if not rlt:
                     if rlt is False and status == "Nosuchfile":
-                        emit_log("DEBUG", f"scandir_meta File not found: {file_path}: ", logs.WORKER_LOG_Q)
+                        logs.emit_log("DEBUG", f"scandir_meta File not found: {file_path}: ", logs.WORKER_LOG_Q)
                     elif rlt is None:
-                        emit_log("DEBUG", f"status: {status}, Hash skipped {file_path} . record: {record}",  logs.WORKER_LOG_Q)
+                        logs.emit_log("DEBUG", f"status: {status}, Hash skipped {file_path} . record: {record}",  logs.WORKER_LOG_Q)
+                    else:
+                        logs.logs.emit_log("DEBUG", f"unknown {file_path} . record: {record}",  logs.WORKER_LOG_Q)
             else:
-                emit_log("DEBUG", f"file not found during indexing, skipping: {file_path}",  logs.WORKER_LOG_Q)
+                logs.emit_log("DEBUG", f"file not found during indexing, skipping: {file_path}",  logs.WORKER_LOG_Q)
 
         except Exception as e:
-            emit_log("ERROR", f"build_index Encountered an error chunk {i}\\{num_chunks} processing record {c} of {len(chunk)}, file {file_path}, line: {record}: {type(e).__name__} {e}", logs.WORKER_LOG_Q)
+            logs.emit_log("ERROR", f"build_index Encountered an error chunk {i}\\{num_chunks} processing record {c} of {len(chunk)}, file {file_path}, line: {record}: {type(e).__name__} {e}", logs.WORKER_LOG_Q)
             raise
     if dbit and current_step <= len(steps) - 1:
-        emit_log("prog", x, logs.WORKER_LOG_Q)
+        logs.emit_log("prog", x, logs.WORKER_LOG_Q)
     return sys_data, log_entries, c

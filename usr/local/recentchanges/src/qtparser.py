@@ -3,8 +3,10 @@
 # flake8: noqa: E402
 import sys
 from src.dirwalker import main_entry as dirwalker_main
+from src.dirwalkersrg import set_hardlinks
 from src.findfile import main_entry as findfile_main
 from src.gpgkeymanagement import import_key
+from src.qtdrivefunctions import perform_read_test
 from src.qtfunctions import load_file_manager
 from src.qtfunctions import load_konsole
 from src.qtfunctions import kill_process
@@ -14,7 +16,7 @@ from src.recentchangessearchparser import build_subparser
 from src.rntchanges import main as rntchanges_main
 from src.rntchangesfunctions import display
 from scripts.watchdog_linux import main as watchdog_main
-# 07/10/2026
+# 08/21/2026
 
 
 def dispatch_internal(argv):
@@ -30,8 +32,8 @@ def dispatch_internal(argv):
                 "dirwalker.py": {
                     "hardlink": 9,
                     "scan": 8,
-                    "build": 7,
-                    "downloads": 12,
+                    "build": 8,
+                    "downloads": 7,
                 },
                 "recentchangessearch.py": recentchanges_main,
                 "findfile.py": findfile_main,
@@ -76,8 +78,11 @@ def dispatch_internal(argv):
                     sys.exit(entry(*args[1:]))
 
             elif script == "run":
-
-                if cmd == "filemanager":
+                if cmd == "benchmark":
+                    sys.exit(perform_read_test(*args[1:]))
+                elif cmd == "hardlinks":
+                    sys.exit(set_hardlinks(*args[1:]))
+                elif cmd == "filemanager":
                     sys.exit(load_file_manager(*args[1:]))  # lclhome, popPATH=
                 elif cmd == "terminal":
                     sys.exit(load_konsole(*args[1:]))  # lclhome, popPATH=

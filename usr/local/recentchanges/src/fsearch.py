@@ -1,7 +1,6 @@
-# Get metadata hash of files and return array                       07/24/2026
+# Get metadata hash of files and return array                       08/21/2026
 import os
 from datetime import datetime
-from .logs import emit_log
 from . import logs
 from .fileops import calculate_checksum
 from .fileops import find_link_target
@@ -10,14 +9,14 @@ from .fsearchfunctions import get_cached
 from .fsearchfunctions import normalize_timestamp
 from .pyfunctions import epoch_to_date
 from .pyfunctions import escf_py
-
+from .pyfunctions import fmt
 # Find Parallel sortcomplete search and  ctime hashing
 
 
 def process_line(line, checksum, search_start_dt, cache_f, algo="md5", logger=None):
 
     label = "Sortcomplete"
-    fmt = "%Y-%m-%d %H:%M:%S"
+
     CSZE = 1048576
 
     log_entries = []
@@ -28,7 +27,7 @@ def process_line(line, checksum, search_start_dt, cache_f, algo="md5", logger=No
     file_st = None
 
     if len(line) < 11:
-        emit_log("DEBUG", f"process_line record length less than required 11. skipping: {line}", logs.WORKER_LOG_Q, logger=logger)
+        logs.emit_log("DEBUG", f"process_line record length less than required 11. skipping: {line}", logs.WORKER_LOG_Q, logger=logger)
         return None, log_entries
 
     mod_time, access_time, change_time, inode, symlink, hardlink, size, user, group, mode, file_path = line
@@ -50,12 +49,12 @@ def process_line(line, checksum, search_start_dt, cache_f, algo="md5", logger=No
     try:
         inode = int(inode)
     except (TypeError, ValueError) as e:
-        emit_log("ERROR", f"process_ine from find  {e} {type(e).__name__} inode: {size} line:{line}", logs.WORKER_LOG_Q, logger=logger)
+        logs.emit_log("ERROR", f"process_ine from find  {e} {type(e).__name__} inode: {size} line:{line}", logs.WORKER_LOG_Q, logger=logger)
         return None, log_entries
     try:
         size = int(size)
     except (TypeError, ValueError) as e:
-        emit_log("ERROR", f"process_line from find  {e} {type(e).__name__} size: {size} line:{line}", logs.WORKER_LOG_Q, logger=logger)
+        logs.emit_log("ERROR", f"process_line from find  {e} {type(e).__name__} size: {size} line:{line}", logs.WORKER_LOG_Q, logger=logger)
         return None, log_entries
 
     sym = "y" if isinstance(symlink, str) and symlink.startswith("l") else None
@@ -98,7 +97,7 @@ def process_line(line, checksum, search_start_dt, cache_f, algo="md5", logger=No
         target = find_link_target(file_path, logs.WORKER_LOG_Q,  logger=logger)
 
     if mtime is None:
-        emit_log("DEBUG", f"process line no mtime from calculate checksum: {file_path} mtime={mtime}", logs.WORKER_LOG_Q, logger=logger)
+        logs.emit_log("DEBUG", f"process line no mtime from calculate checksum: {file_path} mtime={mtime}", logs.WORKER_LOG_Q, logger=logger)
         return None, log_entries
 
     if ctime and ctime > mtime:
@@ -106,7 +105,7 @@ def process_line(line, checksum, search_start_dt, cache_f, algo="md5", logger=No
         mtime = ctime
         cam = "y"
     if mtime < search_start_dt:
-        emit_log("DEBUG", f"Warning system cache conflict: {file_path} mtime={mtime} < cutoff={search_start_dt}", logs.WORKER_LOG_Q, logger=logger)
+        logs.emit_log("DEBUG", f"Warning system cache conflict: {file_path} mtime={mtime} < cutoff={search_start_dt}", logs.WORKER_LOG_Q, logger=logger)
         return None, log_entries
 
     atime = epoch_to_date(access_time)

@@ -19,20 +19,25 @@ def get_exports():
         print("Usage: get_exports.py <username>", file=sys.stderr)
         return 1
     user = sys.argv[1]
-
+    is_reset = sys.argv[2] if len(sys.argv) > 2 else None
     appdata_local = find_install()  # software install aka workdir
 
-    toml_file, json_file, home_dir, xdg_config, xdg_runtime, user, uid, gid = get_config(appdata_local, user, platform="Linux")
+    toml_file, json_file, home_dir, xdg_config, xdg_runtime, xdg_state, user, uid, gid = get_config(appdata_local, user, platform="Linux")
 
     log_dir = home_dir / ".local" / "state" / "recentchanges" / "logs"
+    if xdg_state:
+        log_dir = Path(xdg_state) / "recentchanges" / "logs"
 
     with open(toml_file, "rb") as f:
         config = tomllib.load(f)
 
-    if user != "root":
-        user_log = config.get("logs", {}).get("userLOG")
-        log_path = log_dir / user_log
-        check_log_perms(log_path, log_dir)
+    user_log = config.get("logs", {}).get("userLOG")
+    root_log = config.get("logs", {}).get("rootLOG")
+    log_file = user_log if user != "root" else root_log
+    log_path = log_dir / log_file
+    check_log_perms(user, log_path, log_dir)
+    # ll_level = config['search']['logLEVEL']
+    # setup_logger(log_path, ll_level, "EXPORTS")
 
     # to /usr/local/bin/recentchanges
     nested_sections = {
@@ -66,40 +71,44 @@ def get_exports():
         "CMD_LINE": "1",
         "LAUNCHED_NON_ROOT": user,
         "XDG_CONFIG_HOME": xdg_config,
-        "XDG_RUNTIME_DIR": xdg_runtime
+        "XDG_RUNTIME_DIR": xdg_runtime,
+        "XDG_STATE_DIR": xdg_state
     }
     for name, value in export_a.items():
         if value is not None:
             print(f"export {name}={shlex.quote(str(value))}")
-
-    # Warm the user gpg agent for root
-    email = config['backend']['email']
-    is_key = iskey(email)
-    if is_key:
+    if is_reset != "reset":
 
         pst_data = Path(home_dir) / ".local" / "share" / "save-changesnew"
-        cache_f_frm = pst_data / "ctimecache.gpg"
-        dbtarget = pst_data / "recent.gpg"
 
-        cache_f = None
-        if cache_f_frm.is_file():
-            cache_f = str(cache_f_frm)
-        elif dbtarget.is_file():
-            cache_f = str(dbtarget)
+        # Warm the user gpg agent for root
+        email = config['backend']['email']
+        is_key = iskey(email)
+        if is_key:
 
-        res = start_user_agent(user, email, cache_f, str(toml_file))  # pass the config as a temp file as input
-        if res != GPGStatus.ERR_OK:
-            if res == GPGStatus.DECRYPT_FAIL:
-                sys.exit(2)
-            elif res == GPGStatus.NO_KEY:
-                sys.exit(3)
-            elif res == GPGStatus.NO_PINENTRY:
-                # or inappropriate ioctl for device
-                sys.exit(4)
-            elif res == GPGStatus.BAD_PASSPHRASE:
-                sys.exit(7)
-            else:
-                sys.exit(res)
+            cache_f_frm = pst_data / "ctimecache.gpg"
+            dbtarget = pst_data / "recent.gpg"
+
+            cache_f = None
+            if cache_f_frm.is_file():
+                cache_f = str(cache_f_frm)
+            elif dbtarget.is_file():
+                cache_f = str(dbtarget)
+            if cache_f:
+
+                res = start_user_agent(user, email, cache_f, str(toml_file))  # pass the config as a temp file as input
+                if res != GPGStatus.ERR_OK:
+                    if res == GPGStatus.DECRYPT_FAIL:
+                        sys.exit(2)
+                    elif res == GPGStatus.NO_KEY:
+                        sys.exit(3)
+                    elif res == GPGStatus.NO_PINENTRY:
+                        # or inappropriate ioctl for device
+                        sys.exit(4)
+                    elif res == GPGStatus.BAD_PASSPHRASE:
+                        sys.exit(7)
+                    else:
+                        sys.exit(res)
 
 
 if __name__ == "__main__":

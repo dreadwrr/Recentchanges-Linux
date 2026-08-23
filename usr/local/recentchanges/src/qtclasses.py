@@ -54,13 +54,13 @@ class FastColorText(QPlainTextEdit):
         )
 
     def insert_colored_text(self, text, color):
-        fmt = QTextCharFormat()
+        ft = QTextCharFormat()
         if color:
-            fmt.setForeground(color)
+            ft.setForeground(color)
 
         cursor = self.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
-        cursor.insertText(text, fmt)
+        cursor.insertText(text, ft)
         self.setTextCursor(cursor)
 
 

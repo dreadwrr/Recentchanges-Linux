@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import os
-import sqlite3
+import sqlcipher3
 import sys
 import tempfile
 import traceback
@@ -11,14 +11,16 @@ from pathlib import Path
 from .config import load_toml
 from .configfunctions import find_install
 from .configfunctions import get_config
-from .gpgcrypto import decr
-from .gpgcrypto import gpg_can_decrypt
+from .gpgcrypto import GPGStatus
+from .gpgcrypto import get_cipher_key
+from .gpgcrypto import start_user_agent
 from .gpgkeymanagement import delete_gpg_keys
+from .pysql import get_mime_map
 from .pyfunctions import is_integer
 from .pyfunctions import parse_datetime
 from .rntchangesfunctions import name_of
 # from .rntchangesfunctions import cprint
-# 06/15/2026
+# 08/21/2026
 
 
 def blank_count(curs):
@@ -157,10 +159,10 @@ def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, d
         # if shutil.which("gpg") is None:
         #     set_gpg(appdata_local, "gpg")
         # if not check_for_gpg():
-        #     print("Unable to verify gpg in path. Likely path was partially initialized. quitting")
+        #     log_fn("Unable to verify gpg in path. Likely path was partially initialized. quitting")
         #     return 1
 
-        toml_file, json_file, home_dir, xdg_config, xdg_runtime, USR, uid, gid = get_config(appdata_local, user, platform="Linux")
+        toml_file, json_file, home_dir, xdg_config, xdg_runtime, xdg_state, user, uid, gid = get_config(appdata_local, user, platform="Linux")
         config = load_toml(toml_file)
         if not config:
             return 1
@@ -185,26 +187,30 @@ def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, d
 
     try:
 
-        with tempfile.TemporaryDirectory(dir='/tmp') as tempdir:
+        with tempfile.TemporaryDirectory(dir='/tmp'):
 
             if database:
                 dbopt = database
-                result = True
-
+                result = GPGStatus.ERR_OK
+                user = None  # from iq set default None for cipher key
             else:
+                dbopt = os.path.join(pst_data, output)
+
+                # from .gpgcrypto import gpg_can_decrypt
+                # if not gpg_can_decrypt(user, dbtarget):
+                #     return 1
 
                 #  the search runs as root check that there are no problems there
-                if not gpg_can_decrypt(user, dbtarget):
-                    return 1
-                dbopt = os.path.join(tempdir, output)
-                result, error_msg = decr(dbtarget, dbopt, user)
+                result = start_user_agent(user, email, dbtarget)
 
                 # can easily break if trying to automate fixing keys. let the user do it if wanted.
 
-            if result:
+            if result == GPGStatus.ERR_OK:
 
                 if os.path.isfile(dbopt):
-                    with sqlite3.connect(dbopt) as conn:
+                    p = get_cipher_key(dbtarget, user=user)
+                    with sqlcipher3.connect(dbopt) as conn:
+                        conn.execute(f'PRAGMA key = "x\'{p.hex()}\'"')
                         cur = conn.cursor()
                         # optionally run database commands
                         # cur.execute("DELETE FROM logs WHERE filename = ?", ('/home/guest/Downloads/Untitled' ,))
@@ -265,17 +271,19 @@ def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, d
                         log_fn(f'Searches {cnt}')  # count
                         log_fn("")
                         cur.execute('''
-                        SELECT filename
+                        SELECT filename, mime_id
                         FROM logs
                         WHERE TRIM(filename) != ''
                         ''')  # Ext
                         filenames = cur.fetchall()
-                        filenames = [row[0] for row in filenames]
-                        extensions = []
+                        # filenames = [row[0] for row in filenames]
                         directories = []
-                        for filename in filenames:
+                        extensions = []
+                        mime_ids = []
+                        for filename, mime_id in filenames:
                             if not filename:
                                 continue
+                            mime_ids.append(mime_id)
                             directories.append(os.path.dirname(filename))  # get the top directories as well
                             filepath = Path(filename)
                             filename = filepath.name
@@ -291,7 +299,35 @@ def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, d
                             log_fn(ctext)
                             for ext, count in top_3:
                                 log_fn(f"{ext}")
+
+                            _, id_to_mime = get_mime_map(cur)  # mime_hashmap
+                            # cur.execute('''
+                            # SELECT DISTINCT filename, mime_id
+                            # FROM logs
+                            # ''')
+                            # rows = cur.fetchall()
+                            # mime_ids = [row[1] for row in rows]
+                            # cur.execute('''
+                            # SELECT id, mime, mime_primary, mime_subtype
+                            # FROM mime_types
+                            # ''')
+
+                            if mime_ids:
+                                log_fn("")
+                                ctext = "\033[36mBy mime type\033[0m"
+                                log_fn(ctext)
+                                mime_counts = Counter(mime_ids)
+                                top_5_mimes = mime_counts.most_common(7)
+                                for id, count in top_5_mimes:
+                                    mime_ = id_to_mime.get(id, {})
+                                    if not mime_:
+                                        mime_type = "changed couldnt read"
+                                    else:
+                                        mime_type = mime_.get("mime")  # mime_id = mime_hashmap.get(mime, {}).get("id")
+                                    log_fn(f"{count} {mime_type}")
+
                         log_fn("")
+
                         directory_counts = Counter(directories)  # top directories ln170
                         top_3_directories = directory_counts.most_common(3)
                         ctext = "\033[36mTop 3 directories\033[0m"
@@ -319,7 +355,6 @@ def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, d
                         for filename, count in top_7_filenames:
                             filename = filename.strip()
                             log_fn(f'{count} {filename}')
-
                         top_7_replaced = dexec(cur, 'Replaced', 7)
                         filenames = [row[3] for row in top_7_replaced]
                         filename_counts = Counter(filenames)
@@ -329,7 +364,6 @@ def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, d
                         for filename, count in top_7_replaced:
                             filename = filename.strip()
                             log_fn(f'{count} {filename}')
-
                         top_7_writen = dexec(cur, 'Overwrite', 3)
                         filenames = [row[3] for row in top_7_writen]
                         filename_counts = Counter(filenames)
@@ -357,19 +391,29 @@ def main(appdata_local=None, home_dir=None, user=None, email=None, reset=None, d
                                     if database:
                                         log_fn(line)
                                     else:
-                                        print(line, end='')
+                                        log_fn(line, end='')
                         return 0
                 else:
                     # no recent.db file permission error abort so sql doesnt make an empty database
                     log_fn(f"Unable to locate database: {dbopt}")
 
             else:
-                if error_msg:
-                    log_fn(error_msg)
+
+                if result == GPGStatus.DECRYPT_FAIL:
+                    error_msg = f"failed to start user gpg agent Exit status: {result}"
+                elif result == GPGStatus.NO_PINENTRY:
+                    error_msg = f"No pinentry Exit status: {result}"
+                elif result == GPGStatus.NO_KEY:
+                    error_msg = f"No gpg key found Exit status: {result}"
+                elif result == GPGStatus.BAD_PASSPHRASE:
+                    error_msg = f"Bad passphrase: {result}"
+                else:
+                    error_msg = f"Error couldnt start gpg agent something went wrong. exitting. Exit Status {result}"
+
+                log_fn(error_msg)
                 if os.path.isfile(dbtarget):
                     log_fn(f'Find out why not decrypting. If unable to fix call: recentchanges reset  . unable to decrypt file: {dbtarget}')
 
-                # else if no recent.gpg there was an exception
                 return 1
 
     except Exception as e:

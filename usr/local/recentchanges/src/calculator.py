@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import math
 import mpmath
 import random
@@ -897,7 +898,9 @@ class SCalculator(QtWidgets.QWidget):
                 self.text = char
             self.last_expression = None
             self.del_locked = False
+            self.ui.negateButton.blockSignals(True)
             self.ui.negateButton.setChecked(False)
+            self.ui.negateButton.blockSignals(False)
 
         # or append
         else:

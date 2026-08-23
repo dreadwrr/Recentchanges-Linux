@@ -20,6 +20,30 @@ class GPGStatus(IntEnum):
     BAD_PASSPHRASE = 1004
 
 
+# # dec mem
+# def decrm(src: str, user=None) -> str | None:
+    # # user = None
+    # cmd = set_cmd(user)
+    # cmd += ["gpg", "--decrypt", src]
+    # ret = subprocess.run(cmd, stdout=subprocess.PIPE)
+    # if ret.returncode != 0:
+    #     return None
+    # return ret.stdout.decode("utf-8")
+def get_cipher_key(src: str, user=None) -> str | None:
+    """ return raw 32 bytes """
+    # try:
+    cmd = set_cmd(user)
+    cmd += ["gpg", "--quiet", "--decrypt", src]
+    ret = subprocess.run(cmd, stdout=subprocess.PIPE)  # , capture_output=True, check=True
+    if ret.returncode != 0:
+        return None
+    return ret.stdout
+    # except subprocess.CalledProcessError as e:
+    #     err_msg = e.stderr.decode().strip() if e.stderr else str(e)
+    #     print(f"[ERROR] could not get cipher key: {err_msg}")
+    #     return None
+
+
 def encr_cache(cfr, cache_f, email, user, compLVL):
     data_to_write = dict_to_list(cfr)
     ctarget = dict_string(data_to_write)
@@ -191,7 +215,7 @@ def start_user_agent(user, email, gpg_file=None, input_source=None):
     elif input_source:
         cmd += ["gpg", "--local-user", email, "--output", "/dev/null", "--sign", input_source]
     else:
-        print("start user agent no input")
+        # print("start user agent no input")
         return GPGStatus.DECRYPT_FAIL
     result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
     if result.returncode == 0:
@@ -202,10 +226,11 @@ def start_user_agent(user, email, gpg_file=None, input_source=None):
             ln = line.lower()
             if "no secret key" in ln:
                 return GPGStatus.NO_KEY
-            elif "ioctl" or "no pinentry" in ln:
+            elif "ioctl" in ln or "no pinentry" in ln:
                 return GPGStatus.NO_PINENTRY
             elif "bad passphrase" in ln:
                 return GPGStatus.BAD_PASSPHRASE
+        print(stderr)
     return GPGStatus.DECRYPT_FAIL
 
 

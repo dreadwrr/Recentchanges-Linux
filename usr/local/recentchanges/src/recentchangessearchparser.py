@@ -18,7 +18,7 @@ def build_subparser(script):
         recent_args = [
             r_args.argone, r_args.argtwo, r_args.usr, r_args.pwd, r_args.argf, r_args.method,
             r_args.iqt, r_args.drive, r_args.dtype, r_args.db_output, r_args.cache_file,
-            r_args.post_OP, r_args.gnupghome
+            r_args.post_OP, r_args.gnupghome, r_args.xdg_settings
         ]
         return recent_args
     else:
@@ -47,7 +47,8 @@ def parse_recent_args(parser):
                         help="post_OP boolean postop create file doctrine (default: False)")
     parser.add_argument("gnupghome", nargs="?", default=None,
                         help="GNUPGHOME to filter out runtime file (default: None)")
-
+    parser.add_argument("xdg_settings", nargs="?", type=str, default="",
+                        help="to pass XDG environment variables (default: \"\")")
     return parser
 
 

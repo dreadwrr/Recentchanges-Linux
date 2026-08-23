@@ -248,6 +248,8 @@ def get_config(appdata_local=None, user=None, platform="Windows"):
                 default_conf_home = f"/home/{user}/.config"
             config_home = Path(default_conf_home)
 
+        xdg_state = os.environ.get("XDG_STATE_HOME")
+
         config_local = config_home / "recentchanges"
 
         toml_file = config_local / "config.toml"
@@ -275,5 +277,5 @@ def get_config(appdata_local=None, user=None, platform="Windows"):
 
         xdg_runtime = get_xdg_runtime(uid)
         if toml_file.is_file():
-            return toml_file, json_file, home_dir, xdg_config, xdg_runtime, user, uid, gid
+            return toml_file, json_file, home_dir, xdg_config, xdg_runtime, xdg_state, user, uid, gid
         raise FileNotFoundError(f"Unable to find config.toml config file in {config_local}")

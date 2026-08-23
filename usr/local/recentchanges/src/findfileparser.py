@@ -13,6 +13,7 @@ def parse_recent_args(parser):
     parser.add_argument("dspPATH", help="Path to run text editor executable")
     parser.add_argument("temp_dir", help="The work area to do temp work")
     parser.add_argument("log_path", help="path to app log file for exclusion")
+    parser.add_argument("xdg_settings", nargs="?", type=str, default="", help="to pass XDG environment variables (default: \"\")")
     parser.add_argument("cutoffTIME", nargs="?", default=None,
                         help="modified time for compress option (default: None)")
     parser.add_argument("zipPROGRAM", nargs="?", default=None,

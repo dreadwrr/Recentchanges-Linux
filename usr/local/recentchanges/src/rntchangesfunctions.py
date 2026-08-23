@@ -1,4 +1,4 @@
-# developer buddy v5.0 core                     07/10/2026
+# developer buddy v6.5 core                     08/21/2026
 import csv
 import glob
 import importlib.util
@@ -20,7 +20,6 @@ from .fsearchparallel import process_lines
 from .fsearchscan import process_scan
 from .pyfunctions import cprint
 from .pyfunctions import suppress_list
-from .pyfunctions import unescf_py
 from .pyfunctions import user_path
 install_root = find_install()
 filter_patterns_path = install_root / "filter.py"
@@ -129,6 +128,7 @@ def get_runtime_exclude_list(usrDIR, moduleNAME, user, file_out, flth, dbtarget,
     # gnupg_one = f"/home/{user}/.gnupg/random_seed"
     # gnupg_two = "/root/.gnupg/random_seed"
 
+    # ad_results,
     excluded_list = [
         download_results,
         file_out,
@@ -343,7 +343,41 @@ def porteus_linux_check(any_version=False):
     return None
 
 
-def find_scan(recent, complete, init, cfr, search_start_dt, user_setting, logging_values, end, cstart, exclDIRS, exclDIRS_fullpath, iqt=False, logger=None, strt=20, endp=60):
+def set_xdg(xdg_str):
+    ''' called before getting config files parse passed encoded string and set vars '''
+    if not isinstance(xdg_str, str):
+        return
+    # parse an encoded string
+    for item in xdg_str.split(",\t"):
+        item = item.strip()
+        if not item or "=" not in item:
+            continue
+
+        key, value = item.split("=", 1)
+        os.environ[key.strip()] = value.strip()
+
+
+def build_xdg_settings(xdg_config, xdg_runtime, xdg_state):
+    ''' pkexec sanitizes the environ so pass env variables as a string '''
+
+    # xdg_config and xdg_state are only set if they are in the environment. xdg_runtime is set regardless so check if its actually in the environment
+    # build an encoded str
+    settings = []
+    if xdg_config:
+        settings += [f"XDG_CONFIG_HOME={str(xdg_config)}"]
+    if xdg_runtime:
+        setting = os.environ.get("XDG_RUNTIME_DIR")  # check if its actually in the environment
+        if setting:
+            # print diagnostics incase something is crossed
+            if str(xdg_runtime) != setting:
+                print("warning xdg_runtime differs from XDG_RUNTIMED_DIR")
+            settings += [f"XDG_RUNTIME_DIR={str(xdg_runtime)}"]
+    if xdg_state:
+        settings += [f"XDG_STATE_HOME={str(xdg_state)}"]
+    return ",\t".join(settings)
+
+
+def find_scan(recent, complete, init, cfr, search_start_dt, user_setting, logging_values, end, cstart, exclDIRS, excluded_paths, iqt=False, logger=None, strt=20, endp=60):
 
     records = []
 
@@ -352,7 +386,7 @@ def find_scan(recent, complete, init, cfr, search_start_dt, user_setting, loggin
 
     # normal execution
 
-    records, _ = files_search(basedir, search_start_dt, feedback, exclDIRS, exclDIRS_fullpath=exclDIRS_fullpath, iqt=iqt, logger=logger, strt=strt, endp=endp)
+    records, _ = files_search(basedir, search_start_dt, feedback, exclDIRS, excluded_paths=excluded_paths, iqt=iqt, logger=logger, strt=strt, endp=endp)
     strt += 15
     end = time.time()
 
@@ -683,14 +717,17 @@ def hsearch(oldsort, appdata, moduleNAME, flnm):
         matching_files = sorted(glob.glob(pattern), reverse=True)
 
         for file in matching_files:
-            if os.path.isfile(file):
-                with open(file, 'r') as f:
-                    oldsort.clear()
-                    oldsort.extend(f.readlines())
-                break
+            if not oldsort:
+                if os.path.isfile(file):
+                    with open(file, 'r') as f:
+                        oldsort.clear()
+                        oldsort.extend(f.readlines())
+                    # break  # commented out for sqlcipher
+            else:
+                removefile(file)  # added to remove history of searches until adding another table to sqlcipher and eliminate old files altogether
 
-        if oldsort:
-            break
+        # if oldsort:
+        #     break
 
 
 # recentchanges
@@ -848,10 +885,10 @@ def build_tsv(sortcomplete, tmpopt, logf, rout, created, escaped_user, outpath, 
                 # full_path = ' '.join(parts[5:])
                 # full_path = unescf_py(parts[5])
                 if action == "Copy":
-                    full_path = parts[5:]
+                    full_path = parts[5]
                     copy_paths.add(full_path)
                 elif action == "Created":
-                    full_path = parts[5:]
+                    full_path = parts[5]
                     created_paths.add(full_path)
 
         is_link = any(len(row) > 9 and row[9] == 'y' for row in sortcomplete)
@@ -933,80 +970,3 @@ def build_tsv(sortcomplete, tmpopt, logf, rout, created, escaped_user, outpath, 
         print(f"Error building TSV data in build_tsv func rntchangesfunctions: {type(e).__name__} {e}")
         return False
     return True
-
-
-def postop(all_data, usrDIR, toml, lclhome=None):
-
-    log = '/tmp/log.log'
-
-    with open(log, 'w', encoding="utf-8") as file2:
-        for entry in all_data:
-            fixed_fields = " ".join(str(field) for field in entry[:-1])
-            line = f"{fixed_fields} {entry[-1]}"
-            file2.write(line + "\n")
-
-    script_file = "postop.sh"
-    script_path = "/usr/local/save-changesnew/" + script_file
-    if lclhome:
-        script_path = os.path.join(lclhome, script_file)
-    cmd = [
-        script_path,
-        log,
-        usrDIR,
-        str(toml)
-    ]
-    script_dir = os.path.dirname(script_path)
-    result = subprocess.run(cmd, cwd=script_dir, capture_output=True, text=True)
-    print(result.stdout)
-
-    if result.returncode == 1:
-        print("Post op failed")
-        return 1
-
-
-def run_doctrine(appdata_local, usrDIR, sortcomplete, tmpopt, logf, rout, toml_file, escaped_user, method, fmt):
-
-    if method != "rnt":
-        if logf is tmpopt:
-            sortcomplete = filter_lines_from_list(sortcomplete, escaped_user)
-
-    # Check if it was a copy
-    copy_paths = set()
-    if rout:
-        for line in rout:
-            parts = line.strip().split(maxsplit=5)
-            if len(parts) < 6:
-                continue
-            action = parts[0]
-            if action in ("Deleted", "Nosuchfile"):
-                continue
-            if action == "Copy":
-                full_path = unescf_py(parts[5])
-                copy_paths.add(full_path)
-
-    all_data = []
-    for record in sortcomplete:
-
-        if len(record) < 19:
-            logging.debug("An entry for POSTOP was short less than 17. record: %s", record)
-            continue
-
-        mtime = record[0].strftime(fmt)  # 1 2
-        changetime = record[2] if record[2] else "None None"  # 3 4
-        atime = record[4] if record[4] else "None None"  # 5 6
-        filesize = record[8]  # 7
-        sym = record[9]  # 8
-        user = record[10]  # 9
-        group = record[11]  # 10
-        cam = record[13]  # 11
-        lastmodified = record[15] if record[15] else "None None"    # 12 13
-        is_copy = "y" if record[18] in copy_paths else "None"       # 14
-        file_path = record[18]                                      # 15
-        # inode = record[3]
-        # checksum = record[5]
-        # mode = record[10]
-        # hardlink = record[14]
-        # usec_zero = record[15]
-        all_data.append((mtime, changetime, atime, filesize, sym, user, group, cam, lastmodified, is_copy, file_path))
-
-    postop(all_data, usrDIR, toml_file, appdata_local)

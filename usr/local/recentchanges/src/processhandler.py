@@ -1,9 +1,9 @@
 import subprocess
 import time
-from PySide6.QtCore import QObject, Signal, QProcess, QTimer, QThread, Slot, QProcessEnvironment
+from PySide6.QtCore import QObject, Signal, QProcess, QTimer, QThread, Slot
 from .rntchangesfunctions import display
-from .gpgcrypto import start_gpg_agent
 from .gpgcrypto import GPGStatus
+from .gpgcrypto import start_gpg_agent
 from .qtclasses import GpgPromptWorker
 
 
@@ -16,12 +16,13 @@ class ProcessHandler(QObject):
     status = Signal(str)
     complete = Signal(int, int)
 
-    def __init__(self, lclhome, xdg_runtime, dblabel_text, use_polkit=True):
+    def __init__(self, lclhome, xdg_runtime, xdg_state, dblabel_text, use_polkit=True):
         super().__init__()
         self.process = QProcess(self)
 
         self.lclhome = lclhome
         self.xdg_runtime = xdg_runtime
+        self.xdg_state = xdg_state
         self.dblabel_text = dblabel_text
         self.is_polkit = use_polkit
 
@@ -86,7 +87,7 @@ class ProcessHandler(QObject):
         self.rangeVALUE = rangeVALUE
 
     @Slot(int)
-    def _on_gpg_prompt_finished(self, exit_code):
+    def on_gpg_prompt_finished(self, exit_code):
         if exit_code == GPGStatus.ERR_OK:
             if self.is_prompt_timer:
                 # if self.prompt_timer.isActive():
@@ -95,12 +96,12 @@ class ProcessHandler(QObject):
                 self.prompt_timer = None
                 self.is_prompt_timer = False
             self.status.emit(self.dblabel_text)
-            self._start_dispatch_process()
+            self.start_dispatch_process()
         else:
             self.complete.emit(exit_code, QProcess.ExitStatus.NormalExit.value)
 
     @Slot()
-    def _cleanup_gpg_thread(self):
+    def cleanup_gpg_thread(self):
         self.gpg_thread = None
         self.gpg_worker = None
 
@@ -113,7 +114,7 @@ class ProcessHandler(QObject):
             # delegate to stopf in recentchangessearch to avoid corruption. dirwalker dont close it. anything else close it
             self.terminate_process()
 
-    def _prompt_tty(self):
+    def prompt_tty(self):
         str_val = None
         if self.gpg_thread:
             str_val = "gpg passphrase"
@@ -140,16 +141,17 @@ class ProcessHandler(QObject):
         else:
             self.is_terminating = False
 
-    def _start_prompt_timer(self):
+    def start_prompt_timer(self):
         self.prompt_timer = QTimer(self)
         self.prompt_timer.setSingleShot(True)
         self.prompt_timer.start(12000)
-        self.prompt_timer.timeout.connect(self._prompt_tty)
+        self.prompt_timer.timeout.connect(self.prompt_tty)
         self.is_prompt_timer = True
 
-    def _start_dispatch_process(self):
-        self._start_prompt_timer()
-        self.process.start(self.comm, self.script_list + self.args)
+    def start_dispatch_process(self):
+        self.start_prompt_timer()
+        env_args = []
+        self.process.start(self.comm, env_args + self.script_list + self.args)
         self.pid = int(self.process.processId())
 
     def start_tomledit(self, cmd, args=None):
@@ -175,11 +177,11 @@ class ProcessHandler(QObject):
         self.pid = int(self.process.processId())
 
     def start_pyprocess(self, script, args=None, database=None, dbtarget=None, user=None, email=None, status_message=None, is_search=False, is_postop=False, is_scanIDX=False, analytics=None, parent=None):
-
-        env = QProcessEnvironment.systemEnvironment()
+        # import QProcessEnvironment
+        # env = QProcessEnvironment.systemEnvironment()
         # env.insert("PYTHONUTF8", "1")
         # env.insert("PYTHONIOENCODING", "utf-8")
-        self.process.setProcessEnvironment(env)
+        # self.process.setProcessEnvironment(env)
 
         self.script = script
         self.script_list = [script]  # self.lclhome
@@ -209,7 +211,7 @@ class ProcessHandler(QObject):
         else:
             # hudt prompt to use terminal if polkit isnt installed
             self.comm = "sudo"
-            # self.script_list = [script]  # "env", f"XDG_RUNTIME_DIR={self.xdg_runtime}", "PATH=/usr/sbin:/usr/bin:/sbin:/bin:/root/bin:/usr/local/recentchanges/.venv/bin",
+            # self.script_list = [script]  # "env", f"XDG_RUNTIME_DIR={self.xdg_runtime}", f"XDG_STATE_DIR={self.xdg_state}", "PATH=/usr/sbin:/usr/bin:/sbin:/bin:/root/bin:/usr/local/recentchanges/.venv/bin",
 
         # qt prompt
         rlt = start_gpg_agent(email)  # refresh the passphrase.
@@ -218,18 +220,18 @@ class ProcessHandler(QObject):
             self.gpg_worker = GpgPromptWorker(self.lclhome, dbtarget, user, email)
             self.gpg_worker.moveToThread(self.gpg_thread)
             self.gpg_thread.started.connect(self.gpg_worker.run)
-            self.gpg_worker.finished.connect(self._on_gpg_prompt_finished)
+            self.gpg_worker.finished.connect(self.on_gpg_prompt_finished)
             self.gpg_worker.finished.connect(self.gpg_thread.quit)
             self.gpg_worker.finished.connect(self.gpg_worker.deleteLater)
             self.gpg_thread.finished.connect(self.gpg_thread.deleteLater)
-            self.gpg_thread.finished.connect(self._cleanup_gpg_thread)
-            self._start_prompt_timer()
+            self.gpg_thread.finished.connect(self.cleanup_gpg_thread)
+            self.start_prompt_timer()
             # from PySide6.QtWidgets import QApplication
             # QApplication.processEvents()
             self.gpg_thread.start()
 
         else:
-            self._start_dispatch_process()
+            self.start_dispatch_process()
 
     def process_finished(self, exit_code, exit_status):
 

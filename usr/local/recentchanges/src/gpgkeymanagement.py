@@ -236,8 +236,14 @@ def genkey(appdata_local, usr, email, name, dbtarget, cache_f, cache_s, flth, te
     return True
 
 
-# required for batch deleting keys
+def create_cipher_key(opt, r_email):
+    cipher_key = os.urandom(32)  # random 256-bit
+
+    subprocess.run(['gpg', '-e', '-r', r_email, '-o', opt], input=cipher_key, check=True)
+
+
 def get_key_fingerprint(email, root_target=None):
+    # required for batch deleting keys
     cmd = ["gpg", "--list-keys", "--with-colons", email]
     if root_target:
         cmd = ["sudo"] + cmd
@@ -258,9 +264,11 @@ def clear_gpg(usr, dbtarget, cache_f, cache_s, flth, toml_file=None, json_file=N
     from .rntchangesfunctions import name_of
 
     systimeche = name_of(cache_s)
-    dbopt = name_of(dbtarget, '.db')
+
     file_path = os.path.dirname(cache_s)
     pattern = os.path.join(file_path, f"{systimeche}*")
+    output = name_of(dbtarget, '.db')
+    dbopt = os.path.join(file_path, output)
 
     # configs
     if (toml_file):
@@ -275,7 +283,7 @@ def clear_gpg(usr, dbtarget, cache_f, cache_s, flth, toml_file=None, json_file=N
                 break
             else:
                 print("Invalid input, please enter 'Y' or 'N'.")
-    
+
     # gpgs
     for r in (cache_f, dbopt, dbtarget, flth, *glob.glob(pattern)):
         p = Path(r)

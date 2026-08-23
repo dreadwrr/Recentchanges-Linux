@@ -20,6 +20,7 @@ from .fsearchfunctions import upt_cache
 from .pyfunctions import ap_decode
 from .pyfunctions import epoch_to_date
 from .pyfunctions import escf_py
+from .pyfunctions import fmt
 from .pyfunctions import parse_datetime
 from .qtfunctions import return_terminal
 from .rntchangesfunctions import removefile
@@ -122,7 +123,8 @@ def _fk_process(pattern):
 # end linux
 
 
-def strup(script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, pid_file, lockfile, log_file, ll_level, _time, escaped_user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, algo, logger, platform):
+def strup(script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, pid_file, lockfile, log_file, ll_level,
+          _time, escaped_user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, algo, platform,  logger=logging):
 
     def build_terminal_cmd(terminal, cmd):
         """ wrapper function for debug below working off of return_terminal
@@ -338,29 +340,29 @@ def parselog(file, checksum, logger):
     return results
 
 
-def rotate_cache(cfr, cache_f):
+def rotate_cache(cfr, cache_f, logger):
     created = {}
     if cache_f.is_file():
         rotated = cache_f.with_name(cache_f.name + ".old")
         if rotated.exists():
-            logging.debug("init_recentchanges old cachefile already existed %s", rotated)
+            logger.debug("init_recentchanges old cachefile already existed %s", rotated)
             removefile(rotated)
         os.rename(cache_f, rotated)
         with rotated.open("r") as f:
             for line in f:
                 line = line.rstrip("\n")
                 if not line:
-                    logging.debug("Skipping possibly empty line from cache file: %s", line)
+                    logger.debug("Skipping possibly empty line from cache file: %s", line)
                     continue
                 try:
                     metadata, checksum, entropy, mime, filepath = line.split("\t", maxsplit=4)
                     filepath = filepath.strip()
                     if not filepath:
-                        logging.debug("Skipping malformed line in cache file with empty filepath: %s", line)
+                        logger.debug("Skipping malformed line in cache file with empty filepath: %s", line)
                         continue
                 except ValueError:
                     print("Skipping malformed line in cache file")
-                    logging.error("Failed to parse delimiter in cache file line: %s", line)
+                    logger.error("Failed to parse delimiter in cache file line: %s", line)
                     continue
                 try:
                     inode, size, mtime_epoch = metadata.split("|")  # inode not used
@@ -369,13 +371,13 @@ def rotate_cache(cfr, cache_f):
                     mtime_epoch = int(mtime_epoch)
                 except ValueError:
                     print(f"Skipping malformed metadata in cache file: {metadata}")
-                    logging.error("Failed to parse metadata in cache file line: %s", line)
+                    logger.error("Failed to parse metadata in cache file line: %s", line)
                     continue
 
                 time_stamp_frm = epoch_to_date(mtime_epoch / 1_000_000)
                 if time_stamp_frm:
                     time_stamp = time_stamp_frm.replace(microsecond=0)
-                    logging.debug("Inserting %s %s %s %s %s", checksum, size, time_stamp, mtime_epoch, filepath)
+                    logger.debug("Inserting %s %s %s %s %s", checksum, size, time_stamp, mtime_epoch, filepath)
                     upt_cache(cfr, checksum, entropy, mime, size, time_stamp, mtime_epoch, filepath)
 
                     cache_data = {
@@ -388,7 +390,7 @@ def rotate_cache(cfr, cache_f):
                     created[filepath] = cache_data
                 else:
                     print("xRC invalid time_stamp or format detected in cache file.")
-                    logging.debug("xRC Invalid timestamp in cache file line: %s", line)
+                    logger.debug("xRC Invalid timestamp in cache file line: %s", line)
         removefile(rotated)
     return created
 
@@ -401,7 +403,7 @@ def parse_tout(log_file, checksum, logger):
 
     rotated = log_file.with_name(log_file.name + ".old")
     if os.path.exists(rotated):
-        logging.debug("init_recentchanges old tout already existed %s", rotated)
+        logger.debug("init_recentchanges old tout already existed %s", rotated)
         removefile(rotated)
     os.rename(log_file, rotated)
 
@@ -476,7 +478,6 @@ def trim_tout(log_file, time_back=6, trim_to=9, min_span_hours=0, logger=logging
                             print("trim_tout low water was higher than high water defaulting to high water", trim_to)
                             time_back = trim_to
                         cutoff_time = cutoff_time - (time_back * 3600)
-                        fmt = "%Y-%m-%d %H:%M:%S"
                         cutoff_str = datetime.fromtimestamp(cutoff_time).strftime(fmt)
                         kept = [line for line in tout_files if time_extract_str(line, log_file, logger) >= cutoff_str]
                         if kept:
@@ -578,7 +579,7 @@ def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gn
                         strup(
                             script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, watchdog_pid_file, lockfile,
                             log_file, ll_level, _time, user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, algo,
-                            logger, platform
+                            platform, logger
                         )
                     else:
                         if fk_success:
@@ -616,7 +617,7 @@ def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gn
                         strup(
                             script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, watchdog_pid_file, lockfile,
                             log_file, ll_level, _time, user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, algo,
-                            logger, platform
+                            platform, logger
                         )
                     else:
                         if fk_success:
@@ -642,7 +643,7 @@ def init_recentchanges(script_dir, appdata_local, usrDIR, home_dir, temp_dir, gn
             strup(
                 script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, watchdog_pid_file, lockfile,
                 log_file, ll_level, _time, user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, algo,
-                logger, platform
+                platform, logger
             )
 
     except Exception as e:
