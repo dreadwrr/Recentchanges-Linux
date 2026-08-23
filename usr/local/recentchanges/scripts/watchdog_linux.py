@@ -18,7 +18,7 @@ from PySide6.QtGui import QIcon
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from src.dirwalkerfunctions import MOUNT_FOLDERS
-from src.dirwalkerlinux import get_config_data
+from src.dirwalkerfunctions import get_config_data
 from src.logs import emit_log
 from src.logs import init_process_worker
 from src.logs import setup_logger
@@ -29,7 +29,7 @@ from src.rntchangesfunctions import name_of
 from src.rntchangesfunctions import to_bool
 from src.rntchangesfunctions import removefile
 import src.watchdog_functions as wf
-# 07/24/2026
+# 08/21/2026
 # This watchdog script was made from an inotify script that was a result of needing to watch basedir for created files that
 # could have preserved metadata and may not show in regular searches. As well as cache files over 1 MB for the 
 # ctimecache.gpg.

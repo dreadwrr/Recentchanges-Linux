@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#   Developer buddy 5.0 core                                               05/26/2026
+#   Developer buddy 6.5 core                                               05/26/2026
 
 # ascii positional encoding
 # escape input newlines for parsing
@@ -120,7 +120,7 @@ setup_exports() {
     [[ "$1" = "query" ]] && { "$app_install"/recentchanges "$USR" "$PWD" query ; exit ; }
     [[ "$1" = "reset" ]] && { "$app_install"/recentchanges "$USR" "$PWD" reset ; exit ; }
 
-    output=$( python3 "$app_install"/src/get_exports.py $USR) ; res=$?
+    output=$( python3 "$app_install"/src/get_exports.py $USR $1) ; res=$?
 
     if [[ $res -ne 0 ]]; then
         
