@@ -6,7 +6,7 @@ Python watchdog service can be started from menubar and more<br><br>
 ![Alt text](https://i.imgur.com/Wvi4JrH.png) <br>
 when xRC is on all new files are listed in /tmp/file_creation_log.txt <br>
 
-![Alt text](https://i.imgur.com/gqbO4HB.png) <br>
+![Alt text](https://i.imgur.com/gqbO4HB.png)![Alt text](https://i.imgur.com/Gq26b0B.png) <br>
 
 Linux file search application with hybrid analysis <br>
 
