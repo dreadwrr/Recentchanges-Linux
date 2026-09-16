@@ -1,6 +1,6 @@
-version 6.5.1 <br>
-Last updated: 08/23/2026 <br>
-changed to sqlcipher <br>
+version 6.5.2 <br>
+Last updated: 09/15/2026 <br>
+
 Python watchdog service can be started from menubar and more<br><br>
 
 ![Alt text](https://i.imgur.com/Wvi4JrH.png) <br>
