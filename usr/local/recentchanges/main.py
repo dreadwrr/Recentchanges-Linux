@@ -1,4 +1,4 @@
-# 08/22/2026              Qt gui linux                 Developer buddy 6.5.1
+# 09/15/2026              Qt gui linux                 Developer buddy 6.5.2
 import glob
 import logging
 import multiprocessing
@@ -218,7 +218,7 @@ class MainWindow(QMainWindow):
         # QTimer.singleShot(5000, self.display_db)
 
         # Vars
-        self.app_version = "6.5.1"
+        self.app_version = "6.5.2"
 
         self.dispatch = appdata_local / "set_recent_helper"  # normal python use see ln 269 for pyinstaller detect
         self.app = str(appdata_local / "main.py")
@@ -349,6 +349,7 @@ class MainWindow(QMainWindow):
 
         # self.change_format()
         self.refresh_jpg()  # load pic
+        self.ui.label_2.setPixmap(QPixmap(os.path.join(self.resources, "xrc.png")))  # this is needed for nuitka --standalone
 
         # one time items
         ro = self.j_settings.get("search_range")
@@ -532,7 +533,7 @@ class MainWindow(QMainWindow):
         # end to open watchdog directory
         # 08/21/2026
         self.ui.actionWatchdog.triggered.connect(self.load_watchdog)
-
+        self.ui.actionStop_watchdog.triggered.connect(self.stop_watchdog)
         # instead open the file_creation_log.txt
         # self.ui.actionWatchdog.triggered.connect(lambda: display(self.dspEDITOR, self.inotify_creation_file, self.dspPATH, True))  # non root
 
@@ -1741,11 +1742,13 @@ class MainWindow(QMainWindow):
     def open_calculator(self, mode=None):
         if self.calculator is None:
             if mode:
-                self.calculator = SCalculator(None, "scientific", self.cTHRESHOLD, self.decimals, "block", self.chistory,
-                                              self.saved_history, self.randintMAX, self.randintMIN, self.ui.hudt, self.clogLEVEL)
+                self.calculator = SCalculator(self.lclhome, "scientific", self.cTHRESHOLD, self.decimals, "block", self.chistory,
+                                              self.saved_history, self.randintMAX, self.randintMIN, self.ui.hudt,
+                                              self.clogLEVEL, None)
             else:
-                self.calculator = SCalculator(None, self.cmode, self.cTHRESHOLD, self.decimals, self.ctheme, self.chistory,
-                                              self.saved_history, self.randintMAX, self.randintMIN, self.ui.hudt, self.clogLEVEL)
+                self.calculator = SCalculator(self.lclhome, self.cmode, self.cTHRESHOLD, self.decimals, self.ctheme, self.chistory,
+                                              self.saved_history, self.randintMAX, self.randintMIN, self.ui.hudt,
+                                              self.clogLEVEL, None)
             self.calculator.complete.connect(self.on_calc_closed)
         self.calculator.show()
         self.calculator.raise_()
@@ -2417,7 +2420,20 @@ class MainWindow(QMainWindow):
         return None
 
     def load_watchdog(self):
-        if not self.job_running():
+        if self.isexec:
+            window_message(self, "there is a current job started.", "Execution")
+            return
+
+        def startup():
+            strup(
+                self.lclscripts, script, self.lclhome, self.home_dir, self.inotify_creation_file, CACHE_F, cdir, self.watchdog_pid_file,
+                lockfile, self.log_path, self.ll_level, self._time, escaped_user, self.moduleNAME, self.usrDIR, self.tempdir,
+                self.gnupg_home, self.supbrwLIST, debug_mode, self.checkMETHOD, platform
+            )
+            if not self.xRC:
+                self.xRC = True
+                update_toml_values({'search': {'xRC': True}}, self.toml_file)
+            self.ui.hudt.appendPlainText("watchdog started")
             return
 
         debug_mode = False
@@ -2443,26 +2459,27 @@ class MainWindow(QMainWindow):
             fk_success = process_kill(pid, self.watchdog_pid_file)
 
             if fk_success and not process_by_target(search_pattern):
-                # strup(script_dir, script, appdata_local, home_dir, inotify_creation_file, CACHE_F, cdir, pid_file, lockfile, log_file, ll_level, _time, escaped_user, moduleNAME, usrDIR, temp_dir, gnupg_home, supbrwLIST, debug_mode, algo, logger, platform):
-                strup(
-                    self.lclscripts, script, self.lclhome, self.home_dir, self.inotify_creation_file, CACHE_F, cdir, self.watchdog_pid_file,
-                    lockfile, self.log_path, self.ll_level, self._time, escaped_user, self.moduleNAME, self.usrDIR, self.tempdir,
-                    self.gnupg_home, self.supbrwLIST, debug_mode, self.checkMETHOD, platform
-                )
-                self.ui.hudt.appendPlainText("watchdog started")
-                return
+                return startup()
             if fk_success:
                 logging.debug("init_recentchanges inotifywait was already running continuing")
 
         else:
-            strup(
-                self.lclscripts, script, self.lclhome, self.home_dir, self.inotify_creation_file, CACHE_F, cdir, self.watchdog_pid_file,
-                lockfile, self.log_path, self.ll_level, self._time, escaped_user, self.moduleNAME, self.usrDIR, self.tempdir,
-                self.gnupg_home, self.supbrwLIST, debug_mode, self.checkMETHOD, platform
-            )
-            self.ui.hudt.appendPlainText("watchdog started")
-            return
+            return startup()
         self.ui.hudt.appendPlainText("Failed to start watchdog")
+
+    def stop_watchdog(self):
+        if self.isexec:
+            window_message(self, "there is a current job started.", "Execution")
+            return
+        search_pattern = "watchdog_linux.py"
+        pid = process_by_target(search_pattern)
+        if pid:
+            fk_success = process_kill(pid, self.watchdog_pid_file)
+            if fk_success:
+                self.ui.hudt.appendPlainText("watchdog stopped")
+        if self.xRC:
+            self.xRC = False
+            update_toml_values({'search': {'xRC': False}}, self.toml_file)
 
     ''' Proteus Shield / System Profile '''
 
@@ -3316,7 +3333,7 @@ class MainWindow(QMainWindow):
 
         if not self.is_pyinstall:
             args = [sys.executable, self.app] + args
-        self.proc.start_pyprocess(str(self.dispatch), args, database=self.dbopt, dbtarget=self.dbtarget, user=self.usr, email=self.email, status_message="Set hardlinks")
+        self.proc.start_pyprocess(str(self.dispatch), args, database=self.dbopt, dbtarget=self.dbtarget, user=self.usr, email=self.email, status_message="Read benchmark")
 
         # needs to run in thread or process using above
 
