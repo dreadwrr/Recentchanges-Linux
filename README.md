@@ -1,3 +1,5 @@
+An update for the calculator is coming which is currently released for the windows version. <br>
+
 version 6.5.2 <br>
 Last updated: 09/15/2026 <br>
 
