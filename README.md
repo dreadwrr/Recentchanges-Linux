@@ -1,7 +1,6 @@
-An update for the calculator is coming which is currently released for the windows version. <br>
 
-version 6.5.2 <br>
-Last updated: 09/15/2026 <br>
+version 6.5.2.1 <br>
+Last updated: 09/24/2026 <br>
 
 Python watchdog service can be started from menubar and more<br><br>
 
