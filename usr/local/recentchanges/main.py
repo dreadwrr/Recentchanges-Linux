@@ -1,4 +1,4 @@
-# 09/15/2026              Qt gui linux                 Developer buddy 6.5.2.1
+# 10/24/2026              Qt gui linux                 Developer buddy 6.6.0.0
 import glob
 import logging
 import multiprocessing
@@ -93,7 +93,6 @@ from src.qtfunctions import sort_right
 from src.qtfunctions import table_loaded
 from src.qtfunctions import user_data_from_database
 from src.qtfunctions import user_data_to_database
-from src.qtfunctions import valid_crest
 from src.qtfunctions import window_prompt
 from src.qtfunctions import window_message
 from src.qtparser import dispatch_internal as dispatcher
@@ -218,7 +217,7 @@ class MainWindow(QMainWindow):
         # QTimer.singleShot(5000, self.display_db)
 
         # Vars
-        self.app_version = "6.5.2.1"
+        self.app_version = "6.6.0.0"
 
         self.dispatch = appdata_local / "set_recent_helper"  # normal python use see ln 269 for pyinstaller detect
         self.app = str(appdata_local / "main.py")
@@ -345,11 +344,12 @@ class MainWindow(QMainWindow):
         self.ui.dbprogressBAR.setValue(0)
         pixmap = QPixmap(self.crest)  # Load the image from the path      '.\\Documents\\crests\\dragonm.png'  # original
         self.ui.jpgcr.setPixmap(pixmap)  # Set the pixmap on the label
+        self.ui.jpgcr.setFixedSize(pixmap.size())  # self.ui.jpgcr.adjustSize()
         self.ui.jpgcr.setScaledContents(True)
 
         # self.change_format()
         self.refresh_jpg()  # load pic
-        self.ui.label_2.setPixmap(QPixmap(os.path.join(self.resources, "xrc.png")))  # this is needed for nuitka --standalone
+        # self.ui.label_2.setPixmap(QPixmap(os.path.join(self.resources, "xrc.png")))  # this is needed for nuitka --standalone
 
         # one time items
         ro = self.j_settings.get("search_range")
@@ -471,8 +471,8 @@ class MainWindow(QMainWindow):
         self.ui.widget = AlarmClock(self, theme=self.alarmCOLOR, _24hformat=self.alarm_24h, sound_file=sound_path, sound_set_file=sound_set_path)
 
         layout.addWidget(self.ui.widget, *position)
-        self.ui.widget.setMinimumSize(QSize(539, 128))
-        self.ui.widget.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        # self.ui.widget.setMinimumSize(QSize(539, 128))
+        # self.ui.widget.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
 
     def install_logger(self):
         # hudt
@@ -1834,7 +1834,10 @@ class MainWindow(QMainWindow):
             self.ui.hudt.appendPlainText(f"Failed to load crest: {self.crest}")
             return
         self.ui.jpgcr.setPixmap(pixmap)  # Set the pixmap on the label
+        self.ui.jpgcr.setFixedSize(pixmap.size())  # self.ui.jpgcr.adjustSize()
         self.ui.jpgcr.setScaledContents(True)
+        # self.ui.jpgv.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # self.ui.jpgcr.setScaledContents(True)
 
     """ alarm """
     def copy_sound(self, sound_file):
@@ -1857,7 +1860,7 @@ class MainWindow(QMainWindow):
         if crest:
 
             self.lastdir = Path(os.path.dirname(crest))
-            if valid_crest(self, crest):
+            if self.valid_crest(crest):
                 flnm_frm, ext = os.path.splitext(crest)
                 outpath = flnm_frm + "_raised" + ext
                 i = 1
@@ -1866,6 +1869,21 @@ class MainWindow(QMainWindow):
                     i += 1
 
                 raised_image(crest, outpath)
+
+    def valid_crest(self, crest_path, parent=None):
+        img = QImage(crest_path)
+
+        if img.isNull():
+            QMessageBox.warning(parent, "Error", "Invalid image file.")
+            return False
+
+        w = img.width()
+        h = img.height()
+
+        if w > 405 or h > 333:
+            window_message(parent, f"Image size must be 250x333 or less.\n\nSelected image: {w}x{h}", "Invalid size")
+            return False
+        return True
 
     def load_jpg(self):
 
@@ -1964,7 +1982,7 @@ class MainWindow(QMainWindow):
                         self.lastdir = file_root
 
                     if os.path.abspath(crest) != os.path.abspath(self.crest):  # dont reemboss the same crest in use
-                        if valid_crest(self, crest):
+                        if self.valid_crest(crest):
                             shutil.copy(crest, self.usercrest)  # original would write to app dir
                             self.crest = self.usercrest
                             self.refresh_crest()
