@@ -12,7 +12,7 @@ from datetime import datetime
 from packaging import version
 from pathlib import Path
 from PySide6.QtCore import QDateTime
-from PySide6.QtGui import QIcon, QFontDatabase, QImage
+from PySide6.QtGui import QIcon, QFontDatabase
 from PySide6.QtSql import QSqlDatabase
 from PySide6.QtWidgets import QVBoxLayout, QDialog, QPushButton, QLabel, QInputDialog, QMessageBox, QHBoxLayout
 from .config import update_j_settings
@@ -26,7 +26,7 @@ from .pysql import clear_conn
 from .pysql import create_conn
 from .rntchangesfunctions import to_bool
 from .rntchangesfunctions import porteus_linux_check
-# 08/21/2026
+# 10/24/2026
 
 
 def polkit_check(action_id="org.freedesktop.set_recent_helper"):
@@ -208,22 +208,6 @@ def select_custom(parent):
 
     dlg.exec()
     return result["value"]
-
-
-def valid_crest(parent, crest_path):
-    img = QImage(crest_path)
-
-    if img.isNull():
-        QMessageBox.warning(parent, "Error", "Invalid image file.")
-        return False
-
-    w = img.width()
-    h = img.height()
-
-    if w > 255 or h > 333:
-        window_message(parent, f"Image size must be 250x333 or less.\n\nSelected image: {w}x{h}", "Invalid size")
-        return False
-    return True
 
 
 # QSql
