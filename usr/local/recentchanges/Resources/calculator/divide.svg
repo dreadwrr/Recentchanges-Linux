@@ -44,15 +44,10 @@
          style="font-size:7.76111px;stroke-width:0.264583"
          x="-0.46477798"
          y="5.6113429" /></text>
-    <text
-       xml:space="preserve"
-       style="font-size:7.7611px;font-family:'DejaVu Sans';-inkscape-font-specification:'DejaVu Sans';text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#ffffff;stroke-width:0.264583"
-       x="-0.16918264"
-       y="5.3899908"
-       id="text2"><tspan
-         id="tspan2"
-         style="stroke-width:0.264583"
-         x="-0.16918264"
-         y="5.3899908">÷</tspan></text>
+    <path
+       d="M 2.616173,1.0887954 H 3.5484145 V 2.0210368 H 2.616173 Z m 0,2.8043036 H 3.5484145 V 4.8215509 H 2.616173 Z M 0.65316045,2.634952 H 5.511427 V 3.2791839 H 0.65316045 Z"
+       id="text2"
+       style="font-size:7.7611px;font-family:'DejaVu Sans';-inkscape-font-specification:'DejaVu Sans';fill:#ffffff;stroke-width:0.264583"
+       aria-label="÷" />
   </g>
 </svg>

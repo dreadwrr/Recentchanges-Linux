@@ -23,15 +23,10 @@
          style="font-size:7.76111px;stroke-width:0.264583"
          x="-0.83095717"
          y="6.4061556" /></text>
-    <text
-       xml:space="preserve"
-       style="font-size:7.7611px;font-family:'DejaVu Sans';-inkscape-font-specification:'DejaVu Sans';text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#ffffff;stroke-width:0.264583"
-       x="-0.076476388"
-       y="5.607923"
-       id="text1"><tspan
-         id="tspan1"
-         style="stroke-width:0.264583"
-         x="-0.076476388"
-         y="5.607923">+</tspan></text>
+    <path
+       d="M 3.4933264,0.74207725 V 2.8528842 H 5.6041333 V 3.4971161 H 3.4933264 V 5.607923 H 2.8566736 V 3.4971161 H 0.74586671 V 2.8528842 H 2.8566736 V 0.74207725 Z"
+       id="text1"
+       style="font-size:7.7611px;font-family:'DejaVu Sans';-inkscape-font-specification:'DejaVu Sans';fill:#ffffff;stroke-width:0.264583"
+       aria-label="+" />
   </g>
 </svg>
