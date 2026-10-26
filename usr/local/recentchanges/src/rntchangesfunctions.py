@@ -1,4 +1,4 @@
-# developer buddy v6.5 core                     08/21/2026
+# developer buddy v6.6 core                     08/21/2026
 import csv
 import glob
 import importlib.util
