@@ -46,6 +46,9 @@ def sync_db(dbopt, dbtarget, user, email, basedir, cache_s, parsedsys, parsedidx
 
     try:
 
+        # for index and scan system pass password as gpg-agent cache password could have expired
+        # conn = sqlcipher3.connect(dbopt)
+        # conn.execute(f'PRAGMA key = "x\'{p.hex()}\'"')
         conn = create_conn(dbopt, dbtarget, email, user=user)
         cur = conn.cursor()
         # scan IDX

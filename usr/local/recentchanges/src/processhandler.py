@@ -3,8 +3,9 @@ import time
 from PySide6.QtCore import QObject, Signal, QProcess, QTimer, QThread, Slot
 from .rntchangesfunctions import display
 from .gpgcrypto import GPGStatus
-from .gpgcrypto import start_gpg_agent
+# from .gpgcrypto import start_gpg_agent
 from .qtclasses import GpgPromptWorker
+# 10/25/2026
 
 
 # QProcess scripts
@@ -214,24 +215,25 @@ class ProcessHandler(QObject):
             # self.script_list = [script]  # "env", f"XDG_RUNTIME_DIR={self.xdg_runtime}", f"XDG_STATE_DIR={self.xdg_state}", "PATH=/usr/sbin:/usr/bin:/sbin:/bin:/root/bin:/usr/local/recentchanges/.venv/bin",
 
         # qt prompt
-        rlt = start_gpg_agent(email)  # refresh the passphrase.
-        if rlt is False:  # if the passphrase has expired
-            self.gpg_thread = QThread(self)
-            self.gpg_worker = GpgPromptWorker(self.lclhome, dbtarget, user, email)
-            self.gpg_worker.moveToThread(self.gpg_thread)
-            self.gpg_thread.started.connect(self.gpg_worker.run)
-            self.gpg_worker.finished.connect(self.on_gpg_prompt_finished)
-            self.gpg_worker.finished.connect(self.gpg_thread.quit)
-            self.gpg_worker.finished.connect(self.gpg_worker.deleteLater)
-            self.gpg_thread.finished.connect(self.gpg_thread.deleteLater)
-            self.gpg_thread.finished.connect(self.cleanup_gpg_thread)
-            self.start_prompt_timer()
-            # from PySide6.QtWidgets import QApplication
-            # QApplication.processEvents()
-            self.gpg_thread.start()
+        # rlt = start_gpg_agent(email)  # after testing doesnt refresh the passphrase. but can check if passphrase is expired
+        # if rlt is False:  # if the passphrase has expired
+        self.gpg_thread = QThread(self)
+        self.gpg_worker = GpgPromptWorker(self.lclhome, dbtarget, user, email)
+        self.gpg_worker.moveToThread(self.gpg_thread)
+        self.gpg_thread.started.connect(self.gpg_worker.run)
+        self.gpg_worker.finished.connect(self.on_gpg_prompt_finished)
+        self.gpg_worker.finished.connect(self.gpg_thread.quit)
+        self.gpg_worker.finished.connect(self.gpg_worker.deleteLater)
+        self.gpg_thread.finished.connect(self.gpg_thread.deleteLater)
+        self.gpg_thread.finished.connect(self.cleanup_gpg_thread)
+        self.start_prompt_timer()
+        # from PySide6.QtWidgets import QApplication
+        # QApplication.processEvents()
+        self.gpg_thread.start()
 
-        else:
-            self.start_dispatch_process()
+        # this was assumed start_gpg_agent refreshed...
+        # else:
+        #     self.start_dispatch_process()
 
     def process_finished(self, exit_code, exit_status):
 

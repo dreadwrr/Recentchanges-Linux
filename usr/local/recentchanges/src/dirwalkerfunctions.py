@@ -3,6 +3,7 @@ import logging
 import os
 import stat
 import sys
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from io import StringIO
@@ -18,12 +19,14 @@ from .fileops import get_stat
 from .fileops import set_stat
 from .fsearchfunctions import file_owner
 from .gpgcrypto import decrm
+from .gpgcrypto import GPGStatus
+from .gpgcrypto import start_user_agent
 from .logs import emit_log
 from .pyfunctions import epoch_to_date
 from .pyfunctions import epoch_to_str
 from .pyfunctions import fmt
 from .pyfunctions import user_path
-# 08/21/2026
+# 10/25/2026
 
 # Globals
 MOUNT_FOLDERS = ("mnt",  "media")  # list any other base mount folders here. these could have files or files in folders that are not mount points
@@ -316,6 +319,17 @@ def get_drive_type(basedir, driveTYPE, cache_s, json_file):
     else:
         print("Warning entry for", basedir, "is malformed in json file:", json_file, "using default", driveTYPE)
     return driveTYPE
+
+
+def refresh_gpg_agent(user, email, dbtarget):
+    while True:
+        time.sleep(30)
+        res = start_user_agent(user, email, dbtarget)
+        if res != GPGStatus.ERR_OK:
+            # GPGStatus.NO_PINENTRY no ioctl or pin entry <-- because its a seperate process
+            print(f"gpg agent expired could not get cipher password error_code {res}")
+            return res
+
 
 # def get_dir_mtime(dirpath, locale):
 #     """ currently not used """

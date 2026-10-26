@@ -20,7 +20,7 @@ from .pyfunctions import is_integer
 from .pyfunctions import parse_datetime
 from .rntchangesfunctions import name_of
 # from .rntchangesfunctions import cprint
-# 08/21/2026
+# 10/25/2026
 
 
 def blank_count(curs):
@@ -99,7 +99,7 @@ def clock_average(rows):
         sum_cos += cos(angle)
         n += 1
 
-    if n == 0:
+    if n == 0 or (sum_sin**2 + sum_cos**2)**0.5 / n < 1e-10:
         return "N/A"
 
     angle = atan2(sum_sin, sum_cos)
@@ -110,8 +110,9 @@ def clock_average(rows):
 
     hours = int(avg_seconds // 3600)
     minutes = int((avg_seconds % 3600) // 60)
+    half = "top of the hour" if minutes < 30 else "bottom of the hour"
 
-    return f"{hours:02d}:{minutes:02d}"
+    return f"{hours:02d}:{minutes:02d} {half}"
 
 
 def search_times(cur):

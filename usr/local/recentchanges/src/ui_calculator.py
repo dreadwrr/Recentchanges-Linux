@@ -366,9 +366,6 @@ class Ui_Form(object):
         font.setFamilies([u"Helvetica"])
         self.percentButton.setFont(font)
         self.percentButton.setStyleSheet(u"")
-        icon = QIcon()
-        icon.addFile(u"icon/percent-solid.svg", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.percentButton.setIcon(icon)
         self.percentButton.setIconSize(QSize(50, 50))
 
         self.gridLayout.addWidget(self.percentButton, 1, 6, 1, 1)
@@ -397,9 +394,6 @@ class Ui_Form(object):
         self.negateButton.setObjectName(u"negateButton")
         self.negateButton.setFont(font)
         self.negateButton.setStyleSheet(u"qproperty-iconSize: 40px;")
-        icon1 = QIcon()
-        icon1.addFile(u"icon/plus-minus-variant.svg", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.negateButton.setIcon(icon1)
         self.negateButton.setIconSize(QSize(40, 40))
 
         self.gridLayout.addWidget(self.negateButton, 1, 5, 1, 1)

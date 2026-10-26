@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'untitled13.ui'
+## Form generated from reading UI file 'untitled13latest.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.8.2
 ##
@@ -28,7 +28,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(1976, 1088)
+        MainWindow.resize(1579, 995)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -301,7 +301,7 @@ class Ui_MainWindow(object):
         sizePolicy1.setHeightForWidth(self.jpgcr.sizePolicy().hasHeightForWidth())
         self.jpgcr.setSizePolicy(sizePolicy1)
         self.jpgcr.setMinimumSize(QSize(250, 250))
-        self.jpgcr.setMaximumSize(QSize(250, 250))
+        self.jpgcr.setMaximumSize(QSize(405, 250))
         self.jpgcr.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
 
         self.horizontalLayout_12.addWidget(self.jpgcr)
@@ -935,7 +935,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 1976, 19))
+        self.menubar.setGeometry(QRect(0, 0, 1579, 19))
         self.menuRecent_changes = QMenu(self.menubar)
         self.menuRecent_changes.setObjectName(u"menuRecent_changes")
         self.menuHelp = QMenu(self.menubar)

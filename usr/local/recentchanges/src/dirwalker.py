@@ -1,4 +1,4 @@
-#   build first to find the files then distribute round-robin to multiprocessing            08/21/2026
+#   build first to find the files then distribute round-robin to multiprocessing            10/25/2026
 # to hash. This was found to be the fastest as other methods have too much overhead
 
 # scan the important files for modified with same mtime or spoofed timestamp
@@ -37,6 +37,7 @@ from .dirwalkerfunctions import get_extension_tup
 from .dirwalkerfunctions import get_filter_tup
 from .dirwalkerfunctions import get_mount_excludes
 from .dirwalkerfunctions import output_diff
+from .dirwalkerfunctions import refresh_gpg_agent
 from .dirwalkerfunctions import scan_files
 from .dirwalkerparser import build_dwalk_parser
 from .dirwalkersrg import create_new_index
@@ -510,6 +511,16 @@ def index_system(appdata_local, dbopt, dbtarget, basedir, user, cache_s, email, 
         print("failed to build profile an error occured there were no matched files. exitting")
         return 1
 
+    # could be pinentry tty or curses and cant prompt for password so refresh the cache as its building
+    # or alternatively keep the password in variable p = get_cipher_key(dbtarget,  user)
+
+    thread = threading.Thread(
+        target=refresh_gpg_agent,
+        args=(user, email, dbtarget),
+        daemon=True
+    )
+    thread.start()
+
     endval = deltav * .90 + strt
 
     cprint.cyan('\nRunning checksum.')
@@ -721,6 +732,14 @@ def scan_system(appdata_local, dbopt, dbtarget, basedir, user, cache_s, email, d
     total = len(recent_sys)
     batch_size = 500
     delta_p = endp - strt
+    # refresh the cached passphrase while scanning
+    thread = threading.Thread(
+        target=refresh_gpg_agent,
+        args=(user, email, dbtarget),
+        daemon=True
+    )
+    thread.start()
+
     endval = delta_p * .9 + strt
 
     show_progress = False
