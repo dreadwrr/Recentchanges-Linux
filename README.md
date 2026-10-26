@@ -13,7 +13,7 @@ LCD alarm clock <br>
 Check for hash collisions during search when using md5 <br>
 Save encrypted notes <br>
 Quick commands displays saved commands for easy reference <br>
-Create a custom crest with a .png image file max size 255 x 333 <br>
+Create a custom crest with a .png image file max size 405 x 333 <br>
 
 Build a system profile to compare during hybrid analysis as well as a system index scan <br>
 Features system profile by .xzm for porteus linux <br>
