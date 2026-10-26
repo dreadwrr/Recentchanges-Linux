@@ -1,11 +1,7 @@
 
-version 6.5.2.1 <br>
-Last updated: 09/24/2026 <br>
+version 6.6.0.0 <br>
+Last updated: 10/26/2026 <br>
 
-Python watchdog service can be started from menubar and more<br><br>
-
-![Alt text](https://i.imgur.com/Wvi4JrH.png) <br>
-when xRC is on all new files are listed in /tmp/file_creation_log.txt <br>
 
 ![Alt text](https://i.imgur.com/gqbO4HB.png)![Alt text](https://i.imgur.com/Gq26b0B.png) <br>
 
