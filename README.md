@@ -130,6 +130,7 @@ and reset config files <br>
 
 ##
 picture for graphic https://i.imgur.com/UoL7CHQ.jpeg<br><br>
+alarm clock ui https://github.com/dreadwrr/pyqtalarm <br>
 ui source file https://drive.google.com/file/d/1TjprEuGbD-yBa4R6ep6o9CFI91Ypgn0R/view?usp=sharing<br>
 <br>
 Manual [Google docs](https://docs.google.com/document/d/1EJAKd1v41LTLN74eXHf5N_BdvGYlfU5Ai8oWBDSGeho/edit?tab=t.0)  
